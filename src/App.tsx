@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Outlet, Link } from "react-router-dom";
+import { HashRouter as Router, Routes, Route, Outlet, Link } from "react-router-dom";
 import { LayoutDashboard, Earth, FileText, Users, DollarSign, HelpCircle, Bell, Menu, LogOut, Settings } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -173,7 +173,7 @@ function AdminCountries() {
 // App Router
 export default function App() {
   return (
-    <BrowserRouter>
+    <Router>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
@@ -201,6 +201,6 @@ export default function App() {
           <Route path="passport-index" element={<PassportIndex />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+      </Router>
   );
 }
