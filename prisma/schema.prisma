@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AgencyStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum ApplicationStatus {
+  PENDING
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  MISSING_DOCS
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+model Agency {
+  id                  String         @id @default(uuid())
+  name                String
+  email               String         @unique
+  phone               String?
+  address             String?
+  status              AgencyStatus   @default(PENDING)
+  balance             Float          @default(0)
+  lowBalanceThreshold Float          @default(500)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  applications        Application[]
+  transactions        Transaction[]
+  notifications       Notification[]
+  tickets             SupportTicket[]
+}
+
+model Country {
+  id        String     @id @default(uuid())
+  name      String     @unique
+  flagUrl   String?
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  visaTypes VisaType[]
+}
+
+model VisaType {
+  id             String   @id @default(uuid())
+  countryId      String
+  name           String
+  price          Float
+  duration       String   // e.g. "30 days"
+  validity       String   // e.g. "90 days"
+  processingTime String   // e.g. "3-5 business days"
+  conditions     String   // text/markdown 
+  requiredDocs   String[] // Array of required document names
+  formFields     Json     // Dynamic form configuration
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  country        Country       @relation(fields: [countryId], references: [id])
+  applications   Application[]
+}
+
+model Application {
+  id           String            @id @default(uuid())
+  agencyId     String
+  visaTypeId   String
+  status       ApplicationStatus @default(PENDING)
+  formData     Json
+  visaFileUrl  String?
+  adminNote    String?
+  amountDebited Float
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  agency       Agency     @relation(fields: [agencyId], references: [id])
+  visaType     VisaType   @relation(fields: [visaTypeId], references: [id])
+  documents    Document[]
+}
+
+model Document {
+  id            String   @id @default(uuid())
+  applicationId String
+  name          String
+  fileUrl       String
+  uploadedAt    DateTime @default(now())
+
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model Transaction {
+  id        String          @id @default(uuid())
+  agencyId  String
+  type      TransactionType
+  amount    Float
+  reference String?
+  note      String?
+  createdAt DateTime        @default(now())
+
+  agency    Agency @relation(fields: [agencyId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  agencyId  String?  // null if targeted at ALL admins
+  isAdmin   Boolean  @default(false)
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  agency    Agency? @relation(fields: [agencyId], references: [id])
+}
+
+model SupportTicket {
+  id            String       @id @default(uuid())
+  agencyId      String
+  subject       String
+  message       String
+  isUrgent      Boolean      @default(false)
+  status        TicketStatus @default(OPEN)
+  adminResponse String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  agency        Agency @relation(fields: [agencyId], references: [id])
+}
