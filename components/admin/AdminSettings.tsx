@@ -8,8 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Save } from "lucide-react";
 
 export function AdminSettings() {
-  const [platformName, setPlatformName] = useState("VisaHub B2B");
-  const [contactEmail, setContactEmail] = useState("admin@visahub.com");
+  const [platformName, setPlatformName] = useState("La Clé d'Or B2B");
+  const [contactEmail, setContactEmail] = useState("admin@cle-dor-visa.com");
   
   return (
     <div className="space-y-6">

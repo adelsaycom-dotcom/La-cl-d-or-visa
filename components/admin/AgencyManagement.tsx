@@ -31,7 +31,7 @@ export function AgencyManagement() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "ACTIVE": return <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-none">Active</Badge>;
-      case "PENDING": return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100 border-none">Pending</Badge>;
+      case "PENDING": return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-none">Pending</Badge>;
       case "SUSPENDED": return <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-none">Suspended</Badge>;
       default: return <Badge>{status}</Badge>;
     }
@@ -117,7 +117,7 @@ export function AgencyManagement() {
                         </DropdownMenuItem>
                       )}
                       {agency.status === "ACTIVE" && (
-                        <DropdownMenuItem onClick={() => updateStatus(agency.id, "SUSPENDED")} className="text-orange-600">
+                        <DropdownMenuItem onClick={() => updateStatus(agency.id, "SUSPENDED")} className="text-amber-600">
                           <ShieldAlert className="mr-2 h-4 w-4" /> Suspend Agency
                         </DropdownMenuItem>
                       )}

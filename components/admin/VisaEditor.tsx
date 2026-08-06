@@ -6,13 +6,15 @@ import { VisaFormBuilder, FormField } from "./VisaFormBuilder";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { useAppStore } from "../../src/store/useAppStore";
 
 export function VisaEditor({ countryId, onSave, onCancel }: { countryId: string, onSave: () => void, onCancel: () => void }) {
+  const { addVisaType } = useAppStore();
   const [fields, setFields] = useState<FormField[]>([]);
   const [reqDocs, setReqDocs] = useState<string[]>(["Passport Copy"]);
 
   const [generalInfo, setGeneralInfo] = useState({
-    name: "Tourist Visa",
+    name: "New Tourist Visa",
     price: 150,
     duration: "30 days",
     validity: "90 days",
@@ -23,6 +25,18 @@ export function VisaEditor({ countryId, onSave, onCancel }: { countryId: string,
   const [conditions, setConditions] = useState("• Must have return ticket\n• Passport valid 6 months");
 
   const addDoc = () => setReqDocs([...reqDocs, "New Document"]);
+
+  const handleSave = () => {
+    addVisaType(countryId, {
+      id: Date.now().toString(),
+      name: generalInfo.name,
+      price: generalInfo.price,
+      processingTime: generalInfo.processingTime,
+      description: generalInfo.duration + " visa validity: " + generalInfo.validity,
+      customFormFields: fields as any,
+    });
+    onSave();
+  };
 
   return (
     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xl max-w-4xl mx-auto space-y-6">
@@ -81,7 +95,7 @@ export function VisaEditor({ countryId, onSave, onCancel }: { countryId: string,
 
       <div className="flex justify-end gap-2 pt-4 border-t">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button onClick={onSave} className="bg-black text-white px-8">Save Visa Type</Button>
+        <Button onClick={handleSave} className="bg-black text-white px-8">Save Visa Type</Button>
       </div>
     </div>
   );

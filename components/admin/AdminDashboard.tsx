@@ -19,29 +19,29 @@ export function AdminDashboard() {
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-500">Demandes du jour</span>
             <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-              <FileText className="w-4 h-4 text-blue-600" />
+              <FileText className="w-4 h-4 text-primary-gold" />
             </div>
           </div>
           <div className="text-3xl font-bold mt-2">14</div>
-          <p className="text-xs text-green-600 flex items-center mt-auto pt-4 border-t border-gray-50"><TrendingUp className="w-3 h-3 mr-1"/> +12% par rapport à hier</p>
+          <p className="text-xs text-primary-gold flex items-center mt-auto pt-4 border-t border-gray-50"><TrendingUp className="w-3 h-3 mr-1"/> +12% par rapport à hier</p>
         </div>
         
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-2 relative">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-orange-600">En attente d'examen</span>
-            <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
-              <Clock className="w-4 h-4 text-orange-600" />
+            <span className="text-sm font-medium text-primary-gold">En attente d'examen</span>
+            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+              <Clock className="w-4 h-4 text-primary-gold" />
             </div>
           </div>
-          <div className="text-3xl font-bold text-orange-700 mt-2">32</div>
-          <p className="text-xs text-orange-500 mt-auto pt-4 border-t border-orange-50">Demandes nécessitant une attention</p>
+          <div className="text-3xl font-bold text-amber-700 mt-2">32</div>
+          <p className="text-xs text-primary-gold mt-auto pt-4 border-t border-amber-50">Demandes nécessitant une attention</p>
         </div>
 
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-500">Agences Actives</span>
             <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-              <Users className="w-4 h-4 text-purple-600" />
+              <Users className="w-4 h-4 text-primary-gold" />
             </div>
           </div>
           <div className="text-3xl font-bold mt-2">128</div>
@@ -54,11 +54,11 @@ export function AdminDashboard() {
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-500">Revenus du système</span>
             <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-              <CheckCircle2 className="w-4 h-4 text-green-600" />
+              <CheckCircle2 className="w-4 h-4 text-primary-gold" />
             </div>
           </div>
           <div className="text-3xl font-bold font-mono tracking-tight mt-2">1.2M <span className="text-lg">DA</span></div>
-          <p className="text-xs text-green-600 flex items-center mt-auto pt-4 border-t border-gray-50"><TrendingUp className="w-3 h-3 mr-1"/> Mois en cours</p>
+          <p className="text-xs text-primary-gold flex items-center mt-auto pt-4 border-t border-gray-50"><TrendingUp className="w-3 h-3 mr-1"/> Mois en cours</p>
         </div>
       </div>
 
@@ -72,7 +72,7 @@ export function AdminDashboard() {
                  <span className="font-medium">Émirats Arabes Unis</span>
                  <span className="text-gray-500 font-mono">65%</span>
                </div>
-               <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+               <div className="h-2 w-full bg-bg-white rounded-full overflow-hidden">
                  <div className="h-full bg-blue-600 w-[65%]" />
                </div>
              </div>
@@ -81,7 +81,7 @@ export function AdminDashboard() {
                  <span className="font-medium">Arabie Saoudite</span>
                  <span className="text-gray-500 font-mono">20%</span>
                </div>
-               <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+               <div className="h-2 w-full bg-bg-white rounded-full overflow-hidden">
                  <div className="h-full bg-green-600 w-[20%]" />
                </div>
              </div>
@@ -90,7 +90,7 @@ export function AdminDashboard() {
                  <span className="font-medium">Turquie</span>
                  <span className="text-gray-500 font-mono">15%</span>
                </div>
-               <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+               <div className="h-2 w-full bg-bg-white rounded-full overflow-hidden">
                  <div className="h-full bg-red-600 w-[15%]" />
                </div>
              </div>
@@ -100,7 +100,7 @@ export function AdminDashboard() {
         <div className="bg-white border rounded-2xl shadow-sm p-6 flex flex-col">
           <div className="flex items-center justify-between mb-6">
              <h3 className="font-bold text-lg tracking-tight">Flux d'actions prioritaires</h3>
-             <Link to="/admin/support" className="text-sm text-blue-600 hover:underline">Voir Tout</Link>
+             <Link to="/admin/support" className="text-sm text-primary-gold hover:underline">Voir Tout</Link>
           </div>
           
           <div className="space-y-4">
@@ -116,13 +116,13 @@ export function AdminDashboard() {
              </div>
              
              <div className="flex gap-4 items-start p-3 border rounded-xl border-gray-100 hover:bg-gray-50 transition-colors">
-               <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0 mt-1">
-                 <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+               <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-1">
+                 <div className="w-2 h-2 rounded-full bg-amber-500"></div>
                </div>
                <div>
-                  <p className="text-sm font-bold text-gray-900">Demande de recharge en attente</p>
+                  <p className="text-sm font-bold text-text-dark">Demande de recharge en attente</p>
                   <p className="text-xs text-gray-600 mt-1">Global Travel a demandé 50,000 DA</p>
-                  <Button variant="link" className="p-0 h-auto text-xs text-blue-600 mt-2 font-bold">Traiter la finance &rarr;</Button>
+                  <Button variant="link" className="p-0 h-auto text-xs text-primary-gold mt-2 font-bold">Traiter la finance &rarr;</Button>
                </div>
              </div>
              
@@ -131,9 +131,9 @@ export function AdminDashboard() {
                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                </div>
                <div>
-                  <p className="text-sm font-bold text-gray-900">Nouvelle Inscription d'Agence</p>
+                  <p className="text-sm font-bold text-text-dark">Nouvelle Inscription d'Agence</p>
                   <p className="text-xs text-gray-600 mt-1">"Desert Rose Travels" est en attente d'approbation.</p>
-                  <Button variant="link" className="p-0 h-auto text-xs text-blue-600 mt-2 font-bold">Examiner l'agence &rarr;</Button>
+                  <Button variant="link" className="p-0 h-auto text-xs text-primary-gold mt-2 font-bold">Examiner l'agence &rarr;</Button>
                </div>
              </div>
           </div>

@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { WalletCards, ArrowDownRight, ArrowUpRight, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useAppStore } from "../../src/store/useAppStore";
 
 const MOCK_TRANSACTIONS = [
   { id: "TX-1", type: "DEBIT", amount: 150, date: "2024-05-05 14:30:00", ref: "APP-004", note: "Demande Visa (EAU - Touriste)" },
@@ -13,10 +14,12 @@ const MOCK_TRANSACTIONS = [
 ];
 
 export function AgencyWallet() {
+  const { agencyBalance } = useAppStore();
+  const balanceColor = agencyBalance > 10000 ? "text-green-500" : agencyBalance > 0 ? "text-amber-500" : "text-red-500";
   const [rechargeOpen, setRechargeOpen] = useState(false);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-10">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Portefeuille & Facturation</h2>
@@ -28,13 +31,13 @@ export function AgencyWallet() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-[#0a192f] text-white p-6 rounded-2xl shadow-lg md:col-span-1 relative overflow-hidden">
+        <div className="bg-[var(--color-text-dark)] text-white p-6 rounded-2xl shadow-lg md:col-span-1 relative overflow-hidden">
            <div className="absolute top-0 right-0 p-8 opacity-10">
              <WalletCards className="w-32 h-32" />
            </div>
            <div className="relative z-10">
              <div className="text-sm text-gray-300 font-medium mb-2 uppercase tracking-wide">Solde Disponible</div>
-             <div className="text-5xl font-bold font-mono tracking-tight">4,500 <span className="text-2xl">DA</span></div>
+             <div className={"text-5xl font-bold font-mono tracking-tight " + balanceColor}>{agencyBalance.toLocaleString()} <span className="text-2xl">DZD</span></div>
              <div className="mt-8 text-xs text-gray-400">
                Seuil de solde bas: 500 DA
              </div>
@@ -44,17 +47,17 @@ export function AgencyWallet() {
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm md:col-span-2 space-y-4">
            <h3 className="font-semibold border-b pb-2 flex items-center justify-between">
              Demandes de Recharge en Attente
-             <Badge variant="outline" className="text-orange-500 border-orange-200 bg-orange-50">1 En Attente</Badge>
+             <Badge variant="outline" className="text-amber-500 border-amber-200 bg-amber-50">1 En Attente</Badge>
            </h3>
            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
               <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-orange-500" />
+                <Clock className="w-5 h-5 text-amber-500" />
                 <div>
                   <div className="font-medium text-sm">Détails du transfert envoyés à l'Admin</div>
                   <div className="text-xs text-gray-500">Soumis le 5 Mai 2024 à 08:00</div>
                 </div>
               </div>
-              <div className="font-mono font-bold text-lg text-orange-600">2,000 DA</div>
+              <div className="font-mono font-bold text-lg text-amber-600">2,000 DA</div>
            </div>
         </div>
       </div>

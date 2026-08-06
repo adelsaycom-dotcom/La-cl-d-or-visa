@@ -20,7 +20,7 @@ export function SupportManagement() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "OPEN": return <Badge className="bg-orange-100 text-orange-800 border-none">Open</Badge>;
+      case "OPEN": return <Badge className="bg-amber-100 text-amber-800 border-none">Open</Badge>;
       case "IN_PROGRESS": return <Badge className="bg-blue-100 text-blue-800 border-none">In Progress</Badge>;
       case "RESOLVED": return <Badge className="bg-gray-100 text-gray-800 border-none">Resolved</Badge>;
       default: return <Badge>{status}</Badge>;
