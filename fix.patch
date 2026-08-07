@@ -1,0 +1,25 @@
+--- components/agency/VisaWizard.tsx
++++ components/agency/VisaWizard.tsx
+@@ -868,7 +868,11 @@
+                               }
+                             }}
+                           />
+-                                            <>
++                        </label>
++                      ),
++                    )
++                  ) : (
++                    <>
+                       <label className={`border-2 border-dashed ${customFormData["Passeport"] ? 'border-green-400 bg-green-50/20' : 'border-slate-200'} rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-blue-400 transition-all cursor-pointer group bg-white relative overflow-hidden h-full`}>
+                         <div className={`w-14 h-14 ${customFormData["Passeport"] ? 'bg-green-100 text-green-600' : 'bg-blue-50 text-blue-600 group-hover:scale-110'} rounded-2xl flex items-center justify-center mb-4 transition-transform shadow-sm shrink-0`}>
+                           {customFormData["Passeport"] ? <CheckCircle2 className="w-6 h-6" /> : <FileUp className="w-6 h-6" />}
+@@ -904,8 +908,7 @@
+                         }} />
+                       </label>
+                     </>
+-                     </div>
+-                      </div>
+-                    </>
+                   )}
+                 </div>
+               </div>

@@ -2,28 +2,40 @@ import { BrowserRouter as Router, Routes, Route, Outlet, Link } from "react-rout
 import { LayoutDashboard, Earth, FileText, Users, DollarSign, HelpCircle, Bell, Menu, LogOut, Settings, MapPin } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { VisaEditor } from "@/components/admin/VisaEditor";
-import { AgencyManagement } from "@/components/admin/AgencyManagement";
-import { FinancesManagement } from "@/components/admin/FinancesManagement";
-import { ApplicationManagement } from "@/components/admin/ApplicationManagement";
-import { SupportManagement } from "@/components/admin/SupportManagement";
-import { AdminDashboard } from "@/components/admin/AdminDashboard";
-import { AdminSettings } from "@/components/admin/AdminSettings";
-import OrganizedTripsManagement from "@/components/admin/OrganizedTripsManagement";
-import { AgencyLayout } from "@/components/agency/AgencyLayout";
-import { VisaWizard } from "@/components/agency/VisaWizard";
-import { AgencyDashboard } from "@/components/agency/Dashboard";
-import { AgencyApplications } from "@/components/agency/AgencyApplications";
-import { AgencyWallet } from "@/components/agency/AgencyWallet";
-import { AgencySupport } from "@/components/agency/AgencySupport";
-import { AgencySettings } from "@/components/agency/AgencySettings";
-import { PassportIndex } from "@/components/agency/PassportIndex";
-import OrganizedTrips from "@/components/agency/OrganizedTrips";
-import { LandingPage } from "@/components/LandingPage";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Login } from "@/components/auth/Login";
-import { Register } from "@/components/auth/Register";
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
+
+// Eager imports for layout components
+import { VisaEditor } from "@/components/admin/VisaEditor";
+import { LandingPage } from "@/components/LandingPage";
+
+// Lazy loaded page components
+const AgencyManagement = lazy(() => import("@/components/admin/AgencyManagement").then(m => ({ default: m.AgencyManagement })));
+const FinancesManagement = lazy(() => import("@/components/admin/FinancesManagement").then(m => ({ default: m.FinancesManagement })));
+const ApplicationManagement = lazy(() => import("@/components/admin/ApplicationManagement").then(m => ({ default: m.ApplicationManagement })));
+const SupportManagement = lazy(() => import("@/components/admin/SupportManagement").then(m => ({ default: m.SupportManagement })));
+const AdminDashboard = lazy(() => import("@/components/admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
+const AdminSettings = lazy(() => import("@/components/admin/AdminSettings").then(m => ({ default: m.AdminSettings })));
+const OrganizedTripsManagement = lazy(() => import("@/components/admin/OrganizedTripsManagement"));
+
+const AgencyLayout = lazy(() => import("@/components/agency/AgencyLayout").then(m => ({ default: m.AgencyLayout })));
+const VisaWizard = lazy(() => import("@/components/agency/VisaWizard").then(m => ({ default: m.VisaWizard })));
+const AgencyDashboard = lazy(() => import("@/components/agency/Dashboard").then(m => ({ default: m.AgencyDashboard })));
+const AgencyApplications = lazy(() => import("@/components/agency/AgencyApplications").then(m => ({ default: m.AgencyApplications })));
+const AgencyWallet = lazy(() => import("@/components/agency/AgencyWallet").then(m => ({ default: m.AgencyWallet })));
+const AgencySupport = lazy(() => import("@/components/agency/AgencySupport").then(m => ({ default: m.AgencySupport })));
+const AgencySettings = lazy(() => import("@/components/agency/AgencySettings").then(m => ({ default: m.AgencySettings })));
+const PassportIndex = lazy(() => import("@/components/agency/PassportIndex").then(m => ({ default: m.PassportIndex })));
+const OrganizedTrips = lazy(() => import("@/components/agency/OrganizedTrips"));
+
+const Login = lazy(() => import("@/components/auth/Login").then(m => ({ default: m.Login })));
+const Register = lazy(() => import("@/components/auth/Register").then(m => ({ default: m.Register })));
+
+const SuspenseFallback = () => (
+  <div className="flex justify-center items-center h-full w-full p-8 text-gray-500">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-gold"></div>
+  </div>
+);
 
 // Admin Layout
 function AdminLayout() {
@@ -69,7 +81,10 @@ function AdminLayout() {
               <div className="shrink-0 flex items-center">
                 <Link to="/admin" className="text-xl font-bold font-sans text-text-dark flex items-center gap-2">
                   <span className="bg-primary-gold text-white px-2 py-1 rounded text-sm uppercase tracking-wider">Admin</span>
-                  <img src="/logo.png" alt="La Clé d'Or Visa" className="h-8 object-contain" />
+                  <div className="bg-gradient-to-tr from-amber-400 to-amber-200 text-amber-900 p-1 rounded-md">
+                    <Earth className="w-5 h-5" />
+                  </div>
+                  <span className="tracking-tight">La Clé d'Or <span className="text-amber-500">Visa</span></span>
                 </Link>
               </div>
               
@@ -197,7 +212,7 @@ function AdminCountries() {
       </div>
 
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="max-w-4xl p-0 border-none bg-transparent shadow-none">
+        <DialogContent className="max-w-4xl sm:max-w-4xl p-0 border-none bg-transparent shadow-none">
           <div className="sr-only"><h3>Edit Visa Type</h3></div>
           {selectedCountryId && <VisaEditor countryId={selectedCountryId} onSave={() => setEditorOpen(false)} onCancel={() => setEditorOpen(false)} />}
         </DialogContent>
@@ -210,35 +225,37 @@ function AdminCountries() {
 export default function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        
-        {/* Admin Space */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="countries" element={<AdminCountries />} />
-          <Route path="agencies" element={<AgencyManagement />} />
-          <Route path="applications" element={<ApplicationManagement />} />
-          <Route path="trips" element={<OrganizedTripsManagement />} />
-          <Route path="finances" element={<FinancesManagement />} />
-          <Route path="support" element={<SupportManagement />} />
-          <Route path="settings" element={<AdminSettings />} />
-        </Route>
+      <Suspense fallback={<SuspenseFallback />}>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          
+          {/* Admin Space */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="countries" element={<AdminCountries />} />
+            <Route path="agencies" element={<AgencyManagement />} />
+            <Route path="applications" element={<ApplicationManagement />} />
+            <Route path="trips" element={<OrganizedTripsManagement />} />
+            <Route path="finances" element={<FinancesManagement />} />
+            <Route path="support" element={<SupportManagement />} />
+            <Route path="settings" element={<AdminSettings />} />
+          </Route>
 
-        {/* Agency Space */}
-        <Route path="/agency" element={<AgencyLayout />}>
-          <Route index element={<AgencyDashboard />} />
-          <Route path="apply" element={<VisaWizard />} />
-          <Route path="applications" element={<AgencyApplications />} />
-          <Route path="trips" element={<OrganizedTrips />} />
-          <Route path="wallet" element={<AgencyWallet />} />
-          <Route path="support" element={<AgencySupport />} />
-          <Route path="settings" element={<AgencySettings />} />
-          <Route path="passport-index" element={<PassportIndex />} />
-        </Route>
-      </Routes>
+          {/* Agency Space */}
+          <Route path="/agency" element={<AgencyLayout />}>
+            <Route index element={<AgencyDashboard />} />
+            <Route path="apply" element={<VisaWizard />} />
+            <Route path="applications" element={<AgencyApplications />} />
+            <Route path="trips" element={<OrganizedTrips />} />
+            <Route path="wallet" element={<AgencyWallet />} />
+            <Route path="support" element={<AgencySupport />} />
+            <Route path="settings" element={<AgencySettings />} />
+            <Route path="passport-index" element={<PassportIndex />} />
+          </Route>
+        </Routes>
+      </Suspense>
       </Router>
   );
 }

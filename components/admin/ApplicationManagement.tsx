@@ -34,9 +34,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAppStore, ServiceType } from "../../src/store/useAppStore";
+import { DocumentPreview } from "@/components/DocumentPreview";
 
 export function ApplicationManagement() {
-  const { applications, updateApplicationStatus } = useAppStore();
+  const { applications, updateApplicationStatus, updateApplication } = useAppStore();
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [serviceFilter, setServiceFilter] = useState<string>("ALL");
@@ -204,7 +205,7 @@ export function ApplicationManagement() {
         open={!!selectedAppId}
         onOpenChange={(open) => !open && setSelectedAppId(null)}
       >
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl">
               Détails de la demande : {selectedApp?.id}
@@ -558,31 +559,52 @@ export function ApplicationManagement() {
                       </div>
                     </div>
                   )}
+                  
+                {selectedApp.customFormData && Object.entries(selectedApp.customFormData).filter(([_, val]) => val && (typeof val !== 'string' || !val.startsWith('data:'))).length > 0 && (
+                  <div className="bg-purple-50/40 p-4 rounded-xl border border-purple-100 shadow-sm">
+                    <h4 className="text-sm border-b border-purple-100 pb-3 font-bold text-purple-900 mb-2 flex items-center gap-2">
+                      <Info className="w-4 h-4 text-purple-600" /> Informations Personnalisées
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                      {Object.entries(selectedApp.customFormData)
+                        .filter(([_, val]) => val && (typeof val !== 'string' || !val.startsWith('data:')))
+                        .map(([key, val]) => (
+                          <div key={key}>
+                            <span className="text-purple-900/60 block text-[11px] uppercase tracking-wider font-semibold mb-0.5">
+                              {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                            </span>
+                            <span className="font-medium text-slate-800">
+                              {val as string}
+                            </span>
+                          </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Documents */}
                 <div>
                   <h3 className="font-semibold mb-3">Documents Téléchargés</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="border rounded-lg p-3 flex justify-between items-center bg-white shadow-sm hover:border-blue-300 cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-blue-100 p-2 rounded text-blue-600">
-                          <FileDown className="w-5 h-5" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {selectedApp.customFormData && Object.entries(selectedApp.customFormData).filter(([_, val]) => val && typeof val === 'string' && val.startsWith('data:')).length > 0 ? (
+                      Object.entries(selectedApp.customFormData).filter(([_, val]) => val && typeof val === 'string' && val.startsWith('data:')).map(([key, val]) => (
+                        <div key={key} className="border rounded-lg p-3 flex justify-between items-center bg-white shadow-sm hover:border-blue-300 transition-colors">
+                          <div className="flex items-center gap-3 w-full overflow-hidden">
+                            <div className="bg-blue-100 p-2 rounded text-blue-600 shrink-0">
+                              <FileDown className="w-5 h-5" />
+                            </div>
+                            <div className="text-sm font-medium truncate" title={key}>
+                              {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                            </div>
+                          </div>
+                          <DocumentPreview url={val as string} name={key} />
                         </div>
-                        <div className="text-sm font-medium">
-                          Document Principal
-                        </div>
+                      ))
+                    ) : (
+                      <div className="col-span-1 sm:col-span-2 text-sm text-gray-500 italic p-4 border rounded-lg bg-gray-50">
+                        Aucun document téléchargé
                       </div>
-                    </div>
-                    <div className="border rounded-lg p-3 flex justify-between items-center bg-white shadow-sm hover:border-blue-300 cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-blue-100 p-2 rounded text-blue-600">
-                          <FileDown className="w-5 h-5" />
-                        </div>
-                        <div className="text-sm font-medium">
-                          Justificatif / Photo
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -643,12 +665,67 @@ export function ApplicationManagement() {
                     <h4 className="font-semibold text-green-900 mb-2 flex items-center gap-2">
                       <CheckCircle className="w-4 h-4" /> Résultat
                     </h4>
-                    <div className="border-2 border-dashed border-green-300 p-4 rounded-lg text-center cursor-pointer hover:bg-green-100 transition-colors">
-                      <FileUp className="w-6 h-6 mx-auto text-green-600 mb-2" />
-                      <span className="text-sm font-medium text-green-700">
-                        Uploader le document final (Visa, etc.)
-                      </span>
-                    </div>
+                    {selectedApp.extraData?.finalDocument ? (
+                      <div className="space-y-3">
+                        <div className="border rounded-lg p-3 flex justify-between items-center bg-white shadow-sm hover:border-green-300 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-green-100 p-2 rounded text-green-600 shrink-0">
+                              <FileDown className="w-5 h-5" />
+                            </div>
+                            <div className="text-sm font-medium">Document Final</div>
+                          </div>
+                          <DocumentPreview url={selectedApp.extraData.finalDocument} name="Document Final" />
+                        </div>
+                        <label className="block text-center text-xs text-green-700 underline cursor-pointer hover:text-green-800">
+                          Remplacer le document
+                          <input 
+                            type="file" 
+                            className="hidden" 
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                  updateApplication(selectedApp.id, { 
+                                    extraData: { 
+                                      ...(selectedApp.extraData || {}), 
+                                      finalDocument: event.target?.result as string 
+                                    } 
+                                  });
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <label className="border-2 border-dashed border-green-300 p-4 rounded-lg text-center cursor-pointer hover:bg-green-100 transition-colors block">
+                        <FileUp className="w-6 h-6 mx-auto text-green-600 mb-2" />
+                        <span className="text-sm font-medium text-green-700 block">
+                          Uploader le document final (Visa, etc.)
+                        </span>
+                        <input 
+                          type="file" 
+                          className="hidden" 
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                updateApplication(selectedApp.id, { 
+                                  extraData: { 
+                                    ...(selectedApp.extraData || {}), 
+                                    finalDocument: event.target?.result as string 
+                                  } 
+                                });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
                   </div>
                 )}
               </div>

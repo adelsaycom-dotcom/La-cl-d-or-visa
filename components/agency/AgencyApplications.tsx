@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Eye, FileDown, Info } from "lucide-react";
+import { DocumentPreview } from "@/components/DocumentPreview";
 import {
   Dialog,
   DialogContent,
@@ -155,7 +156,7 @@ export function AgencyApplications() {
         open={!!selectedApp}
         onOpenChange={(o) => !o && setSelectedApp(null)}
       >
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           {selectedApp && (
             <div className="space-y-4">
               <DialogHeader>
@@ -445,23 +446,49 @@ export function AgencyApplications() {
                         </div>
                       </div>
                     )}
+                    
+                  {selectedApp.customFormData && Object.entries(selectedApp.customFormData).filter(([_, val]) => val && (typeof val !== 'string' || !val.startsWith('data:'))).length > 0 && (
+                    <div className="bg-purple-50/40 p-4 rounded-xl border border-purple-100 shadow-sm">
+                      <h4 className="text-xs uppercase text-purple-800 font-bold tracking-wider mb-2 flex items-center gap-2">
+                        <Info className="w-4 h-4 text-purple-600" /> Informations Personnalisées
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                        {Object.entries(selectedApp.customFormData)
+                          .filter(([_, val]) => val && (typeof val !== 'string' || !val.startsWith('data:')))
+                          .map(([key, val]) => (
+                            <div key={key}>
+                              <span className="text-purple-900/60 block text-[11px] uppercase tracking-wider font-semibold mb-0.5">
+                                {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                              </span>
+                              <span className="font-medium text-slate-800">
+                                {val as string}
+                              </span>
+                            </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
                     <h4 className="text-xs uppercase text-gray-500 font-bold tracking-wider p-3 bg-gray-50 border-b">
-                      Documents Téléchargés
+                      Documents Soumis
                     </h4>
                     <div className="p-3 space-y-2">
-                      <div className="text-sm font-medium text-gray-700 flex items-center justify-between">
-                        Page de données du passeport{" "}
-                        <Badge variant="outline" className="text-green-600">
-                          Valide
-                        </Badge>
-                      </div>
-                      <div className="text-sm font-medium text-gray-700 flex items-center justify-between">
-                        Photo personnelle{" "}
-                        <Badge variant="outline" className="text-green-600">
-                          Valide
-                        </Badge>
-                      </div>
+                      {selectedApp.customFormData && Object.entries(selectedApp.customFormData).filter(([_, val]) => val && typeof val === 'string' && val.startsWith('data:')).length > 0 ? (
+                        Object.entries(selectedApp.customFormData).filter(([_, val]) => val && typeof val === 'string' && val.startsWith('data:')).map(([key, val]) => (
+                          <div key={key} className="text-sm font-medium text-gray-700 flex items-center justify-between">
+                            <span className="truncate max-w-[200px]" title={key}>{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-green-600">
+                                Fourni
+                              </Badge>
+                              <DocumentPreview url={val as string} name={key} />
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-sm text-gray-500 italic py-2 text-center">Aucun document soumis</div>
+                      )}
                     </div>
                   </div>
 
@@ -471,13 +498,17 @@ export function AgencyApplications() {
                         Le visa est prêt !
                       </h4>
                       <p className="text-sm text-green-700 mb-4">
-                        Vous pouvez maintenant télécharger le fichier e-Visa
-                        approuvé.
+                        Vous pouvez maintenant télécharger le document final.
                       </p>
-                      <Button className="w-full bg-green-600 hover:bg-green-700 text-white">
-                        <FileDown className="w-4 h-4 mr-2" /> Télécharger le
-                        Visa PDF
-                      </Button>
+                      {selectedApp.extraData?.finalDocument ? (
+                        <div className="flex justify-center items-center">
+                          <DocumentPreview url={selectedApp.extraData.finalDocument} name="Document Final" />
+                        </div>
+                      ) : (
+                        <Button className="w-full bg-green-600 hover:bg-green-700 text-white opacity-50 cursor-not-allowed">
+                          Document non disponible
+                        </Button>
+                      )}
                     </div>
                   )}
 

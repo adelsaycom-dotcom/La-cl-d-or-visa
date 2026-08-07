@@ -8,7 +8,7 @@ export function LandingPage() {
       {/* Navbar */}
       <nav className="flex items-center justify-between px-4 sm:px-6 py-4 md:px-12 border-b border-gray-100 sticky top-0 bg-white/90 backdrop-blur-md z-50 transition-all">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="La Clé d'Or Visa" className="w-auto h-12 sm:h-16 object-contain" />
+          <div className="flex items-center gap-2"><div className="bg-gradient-to-tr from-amber-400 to-amber-200 text-amber-900 p-2 rounded-xl shadow-sm"><Globe2 className="w-6 h-6 sm:w-8 sm:h-8" /></div><span className="text-2xl sm:text-3xl font-bold tracking-tight text-text-dark">La Clé d'Or <span className="text-amber-500">Visa</span></span></div>
         </div>
         <div className="hidden lg:flex items-center gap-8 text-sm font-bold text-gray-600">
           <a href="#about" className="hover:text-primary-gold transition-colors">Notre Agence</a>
@@ -326,7 +326,7 @@ export function LandingPage() {
               <img src="https://upload.wikimedia.org/wikipedia/commons/9/94/AXA_Logo.svg" alt="AXA Assurance" className="h-12 md:h-16 object-contain" />
               
               <div className="flex items-center gap-2 font-black text-3xl md:text-4xl text-[#1e58a7] tracking-tight relative">
-                <img src="/logo.png" alt="La Clé d'Or Visa" className="h-16 object-contain grayscale" />
+                <div className="flex items-center gap-2"><div className="bg-gray-200 text-gray-500 p-2 rounded-xl"><Globe2 className="w-8 h-8" /></div><span className="text-3xl font-bold tracking-tight text-gray-700">La Clé d'Or <span className="text-gray-400">Visa</span></span></div>
               </div>
            </div>
         </div>
@@ -338,7 +338,7 @@ export function LandingPage() {
           
           <div className="space-y-6 lg:col-span-1">
             <div className="mb-6 inline-block bg-white p-3 rounded-xl">
-              <img src="/logo.png" alt="La Clé d'Or Visa" className="w-auto h-16 object-contain drop-shadow-sm" />
+              <div className="flex items-center gap-2"><div className="bg-gradient-to-tr from-amber-400 to-amber-200 text-amber-900 p-2 rounded-xl shadow-sm"><Globe2 className="w-8 h-8" /></div><span className="text-3xl font-bold tracking-tight text-text-dark">La Clé d'Or <span className="text-amber-500">Visa</span></span></div>
             </div>
             <p className="text-blue-200/70 font-medium text-lg leading-relaxed">
               Simplifiez vos démarches de visas et offrez le meilleur service à vos clients grâce à notre plateforme B2B innovante.

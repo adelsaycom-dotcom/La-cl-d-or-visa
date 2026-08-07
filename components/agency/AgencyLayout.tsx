@@ -8,17 +8,17 @@ import { useAppStore } from "../../src/store/useAppStore";
 
 export function AgencyLayout() {
   const { agencyBalance } = useAppStore();
-  const balanceColor = agencyBalance > 10000 ? "text-green-500" : agencyBalance > 0 ? "text-amber-500" : "text-red-500";
+  const balanceColor = agencyBalance > 10000 ? "text-emerald-400" : agencyBalance > 0 ? "text-amber-300" : "text-red-400";
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const NavLinks = () => (
     <>
-      <Link to="/agency" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-white/10 hover:text-white transition-colors text-sm font-medium">
+      <Link to="/agency" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-white/10 hover:text-white transition-colors text-sm font-medium whitespace-nowrap">
         <LayoutDashboard className="h-4 w-4" /> Tableau de Bord
       </Link>
 
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-1.5 px-3 py-2 rounded-md hover:bg-white/10 hover:text-white transition-colors text-sm font-medium focus:outline-none">
+        <DropdownMenuTrigger className="flex items-center gap-1.5 px-3 py-2 rounded-md hover:bg-white/10 hover:text-white transition-colors text-sm font-medium focus:outline-none whitespace-nowrap">
           <Globe className="h-4 w-4" /> Services <ChevronDown className="h-3 w-3 opacity-50" />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56 bg-white text-text-dark border-gray-100 shadow-xl rounded-xl p-2" align="start">
@@ -66,19 +66,19 @@ export function AgencyLayout() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Link to="/agency/applications" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-white/10 hover:text-white transition-colors text-sm font-medium">
+      <Link to="/agency/applications" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-white/10 hover:text-white transition-colors text-sm font-medium whitespace-nowrap">
         <FileText className="h-4 w-4" /> Demandes
       </Link>
-      <Link to="/agency/trips" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-white/10 hover:text-white transition-colors text-sm font-medium">
+      <Link to="/agency/trips" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-white/10 hover:text-white transition-colors text-sm font-medium whitespace-nowrap">
         <MapPin className="h-4 w-4" /> Voyages
       </Link>
-      <Link to="/agency/wallet" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-white/10 hover:text-white transition-colors text-sm font-medium">
+      <Link to="/agency/wallet" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-white/10 hover:text-white transition-colors text-sm font-medium whitespace-nowrap">
         <WalletCards className="h-4 w-4" /> Finances
       </Link>
-      <Link to="/agency/support" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-white/10 hover:text-white transition-colors text-sm font-medium">
+      <Link to="/agency/support" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-white/10 hover:text-white transition-colors text-sm font-medium whitespace-nowrap">
         <HelpCircle className="h-4 w-4" /> Support
       </Link>
-      <Link to="/agency/settings" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-white/10 hover:text-white transition-colors text-sm font-medium">
+      <Link to="/agency/settings" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-white/10 hover:text-white transition-colors text-sm font-medium whitespace-nowrap">
         <Settings className="h-4 w-4" /> Paramètres
       </Link>
     </>
@@ -88,25 +88,28 @@ export function AgencyLayout() {
     <div className="flex flex-col min-h-screen bg-gray-50 text-text-dark">
       {/* Top Navbar */}
       <header className="sticky top-0 z-50 w-full bg-[var(--color-text-dark)] text-gray-300 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
               {/* Logo / Branch Name */}
               <div className="shrink-0 flex items-center">
-                <Link to="/agency" className="text-xl font-bold font-sans text-white flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl">
-                  <img src="/logo.png" alt="La Clé d'Or Visa" className="h-8 object-contain drop-shadow-sm" />
+                <Link to="/agency" className="text-xl font-bold font-sans text-white flex items-center gap-2">
+                  <div className="bg-gradient-to-tr from-amber-400 to-amber-200 text-amber-900 p-1.5 rounded-lg">
+                    <Globe className="w-5 h-5" />
+                  </div>
+                  <span className="tracking-tight">La Clé d'Or <span className="text-amber-400">Visa</span></span>
                 </Link>
               </div>
               
               {/* Desktop Menu */}
-              <nav className="hidden xl:flex space-x-1 ml-4 items-center">
+              <nav className="hidden xl:flex space-x-1 items-center">
                 <NavLinks />
               </nav>
             </div>
 
             <div className="flex items-center gap-4">
                {/* Wallet Balance (Desktop) */}
-               <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 bg-[var(--color-accent-bronze)] rounded-full border border-white/5">
+               <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 bg-[var(--color-accent-bronze)] rounded-full border border-white/5 whitespace-nowrap">
                 <span className="text-xs text-gray-400">Solde:</span>
                 <span className={"text-sm font-bold " + balanceColor}>{agencyBalance.toLocaleString()} DZD</span>
               </div>
@@ -184,7 +187,7 @@ export function AgencyLayout() {
       
       {/* Footer */}
       <footer className="w-full bg-[var(--color-text-dark)] border-t border-white/10 mt-auto text-gray-400 py-8 px-4 sm:px-6 lg:px-8 text-sm">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div>© 2026 La Clé d'Or Visa. Tous droits réservés.</div>
           <div className="flex gap-6 flex-wrap justify-center">
              <span>Support: (+213) 770 74 92 63</span>

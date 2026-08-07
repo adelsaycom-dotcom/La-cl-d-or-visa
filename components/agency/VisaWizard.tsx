@@ -23,7 +23,7 @@ import { useAppStore, ServiceType } from "../../src/store/useAppStore";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 export function VisaWizard() {
-  const { countries, addApplication } = useAppStore();
+  const { countries, addApplication, agencyBalance, setAgencyBalance } = useAppStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const serviceParam = searchParams.get("service") || "evisa";
@@ -78,6 +78,7 @@ export function VisaWizard() {
   const currentService = serviceTitles[serviceParam] || serviceTitles["evisa"];
 
   const handleSubmit = () => {
+    const price = selectedVisa?.price || 0;
     addApplication({
       id: "APP-" + Math.floor(Math.random() * 100000),
       agencyId: "a1",
@@ -89,7 +90,7 @@ export function VisaWizard() {
       passportNumber: applicant.passportNumber,
       status: "Pending",
       submissionDate: new Date().toISOString().split("T")[0],
-      price: selectedVisa?.price || 0,
+      price: price,
       customFormData,
       extraData: {
         dob: applicant.dob,
@@ -116,6 +117,7 @@ export function VisaWizard() {
         notes: applicant.notes,
       },
     });
+    setAgencyBalance(agencyBalance - price);
     alert("Demande soumise avec succès !");
     navigate("/agency/applications");
   };
@@ -838,49 +840,134 @@ export function VisaWizard() {
                   selectedVisa.requiredDocuments.length > 0 ? (
                     selectedVisa.requiredDocuments.map(
                       (doc: string, i: number) => (
-                        <div
+                        <label
                           key={i}
-                          className="border-2 border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-blue-400 transition-all cursor-pointer group bg-white relative overflow-hidden h-full"
+                          className={`border-2 border-dashed ${customFormData[doc] ? 'border-green-400 bg-green-50/20' : 'border-slate-200'} rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-blue-400 transition-all cursor-pointer group bg-white relative overflow-hidden h-full`}
                         >
-                          <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm shrink-0">
-                            <FileUp className="w-6 h-6" />
+                          <div className={`w-14 h-14 ${customFormData[doc] ? 'bg-green-100 text-green-600' : 'bg-blue-50 text-blue-600 group-hover:scale-110'} rounded-2xl flex items-center justify-center mb-4 transition-transform shadow-sm shrink-0`}>
+                            {customFormData[doc] ? <CheckCircle2 className="w-6 h-6" /> : <FileUp className="w-6 h-6" />}
                           </div>
                           <div className="font-bold text-slate-900 text-sm leading-snug">
                             {doc}
                           </div>
-                          <div className="text-xs text-slate-500 mt-2">
-                            JPEG ou PDF. Max 5Mo.
+                          <div className={`text-xs mt-2 ${customFormData[doc] ? 'text-green-600 font-medium' : 'text-slate-500'}`}>
+                            {customFormData[doc] ? "Document téléchargé" : "JPEG ou PDF. Max 5Mo."}
                           </div>
-                        </div>
+                          <input 
+                            type="file" 
+                            className="hidden" 
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                  setCustomFormData(prev => ({
+                                    ...prev,
+                                    [doc]: event.target?.result
+                                  }));
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
                       ),
                     )
                   ) : (
                     <>
-                      <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-blue-400 transition-all cursor-pointer group bg-white relative overflow-hidden h-full">
-                        <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm shrink-0">
-                          <FileUp className="w-6 h-6" />
+                      <label className={`border-2 border-dashed ${customFormData["Passeport"] ? 'border-green-400 bg-green-50/20' : 'border-slate-200'} rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-blue-400 transition-all cursor-pointer group bg-white relative overflow-hidden h-full`}>
+                        <div className={`w-14 h-14 ${customFormData["Passeport"] ? 'bg-green-100 text-green-600' : 'bg-blue-50 text-blue-600 group-hover:scale-110'} rounded-2xl flex items-center justify-center mb-4 transition-transform shadow-sm shrink-0`}>
+                          {customFormData["Passeport"] ? <CheckCircle2 className="w-6 h-6" /> : <FileUp className="w-6 h-6" />}
                         </div>
                         <div className="font-bold text-slate-900 text-sm leading-snug">
                           Document Principal (Passeport/ID)
                         </div>
-                        <div className="text-xs text-slate-500 mt-2">
-                          JPEG ou PDF. Max 5Mo. En couleur.
+                        <div className={`text-xs mt-2 ${customFormData["Passeport"] ? 'text-green-600 font-medium' : 'text-slate-500'}`}>
+                          {customFormData["Passeport"] ? "Document téléchargé" : "JPEG ou PDF. Max 5Mo."}
                         </div>
-                      </div>
-
-                      <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-blue-400 transition-all cursor-pointer group bg-white relative overflow-hidden h-full">
-                        <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm shrink-0">
-                          <User className="w-6 h-6" />
+                        <input type="file" className="hidden" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (event) => setCustomFormData(prev => ({ ...prev, "Passeport": event.target?.result }));
+                            reader.readAsDataURL(file);
+                          }
+                        }} />
+                      </label>
+                      <label className={`border-2 border-dashed ${customFormData["Photo"] ? 'border-green-400 bg-green-50/20' : 'border-slate-200'} rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-blue-400 transition-all cursor-pointer group bg-white relative overflow-hidden h-full`}>
+                        <div className={`w-14 h-14 ${customFormData["Photo"] ? 'bg-green-100 text-green-600' : 'bg-blue-50 text-blue-600 group-hover:scale-110'} rounded-2xl flex items-center justify-center mb-4 transition-transform shadow-sm shrink-0`}>
+                          {customFormData["Photo"] ? <CheckCircle2 className="w-6 h-6" /> : <User className="w-6 h-6" />}
                         </div>
                         <div className="font-bold text-slate-900 text-sm leading-snug">
                           Photo personnelle / Justificatif
                         </div>
-                        <div className="text-xs text-slate-500 mt-2">
-                          Fond blanc. JPEG/PDF. Max 2Mo.
+                        <div className={`text-xs mt-2 ${customFormData["Photo"] ? 'text-green-600 font-medium' : 'text-slate-500'}`}>
+                          {customFormData["Photo"] ? "Document téléchargé" : "Fond blanc. JPEG/PDF. Max 2Mo."}
                         </div>
-                      </div>
+                        <input type="file" className="hidden" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (event) => setCustomFormData(prev => ({ ...prev, "Photo": event.target?.result }));
+                            reader.readAsDataURL(file);
+                          }
+                        }} />
+                      </label>
                     </>
                   )}
+                </div>
+
+                {/* Documents additionnels */}
+                <div className="mt-8 border-t border-slate-200 pt-8">
+                  <h4 className="text-lg font-bold text-slate-800 mb-4">Documents additionnels (Optionnel)</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    <label className="border-2 border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-blue-400 transition-all cursor-pointer group bg-white relative overflow-hidden min-h-[160px]">
+                      <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 transition-transform shadow-sm shrink-0 group-hover:scale-110">
+                        <FileUp className="w-6 h-6" />
+                      </div>
+                      <div className="font-bold text-slate-900 text-sm leading-snug">
+                        Ajouter d'autres fichiers
+                      </div>
+                      <div className="text-xs text-slate-500 mt-2">
+                        Sélectionnez plusieurs fichiers.
+                      </div>
+                      <input type="file" multiple className="hidden" onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        files.forEach((file, index) => {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            setCustomFormData(prev => ({ 
+                              ...prev, 
+                              [`Document additionnel (${file.name})`]: event.target?.result 
+                            }));
+                          };
+                          reader.readAsDataURL(file);
+                        });
+                      }} />
+                    </label>
+
+                    {Object.keys(customFormData).filter(k => k.startsWith('Document additionnel')).map((docKey, i) => (
+                      <div key={i} className="border-2 border-dashed border-green-400 bg-green-50/20 rounded-2xl p-6 flex flex-col items-center justify-center text-center relative overflow-hidden h-full">
+                        <div className="absolute top-2 right-2 cursor-pointer text-red-500 hover:text-red-700" onClick={(e) => {
+                          e.preventDefault();
+                          const newFormData = { ...customFormData };
+                          delete newFormData[docKey];
+                          setCustomFormData(newFormData);
+                        }}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </div>
+                        <div className="w-14 h-14 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center mb-4 transition-transform shadow-sm shrink-0">
+                          <CheckCircle2 className="w-6 h-6" />
+                        </div>
+                        <div className="font-bold text-slate-900 text-sm leading-snug break-words max-w-full">
+                          {docKey.replace('Document additionnel (', '').replace(')', '')}
+                        </div>
+                        <div className="text-xs mt-2 text-green-600 font-medium">
+                          Document téléchargé
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

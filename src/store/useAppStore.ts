@@ -110,6 +110,7 @@ export interface AppState {
   removeVisaType: (countryId: string, visaId: string) => void;
   addApplication: (application: Application) => void;
   updateApplicationStatus: (id: string, status: Application["status"]) => void;
+  updateApplication: (id: string, updates: Partial<Application>) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -299,6 +300,12 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           applications: state.applications.map((a) =>
             a.id === id ? { ...a, status } : a,
+          ),
+        })),
+      updateApplication: (id, updates) =>
+        set((state) => ({
+          applications: state.applications.map((a) =>
+            a.id === id ? { ...a, ...updates } : a,
           ),
         })),
     }),
