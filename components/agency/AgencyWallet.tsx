@@ -6,17 +6,30 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { WalletCards, ArrowDownRight, ArrowUpRight, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAppStore } from "../../src/store/useAppStore";
-
-const MOCK_TRANSACTIONS = [
-  { id: "TX-1", type: "DEBIT", amount: 150, date: "2024-05-05 14:30:00", ref: "APP-004", note: "Demande Visa (EAU - Touriste)" },
-  { id: "TX-2", type: "CREDIT", amount: 5000, date: "2024-05-04 10:00:00", ref: "Banque TR-110", note: "Recharge Admin" },
-  { id: "TX-3", type: "DEBIT", amount: 350, date: "2024-05-01 09:15:00", ref: "APP-002, APP-003", note: "Demandes Visa (Lot)" },
-];
+import { auth } from "../../src/firebase";
 
 export function AgencyWallet() {
-  const { agencyBalance } = useAppStore();
+  const { agencyBalance, transactions, rechargeRequests, addRechargeRequest } = useAppStore();
+  
   const balanceColor = agencyBalance > 10000 ? "text-green-500" : agencyBalance > 0 ? "text-amber-500" : "text-red-500";
   const [rechargeOpen, setRechargeOpen] = useState(false);
+  const [rechargeAmount, setRechargeAmount] = useState("");
+  const [rechargeNote, setRechargeNote] = useState("");
+
+  const handleRechargeSubmit = () => {
+    if(!rechargeAmount) return;
+    addRechargeRequest({
+      agencyId: auth.currentUser?.uid || "mock-id",
+      agencyName: auth.currentUser?.email || "mock-agency",
+      amount: Number(rechargeAmount),
+      note: rechargeNote,
+      status: "Pending",
+      date: new Date().toISOString()
+    });
+    setRechargeOpen(false);
+  };
+
+  const pendingRequests = (rechargeRequests || []).filter(r => r.status === 'Pending');
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-10">
@@ -47,17 +60,22 @@ export function AgencyWallet() {
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm md:col-span-2 space-y-4">
            <h3 className="font-semibold border-b pb-2 flex items-center justify-between">
              Demandes de Recharge en Attente
-             <Badge variant="outline" className="text-amber-500 border-amber-200 bg-amber-50">1 En Attente</Badge>
+             {pendingRequests.length > 0 && <Badge variant="outline" className="text-amber-500 border-amber-200 bg-amber-50">{pendingRequests.length} En Attente</Badge>}
            </h3>
-           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
-              <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-amber-500" />
-                <div>
-                  <div className="font-medium text-sm">Détails du transfert envoyés à l'Admin</div>
-                  <div className="text-xs text-gray-500">Soumis le 5 Mai 2024 à 08:00</div>
-                </div>
-              </div>
-              <div className="font-mono font-bold text-lg text-amber-600">2,000 DA</div>
+           <div className="flex flex-col gap-2">
+             {pendingRequests.length === 0 && <p className="text-gray-500 text-sm">Aucune demande en attente.</p>}
+             {pendingRequests.map(req => (
+               <div key={req.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-amber-500" />
+                    <div>
+                      <div className="font-medium text-sm">{req.note || "Demande de recharge"}</div>
+                      <div className="text-xs text-gray-500">Soumis le {new Date(req.date).toLocaleDateString()}</div>
+                    </div>
+                  </div>
+                  <div className="font-mono font-bold text-lg text-amber-600">{req.amount.toLocaleString()} DA</div>
+               </div>
+             ))}
            </div>
         </div>
       </div>
@@ -75,7 +93,12 @@ export function AgencyWallet() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {MOCK_TRANSACTIONS.map((tx) => (
+            {(transactions || []).length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-4 text-gray-500">Aucune transaction trouvée.</TableCell>
+              </TableRow>
+            )}
+            {(transactions || []).map((tx) => (
               <TableRow key={tx.id}>
                 <TableCell className="text-sm text-gray-600 whitespace-nowrap">{tx.date}</TableCell>
                 <TableCell>
@@ -115,18 +138,18 @@ export function AgencyWallet() {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Montant de le Recharge (DA)</label>
-                <Input type="number" placeholder="ex: 10000" />
+                <label className="text-sm font-medium">Montant de la Recharge (DA)</label>
+                <Input type="number" placeholder="ex: 10000" value={rechargeAmount} onChange={(e) => setRechargeAmount(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Note / Référence de Paiement</label>
-                <Input placeholder="ex: Reçu de transfert #49281" />
+                <Input placeholder="ex: Reçu de transfert #49281" value={rechargeNote} onChange={(e) => setRechargeNote(e.target.value)} />
               </div>
             </div>
 
             <div className="pt-4 flex justify-end gap-2 border-t">
               <Button variant="outline" onClick={() => setRechargeOpen(false)}>Annuler</Button>
-              <Button className="bg-black text-white" onClick={() => setRechargeOpen(false)}>Soumettre la Demande</Button>
+              <Button className="bg-black text-white" onClick={handleRechargeSubmit}>Soumettre la Demande</Button>
             </div>
           </div>
         </DialogContent>

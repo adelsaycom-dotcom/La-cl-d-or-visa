@@ -1,0 +1,191 @@
+{
+  "entities": {
+    "Country": {
+      "title": "Country",
+      "description": "A country configured for visa applications.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "flag": { "type": "string", "maxLength": 10 },
+        "active": { "type": "boolean" },
+        "visaTypes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "price": { "type": "number" },
+              "processingTime": { "type": "string" },
+              "description": { "type": "string" },
+              "requiredDocuments": { "type": "array", "items": { "type": "string" } },
+              "conditions": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      },
+      "required": ["name", "flag", "active", "visaTypes"]
+    },
+    "Application": {
+      "title": "Application",
+      "description": "A visa application.",
+      "type": "object",
+      "properties": {
+        "agencyId": { "type": "string" },
+        "agencyName": { "type": "string" },
+        "serviceType": { "type": "string" },
+        "country": { "type": "string" },
+        "visaType": { "type": "string" },
+        "travelerName": { "type": "string" },
+        "passportNumber": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Processing", "Approved", "Rejected"] },
+        "submissionDate": { "type": "string" },
+        "price": { "type": "number" },
+        "extraData": { "type": "object" },
+        "customFormData": { "type": "object" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["agencyId", "serviceType", "country", "visaType", "status", "price"]
+    },
+    "OrganizedTrip": {
+      "title": "OrganizedTrip",
+      "description": "An organized trip.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "destination": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "price": { "type": "number" },
+        "description": { "type": "string" },
+        "totalSeats": { "type": "number" },
+        "availableSeats": { "type": "number" },
+        "image": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "destination", "startDate", "endDate", "price", "totalSeats", "availableSeats"]
+    },
+    "TripReservation": {
+      "title": "TripReservation",
+      "description": "Reservation for an organized trip.",
+      "type": "object",
+      "properties": {
+        "tripId": { "type": "string" },
+        "agencyId": { "type": "string" },
+        "agencyName": { "type": "string" },
+        "numberOfPeople": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled"] },
+        "totalPrice": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "passengerNames": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["tripId", "agencyId", "numberOfPeople", "status", "totalPrice"]
+    },
+    "User": {
+      "title": "User",
+      "description": "A user of the platform (Admin or Agency).",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "agency"] },
+        "agencyName": { "type": "string" },
+        "balance": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["email", "role"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Financial transaction for an agency.",
+      "type": "object",
+      "properties": {
+        "agencyId": { "type": "string" },
+        "type": { "type": "string", "enum": ["CREDIT", "DEBIT"] },
+        "amount": { "type": "number" },
+        "date": { "type": "string" },
+        "ref": { "type": "string" },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["agencyId", "type", "amount", "date"]
+    },
+    "RechargeRequest": {
+      "title": "RechargeRequest",
+      "description": "A request to recharge an agency's balance.",
+      "type": "object",
+      "properties": {
+        "agencyId": { "type": "string" },
+        "agencyName": { "type": "string" },
+        "amount": { "type": "number" },
+        "note": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected"] },
+        "date": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["agencyId", "amount", "status", "date"]
+    },
+    "SupportTicket": {
+      "title": "SupportTicket",
+      "description": "A support ticket.",
+      "type": "object",
+      "properties": {
+        "agencyId": { "type": "string" },
+        "agencyName": { "type": "string" },
+        "subject": { "type": "string" },
+        "category": { "type": "string" },
+        "priority": { "type": "string", "enum": ["Faible", "Moyenne", "Haute", "Critique"] },
+        "status": { "type": "string", "enum": ["Ouvert", "En cours", "Résolu"] },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sender": { "type": "string" },
+              "text": { "type": "string" },
+              "date": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["agencyId", "subject", "category", "priority", "status"]
+    }
+  },
+  "firestore": {
+    "countries": {
+      "schema": { "$ref": "#/entities/Country" },
+      "description": "Available countries and their visa types."
+    },
+    "applications": {
+      "schema": { "$ref": "#/entities/Application" },
+      "description": "Visa applications submitted by agencies."
+    },
+    "organizedTrips": {
+      "schema": { "$ref": "#/entities/OrganizedTrip" },
+      "description": "Available organized trips."
+    },
+    "tripReservations": {
+      "schema": { "$ref": "#/entities/TripReservation" },
+      "description": "Reservations made by agencies for trips."
+    },
+    "users": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles including role and agency balance."
+    },
+    "transactions": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "Agency financial transactions."
+    },
+    "rechargeRequests": {
+      "schema": { "$ref": "#/entities/RechargeRequest" },
+      "description": "Requests from agencies to recharge their balance."
+    },
+    "supportTickets": {
+      "schema": { "$ref": "#/entities/SupportTicket" },
+      "description": "Support tickets raised by agencies."
+    }
+  }
+}

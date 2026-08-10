@@ -1,3 +1,4 @@
+import { auth } from "../../src/firebase";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,8 +82,8 @@ export function VisaWizard() {
     const price = selectedVisa?.price || 0;
     addApplication({
       id: "APP-" + Math.floor(Math.random() * 100000),
-      agencyId: "a1",
-      agencyName: "Current Agency", // mockup
+      agencyId: auth.currentUser?.uid || "a1",
+      agencyName: auth.currentUser?.email || "Current Agency",
       country: selectedCountry?.name || "Unknown",
       visaType: selectedVisa?.name || "Standard",
       serviceType: currentService.type,

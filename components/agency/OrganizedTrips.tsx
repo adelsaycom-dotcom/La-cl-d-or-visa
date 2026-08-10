@@ -1,3 +1,4 @@
+import { auth } from "../../src/firebase";
 import React, { useState } from 'react';
 import { useAppStore, OrganizedTrip } from '../../src/store/useAppStore';
 import { MapPin, Calendar, DollarSign, Users, Search, Check, Info } from 'lucide-react';
@@ -32,7 +33,8 @@ export default function OrganizedTrips() {
     if (selectedTrip && clientName && numberOfPeople > 0) {
       addTripReservation({
         tripId: selectedTrip.id,
-        agencyId: 'agency_1', // Using mock agency for now, since auth is not fully hooked up
+        agencyId: auth.currentUser?.uid || 'agency_1',
+agencyName: auth.currentUser?.email || 'Agency',
         clientName,
         clientEmail,
         clientPhone,

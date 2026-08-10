@@ -1,3 +1,4 @@
+import { useFirebaseSync } from "./hooks/useFirebaseSync";
 import { BrowserRouter as Router, Routes, Route, Outlet, Link } from "react-router-dom";
 import { LayoutDashboard, Earth, FileText, Users, DollarSign, HelpCircle, Bell, Menu, LogOut, Settings, MapPin } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -223,6 +224,7 @@ function AdminCountries() {
 
 // App Router
 export default function App() {
+  useFirebaseSync();
   return (
     <Router>
       <Suspense fallback={<SuspenseFallback />}>

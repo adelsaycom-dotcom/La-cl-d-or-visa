@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Helper Functions
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { 
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; 
+    }
+    function isAgency() { 
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agency'; 
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // Only admins can create or update users for now, or users can update their own data.
+      allow write: if isAdmin() || request.auth.uid == userId;
+    }
+
+    match /countries/{countryId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /applications/{applicationId} {
+      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow create: if isAgency() && incoming().agencyId == request.auth.uid;
+      allow update: if isAdmin() || (isAgency() && existing().agencyId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    match /organizedTrips/{tripId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /tripReservations/{reservationId} {
+      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow create: if isAgency() && incoming().agencyId == request.auth.uid;
+      allow update: if isAdmin() || (isAgency() && existing().agencyId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /rechargeRequests/{requestId} {
+      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow create: if isAgency() && incoming().agencyId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /supportTickets/{ticketId} {
+      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow create: if isAgency() && incoming().agencyId == request.auth.uid;
+      allow update: if isAdmin() || (isAgency() && existing().agencyId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+  }
+}

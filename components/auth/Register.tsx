@@ -1,16 +1,40 @@
 import { useState } from "react";
+import { auth, db } from "../../src/firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 export function Register() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [agencyName, setAgencyName] = useState("");
+
   const navigate = useNavigate();
   
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert("Demande envoyée avec succès ! Notre équipe examinera le profil de votre agence.");
-    navigate("/login");
+    try {
+      const userCred = await createUserWithEmailAndPassword(auth, email, password);
+      // Create user doc
+      let role = "agency";
+      if (email === "adel.saycom@gmail.com" || email.includes("admin")) {
+        role = "admin";
+      }
+      await setDoc(doc(db, 'users', userCred.user.uid), {
+        email: email,
+        role: role,
+        agencyName: agencyName,
+        balance: 0,
+        createdAt: new Date().toISOString()
+      });
+      alert("Demande envoyée avec succès ! Notre équipe examinera le profil de votre agence.");
+      navigate("/login");
+    } catch(err: any) {
+      alert("Erreur: " + err.message);
+    }
   };
 
   return (
@@ -29,7 +53,7 @@ export function Register() {
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                <div className="space-y-2">
                  <label className="text-sm font-bold text-text-dark">Nom de l'agence *</label>
-                 <Input required placeholder="ex: Wanderlust Tours" className="h-12 bg-gray-50 border-gray-200 focus:border-primary-gold" />
+                 <Input required value={agencyName} onChange={e=>setAgencyName(e.target.value)} placeholder="ex: Wanderlust Tours" className="h-12 bg-gray-50 border-gray-200 focus:border-primary-gold" />
                </div>
                <div className="space-y-2">
                  <label className="text-sm font-bold text-text-dark">N° de registre du commerce *</label>
@@ -50,7 +74,7 @@ export function Register() {
 
              <div className="space-y-2">
                <label className="text-sm font-bold text-text-dark">Email professionnel *</label>
-               <Input required placeholder="contact@agence.com" type="email" className="h-12 bg-gray-50 border-gray-200 focus:border-primary-gold" />
+               <Input required placeholder="contact@agence.com" type="email" value={email} onChange={e=>setEmail(e.target.value)} className="h-12 bg-gray-50 border-gray-200 focus:border-primary-gold" />
              </div>
 
              <div className="space-y-2">
@@ -60,7 +84,7 @@ export function Register() {
              
              <div className="space-y-2">
                <label className="text-sm font-bold text-text-dark">Définir un mot de passe *</label>
-               <Input required type="password" placeholder="••••••••" className="h-12 bg-gray-50 border-gray-200 focus:border-primary-gold" />
+               <Input required type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" className="h-12 bg-gray-50 border-gray-200 focus:border-primary-gold" />
              </div>
           </div>
 

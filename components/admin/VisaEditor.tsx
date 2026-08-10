@@ -34,6 +34,8 @@ export function VisaEditor({ countryId, onSave, onCancel }: { countryId: string,
       processingTime: generalInfo.processingTime,
       description: generalInfo.duration + " visa validity: " + generalInfo.validity,
       customFormFields: fields as any,
+      requiredDocuments: reqDocs,
+      conditions: conditions.split("\n").filter(c => c.trim().length > 0)
     });
     onSave();
   };

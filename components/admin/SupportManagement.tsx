@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAppStore } from "../../src/store/useAppStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,7 +16,7 @@ const MOCK_TICKETS = [
 ];
 
 export function SupportManagement() {
-  const [tickets, setTickets] = useState(MOCK_TICKETS);
+  const { supportTickets: tickets, updateSupportTicket } = useAppStore();
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
 
   const getStatusBadge = (status: string) => {
@@ -29,7 +30,7 @@ export function SupportManagement() {
 
   const updateStatus = (status: string) => {
     if (!selectedTicket) return;
-    setTickets(tickets.map(t => t.id === selectedTicket.id ? { ...t, status } : t));
+    updateSupportTicket(selectedTicket.id, { status });
     setSelectedTicket({ ...selectedTicket, status });
   };
 

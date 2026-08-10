@@ -4,31 +4,42 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useAppStore } from "../../src/store/useAppStore";
 import { CheckCircle2, XCircle } from "lucide-react";
 
-// Mock Data
-const PENDING_RECHARGES = [
-  { id: "r1", agencyName: "Wanderlust Tours", date: "2024-05-05T10:30:00Z", requestedAmount: 5000, reference: "Bank Transfer 110" },
-  { id: "r2", agencyName: "Global Travel Experiences", date: "2024-05-04T15:45:00Z", requestedAmount: 2000, reference: "Check #5021" },
-];
+
 
 export function FinancesManagement() {
-  const [recharges, setRecharges] = useState(PENDING_RECHARGES);
+  
+  const { rechargeRequests, updateRechargeRequestStatus, addTransaction } = useAppStore();
+  const recharges = (rechargeRequests || []).filter(r => r.status === 'Pending');
+
   const [selectedReq, setSelectedReq] = useState<any>(null);
   const [creditAmount, setCreditAmount] = useState("");
 
+
   const handleApprove = () => {
     if (!creditAmount) return;
-    setRecharges(recharges.filter(r => r.id !== selectedReq.id));
-    // Here we would create a CREDIT transaction, update agency balance, and notify.
+    updateRechargeRequestStatus(selectedReq.id, 'Approved');
+    addTransaction({
+      agencyId: selectedReq.agencyId,
+      type: 'CREDIT',
+      amount: Number(creditAmount),
+      date: new Date().toISOString(),
+      ref: selectedReq.note,
+      note: 'Recharge Approuvée'
+    });
+    // We should also update the user's balance here!
     setSelectedReq(null);
     setCreditAmount("");
-    alert(`Successfully credited ${creditAmount} DA to ${selectedReq.agencyName}.`);
   };
 
+
+
   const handleReject = (id: string) => {
-    setRecharges(recharges.filter(r => r.id !== id));
+    updateRechargeRequestStatus(id, 'Rejected');
   };
+
 
   return (
     <div className="space-y-8">
@@ -61,16 +72,16 @@ export function FinancesManagement() {
                     <TableCell className="font-medium text-gray-900">{req.agencyName}</TableCell>
                     <TableCell>
                       <div className="text-sm">{new Date(req.date).toLocaleDateString()}</div>
-                      <div className="text-xs text-gray-500">{req.reference}</div>
+                      <div className="text-xs text-gray-500">{req.note}</div>
                     </TableCell>
                     <TableCell className="text-right font-mono font-medium text-blue-600">
-                      {req.requestedAmount.toLocaleString()} DA
+                      {req.amount.toLocaleString()} DA
                     </TableCell>
                     <TableCell className="text-right flex justify-end gap-2">
                       <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleReject(req.id)}>
                         <XCircle className="w-4 h-4 mr-1"/> Reject
                       </Button>
-                      <Button size="sm" onClick={() => { setSelectedReq(req); setCreditAmount(req.requestedAmount.toString()); }} className="bg-green-600 hover:bg-green-700 text-white">
+                      <Button size="sm" onClick={() => { setSelectedReq(req); setCreditAmount(req.amount.toString()); }} className="bg-green-600 hover:bg-green-700 text-white">
                         <CheckCircle2 className="w-4 h-4 mr-1"/> Process
                       </Button>
                     </TableCell>
@@ -117,8 +128,8 @@ export function FinancesManagement() {
                 <p className="text-gray-500 text-sm">{selectedReq.agencyName}</p>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg text-sm flex justify-between">
-                <div>Reference Notes: <span className="font-medium text-gray-900">{selectedReq.reference}</span></div>
-                <div>Requested: <span className="font-medium text-gray-900">{selectedReq.requestedAmount} DA</span></div>
+                <div>Reference Notes: <span className="font-medium text-gray-900">{selectedReq.note}</span></div>
+                <div>Requested: <span className="font-medium text-gray-900">{selectedReq.amount} DA</span></div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Amount to Credit (DA)</label>

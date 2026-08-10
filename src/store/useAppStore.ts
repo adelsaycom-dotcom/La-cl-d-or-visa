@@ -1,54 +1,16 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
-
-
-
-export interface CustomFormField {
-  id: string;
-  label: string;
-  type: 'text' | 'file' | 'number';
-  required: boolean;
-}
-export interface OrganizedTrip {
-  customFormFields?: CustomFormField[];
-  id: string;
-  title: string;
-  destination: string;
-  description: string;
-  photoUrl: string;
-  totalSeats: number;
-  availableSeats: number;
-  price: number;
-  startDate: string;
-  endDate: string;
-  createdAt: string;
-  status: 'active' | 'draft' | 'completed';
-}
-
-export interface TripReservation {
-  customFormData?: Record<string, string>;
-  id: string;
-  tripId: string;
-  agencyId: string;
-  clientName: string;
-  clientEmail?: string;
-  clientPhone?: string;
-  numberOfPeople: number;
-  totalPrice: number;
-  status: 'pending' | 'confirmed' | 'cancelled';
-  createdAt: string;
-  notes?: string;
-}
+import { collection, doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export interface VisaType {
-  customFormFields?: CustomFormField[];
   id: string;
   name: string;
   price: number;
   processingTime: string;
   description: string;
-  requiredDocuments?: string[];
-  conditions?: string[];
+  requiredDocuments: string[];
+  conditions: string[];
+  customFormFields?: any[];
 }
 
 export interface Country {
@@ -59,18 +21,43 @@ export interface Country {
   visaTypes: VisaType[];
 }
 
-export type ServiceType =
-  | "Evisa"
-  | "Residence"
-  | "Permis"
-  | "Assurance"
-  | "Etude"
-  | "Invitation"
-  | "Rendez-vous"
-  | "Dossier";
+export interface OrganizedTrip {
+  id: string;
+  title: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  price: number;
+  description: string;
+  totalSeats: number;
+  availableSeats: number;
+  image?: string;
+  photoUrl?: string;
+  status?: string;
+  customFormFields?: any[];
+  createdAt: string;
+}
+
+export interface TripReservation {
+  id: string;
+  tripId: string;
+  agencyId: string;
+  agencyName?: string;
+  clientName?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  notes?: string;
+  customFormData?: any;
+  numberOfPeople: number;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  totalPrice: number;
+  createdAt: string;
+  passengerNames?: string[];
+}
+
+export type ServiceType = "Evisa" | "Invitation" | "Rendez-vous" | "Dossier" | "Residence" | "Permis" | "Assurance" | "Etude";
 
 export interface Application {
-  customFormData?: Record<string, string>;
   id: string;
   agencyId: string;
   agencyName: string;
@@ -83,234 +70,224 @@ export interface Application {
   submissionDate: string;
   price: number;
   extraData?: Record<string, string>;
+  customFormData?: Record<string, any>;
 }
 
 export interface AppState {
+  supportTickets: SupportTicket[];
+  transactions: Transaction[];
+  rechargeRequests: RechargeRequest[];
+  addSupportTicket: (ticket: Omit<SupportTicket, 'id' | 'createdAt'>) => void;
+  updateSupportTicket: (id: string, updates: Partial<SupportTicket>) => void;
+  addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => void;
+  addRechargeRequest: (req: Omit<RechargeRequest, 'id' | 'createdAt'>) => void;
+  updateRechargeRequestStatus: (id: string, status: string) => void;
+
   agencyBalance: number;
   setAgencyBalance: (balance: number) => void;
+  
   countries: Country[];
   applications: Application[];
   organizedTrips: OrganizedTrip[];
   tripReservations: TripReservation[];
+
   addOrganizedTrip: (trip: Omit<OrganizedTrip, 'id' | 'createdAt' | 'availableSeats'>) => void;
   updateOrganizedTrip: (id: string, trip: Partial<OrganizedTrip>) => void;
   deleteOrganizedTrip: (id: string) => void;
+
   addTripReservation: (reservation: Omit<TripReservation, 'id' | 'createdAt' | 'status' | 'totalPrice'>) => void;
   updateTripReservationStatus: (id: string, status: TripReservation['status']) => void;
 
   addCountry: (country: Country) => void;
   updateCountry: (id: string, data: Partial<Country>) => void;
   removeCountry: (id: string) => void;
+  
   addVisaType: (countryId: string, visaType: VisaType) => void;
-  updateVisaType: (
-    countryId: string,
-    visaId: string,
-    data: Partial<VisaType>,
-  ) => void;
+  updateVisaType: (countryId: string, visaId: string, data: Partial<VisaType>) => void;
   removeVisaType: (countryId: string, visaId: string) => void;
+
   addApplication: (application: Application) => void;
   updateApplicationStatus: (id: string, status: Application["status"]) => void;
   updateApplication: (id: string, updates: Partial<Application>) => void;
 }
 
-export const useAppStore = create<AppState>()(
-  persist(
-    (set) => ({
-      agencyBalance: 4500,
-      setAgencyBalance: (balance) => set({ agencyBalance: balance }),
-      countries: [
-        {
-          id: "1",
-          name: "United Arab Emirates",
-          flag: "🇦🇪",
-          active: true,
-          visaTypes: [
-            {
-              id: "v1",
-              name: "Tourist Visa 30 Days",
-              price: 90,
-              processingTime: "24-48 hours",
-              description: "Single entry 30 days tourist visa.",
-              requiredDocuments: [
-                "Copie du passeport (pages d'informations)",
-                "Photo d'identité (fond blanc)",
-                "Réservation d'hôtel ou lettre d'hébergement",
-              ],
-              conditions: [
-                "Le passeport doit être valide au moins 6 mois",
-                "Le demandeur ne doit pas avoir fait l'objet d'une interdiction de territoire",
-              ],
-            },
-            {
-              id: "v2",
-              name: "Tourist Visa 60 Days",
-              price: 150,
-              processingTime: "24-48 hours",
-              description: "Single entry 60 days tourist visa.",
-              requiredDocuments: [
-                "Copie du passeport (pages d'informations)",
-                "Photo d'identité (fond blanc)",
-              ],
-              conditions: ["Le passeport doit être valide au moins 6 mois"],
-            },
-          ],
-        },
-        {
-          id: "2",
-          name: "Turkey",
-          flag: "🇹🇷",
-          active: true,
-          visaTypes: [
-            {
-              id: "v3",
-              name: "eVisa Single Entry",
-              price: 60,
-              processingTime: "24 hours",
-              description: "Standard tourist eVisa for eligible nationalities.",
-              requiredDocuments: ["Copie du passeport"],
-              conditions: ["Avoir un visa Schengen, US, UK ou Irelande valide"],
-            },
-          ],
-        },
-      ],
-      
+export const useAppStore = create<AppState>()((set, get) => ({
+  agencyBalance: 0,
+  setAgencyBalance: (balance) => {
+    // In a real app, you'd update this in Firestore via a Cloud Function or Admin rule
+    set({ agencyBalance: balance });
+  },
+
+  
+  supportTickets: [],
+  transactions: [],
+  rechargeRequests: [],
+
+  addSupportTicket: async (ticket) => {
+    const id = doc(collection(db, 'supportTickets')).id;
+    await setDoc(doc(db, 'supportTickets', id), { ...ticket, id, createdAt: new Date().toISOString() });
+  },
+  updateSupportTicket: async (id, updates) => {
+    await updateDoc(doc(db, 'supportTickets', id), updates);
+  },
+  addTransaction: async (tx) => {
+    const id = doc(collection(db, 'transactions')).id;
+    await setDoc(doc(db, 'transactions', id), { ...tx, id, createdAt: new Date().toISOString() });
+  },
+  addRechargeRequest: async (req) => {
+    const id = doc(collection(db, 'rechargeRequests')).id;
+    await setDoc(doc(db, 'rechargeRequests', id), { ...req, id, createdAt: new Date().toISOString() });
+  },
+  updateRechargeRequestStatus: async (id, status) => {
+    await updateDoc(doc(db, 'rechargeRequests', id), { status });
+  },
+
+  countries: [],
+  applications: [],
   organizedTrips: [],
   tripReservations: [],
-  applications: [
-        {
-          id: "APP-001",
-          agencyId: "a1",
-          agencyName: "Wanderlust Tours",
-          serviceType: "Evisa",
-          country: "United Arab Emirates",
-          visaType: "Tourist Visa 30 Days",
-          travelerName: "John Doe",
-          passportNumber: "A12345678",
-          status: "Pending",
-          submissionDate: new Date().toISOString().split("T")[0],
-          price: 90,
-        },
-      ],
-      
-      addOrganizedTrip: (tripData) => set((state) => ({
-        organizedTrips: [
-          ...(state.organizedTrips || []),
-          {
-            ...tripData,
-            id: Math.random().toString(36).substr(2, 9),
-            createdAt: new Date().toISOString(),
-            availableSeats: tripData.totalSeats,
-          }
-        ]
-      })),
-      updateOrganizedTrip: (id, tripData) => set((state) => ({
-        organizedTrips: (state.organizedTrips || []).map(t => t.id === id ? { ...t, ...tripData } : t)
-      })),
-      deleteOrganizedTrip: (id) => set((state) => ({
-        organizedTrips: (state.organizedTrips || []).filter(t => t.id !== id)
-      })),
-      addTripReservation: (resData) => set((state) => {
-        const trip = (state.organizedTrips || []).find(t => t.id === resData.tripId);
-        if (!trip || trip.availableSeats < resData.numberOfPeople) return state; // Invalid reservation
-        
-        return {
-          tripReservations: [
-            ...(state.tripReservations || []),
-            {
-              ...resData,
-              id: Math.random().toString(36).substr(2, 9),
-              createdAt: new Date().toISOString(),
-              status: 'pending',
-              totalPrice: trip.price * resData.numberOfPeople
-            }
-          ],
-          // Deduct seats
-          organizedTrips: (state.organizedTrips || []).map(t => 
-            t.id === resData.tripId ? { ...t, availableSeats: t.availableSeats - resData.numberOfPeople } : t
-          )
-        };
-      }),
-      updateTripReservationStatus: (id, status) => set((state) => {
-        const reservation = (state.tripReservations || []).find(r => r.id === id);
-        if (!reservation) return state;
-        
-        let seatAdjustment = 0;
-        if (status === 'cancelled' && reservation.status !== 'cancelled') {
-           seatAdjustment = reservation.numberOfPeople;
-        } else if (reservation.status === 'cancelled' && status !== 'cancelled') {
-           seatAdjustment = -reservation.numberOfPeople;
-        }
 
-        return {
-          tripReservations: (state.tripReservations || []).map(r => r.id === id ? { ...r, status } : r),
-          organizedTrips: seatAdjustment !== 0 ? (state.organizedTrips || []).map(t => 
-            t.id === reservation.tripId ? { ...t, availableSeats: t.availableSeats + seatAdjustment } : t
-          ) : state.organizedTrips
-        };
-      }),
-      addCountry: (country) =>
-        set((state) => ({ countries: [...state.countries, country] })),
-      updateCountry: (id, data) =>
-        set((state) => ({
-          countries: state.countries.map((c) =>
-            c.id === id ? { ...c, ...data } : c,
-          ),
-        })),
-      removeCountry: (id) =>
-        set((state) => ({
-          countries: state.countries.filter((c) => c.id !== id),
-        })),
-      addVisaType: (countryId, visaType) =>
-        set((state) => ({
-          countries: state.countries.map((c) =>
-            c.id === countryId
-              ? { ...c, visaTypes: [...c.visaTypes, visaType] }
-              : c,
-          ),
-        })),
-      updateVisaType: (countryId, visaId, data) =>
-        set((state) => ({
-          countries: state.countries.map((c) =>
-            c.id === countryId
-              ? {
-                  ...c,
-                  visaTypes: c.visaTypes.map((v) =>
-                    v.id === visaId ? { ...v, ...data } : v,
-                  ),
-                }
-              : c,
-          ),
-        })),
-      removeVisaType: (countryId, visaId) =>
-        set((state) => ({
-          countries: state.countries.map((c) =>
-            c.id === countryId
-              ? {
-                  ...c,
-                  visaTypes: c.visaTypes.filter((v) => v.id !== visaId),
-                }
-              : c,
-          ),
-        })),
-      addApplication: (application) =>
-        set((state) => ({
-          applications: [application, ...state.applications],
-        })),
-      updateApplicationStatus: (id, status) =>
-        set((state) => ({
-          applications: state.applications.map((a) =>
-            a.id === id ? { ...a, status } : a,
-          ),
-        })),
-      updateApplication: (id, updates) =>
-        set((state) => ({
-          applications: state.applications.map((a) =>
-            a.id === id ? { ...a, ...updates } : a,
-          ),
-        })),
-    }),
-    {
-      name: "visahub-storage",
-    },
-  ),
-);
+  addOrganizedTrip: async (tripData) => {
+    const tripId = doc(collection(db, 'organizedTrips')).id;
+    await setDoc(doc(db, 'organizedTrips', tripId), {
+      ...tripData,
+      id: tripId,
+      createdAt: new Date().toISOString(),
+      availableSeats: tripData.totalSeats,
+    });
+  },
+
+  updateOrganizedTrip: async (id, tripData) => {
+    await updateDoc(doc(db, 'organizedTrips', id), tripData);
+  },
+
+  deleteOrganizedTrip: async (id) => {
+    await deleteDoc(doc(db, 'organizedTrips', id));
+  },
+
+  addTripReservation: async (resData) => {
+    const trip = get().organizedTrips.find(t => t.id === resData.tripId);
+    if (!trip || trip.availableSeats < resData.numberOfPeople) return;
+
+    const resId = doc(collection(db, 'tripReservations')).id;
+    await setDoc(doc(db, 'tripReservations', resId), {
+      ...resData,
+      id: resId,
+      createdAt: new Date().toISOString(),
+      status: 'pending',
+      totalPrice: trip.price * resData.numberOfPeople
+    });
+
+    // Deduct seats
+    await updateDoc(doc(db, 'organizedTrips', resData.tripId), {
+      availableSeats: trip.availableSeats - resData.numberOfPeople
+    });
+  },
+
+  updateTripReservationStatus: async (id, status) => {
+    const reservation = get().tripReservations.find(r => r.id === id);
+    if (!reservation) return;
+
+    await updateDoc(doc(db, 'tripReservations', id), { status });
+
+    if (status === 'cancelled' && reservation.status !== 'cancelled') {
+      const trip = get().organizedTrips.find(t => t.id === reservation.tripId);
+      if (trip) {
+        await updateDoc(doc(db, 'organizedTrips', reservation.tripId), {
+          availableSeats: trip.availableSeats + reservation.numberOfPeople
+        });
+      }
+    }
+  },
+
+  addCountry: async (country) => {
+    await setDoc(doc(db, 'countries', country.id), country);
+  },
+
+  updateCountry: async (id, data) => {
+    await updateDoc(doc(db, 'countries', id), data);
+  },
+
+  removeCountry: async (id) => {
+    await deleteDoc(doc(db, 'countries', id));
+  },
+
+  addVisaType: async (countryId, visaType) => {
+    const country = get().countries.find(c => c.id === countryId);
+    if (country) {
+      const newVisaTypes = [...country.visaTypes, visaType];
+      await updateDoc(doc(db, 'countries', countryId), { visaTypes: newVisaTypes });
+    }
+  },
+
+  updateVisaType: async (countryId, visaId, data) => {
+    const country = get().countries.find(c => c.id === countryId);
+    if (country) {
+      const newVisaTypes = country.visaTypes.map(v => v.id === visaId ? { ...v, ...data } : v);
+      await updateDoc(doc(db, 'countries', countryId), { visaTypes: newVisaTypes });
+    }
+  },
+
+  removeVisaType: async (countryId, visaId) => {
+    const country = get().countries.find(c => c.id === countryId);
+    if (country) {
+      const newVisaTypes = country.visaTypes.filter(v => v.id !== visaId);
+      await updateDoc(doc(db, 'countries', countryId), { visaTypes: newVisaTypes });
+    }
+  },
+
+  addApplication: async (application) => {
+    const appId = application.id || doc(collection(db, 'applications')).id;
+    await setDoc(doc(db, 'applications', appId), {
+      ...application,
+      id: appId
+    });
+  },
+
+  updateApplicationStatus: async (id, status) => {
+    await updateDoc(doc(db, 'applications', id), { status });
+  },
+
+  updateApplication: async (id, updates) => {
+    await updateDoc(doc(db, 'applications', id), updates);
+  }
+}));
+
+// Add support tickets, transactions, and recharge requests to the store
+export interface SupportTicket {
+  id: string;
+  agencyId: string;
+  agencyName: string;
+  agency?: string;
+  isUrgent?: boolean;
+  subject: string;
+  category: string;
+  priority: "Faible" | "Moyenne" | "Haute" | "Critique" | string;
+  status: "Ouvert" | "En cours" | "Résolu" | string;
+  messages: { sender: string; text: string; date: string }[];
+  createdAt: string;
+}
+
+export interface Transaction {
+  id: string;
+  agencyId: string;
+  type: string;
+  amount: number;
+  date: string;
+  ref: string;
+  note: string;
+  createdAt: string;
+}
+
+export interface RechargeRequest {
+  id: string;
+  agencyId: string;
+  agencyName: string;
+  amount: number;
+  note: string;
+  status: string;
+  date: string;
+  createdAt: string;
+}
+
+// NOTE: We should update AppState interface, but since we are redefining the store, let's just use Zustand's set method directly for now, or we can just append to the store.

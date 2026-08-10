@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { auth, db } from "../../src/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,13 +10,27 @@ import { ArrowRight, PlaneTakeoff, ShieldCheck, Sparkles, Building2 } from "luci
 export function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
+
   
-  const handleLogin = (e: React.FormEvent) => {
+  const [password, setPassword] = useState("");
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email.toLowerCase().includes("admin")) {
-      navigate("/admin");
-    } else {
-      navigate("/agency");
+    try {
+      const userCred = await signInWithEmailAndPassword(auth, email, password);
+      const userDoc = await getDoc(doc(db, 'users', userCred.user.uid));
+      if (userDoc.exists()) {
+        const role = userDoc.data().role;
+        if (role === 'admin') {
+          navigate("/admin");
+        } else {
+          navigate("/agency");
+        }
+      } else {
+        alert("Utilisateur introuvable dans la base de données.");
+      }
+    } catch(err: any) {
+      alert("Erreur de connexion: " + err.message);
     }
   };
 
@@ -51,7 +68,7 @@ export function Login() {
                   <a href="#" className="text-sm font-bold text-primary-gold hover:text-accent-bronze transition-colors">Mot de passe oublié ?</a>
                 </div>
                 <Input 
-                  type="password" 
+                  type="password" value={password} onChange={(e) => setPassword(e.target.value)} 
                   placeholder="••••••••" 
                   className="h-14 rounded-xl bg-white border-gray-200 focus:border-primary-gold focus:ring-primary-gold focus:bg-white text-base shadow-sm"
                   required 
