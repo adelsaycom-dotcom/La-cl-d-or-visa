@@ -6,11 +6,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Plus, MessageSquare, AlertCircle, Clock, CheckCircle2, Ticket } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
-const MOCK_TICKETS = [
-  { id: "T-1001", subject: "Problème avec la demande APP-004", isUrgent: true, status: "OPEN", date: "2024-05-05", lastReply: "En attente du support" },
-  { id: "T-1002", subject: "Montant de recharge incorrect", isUrgent: false, status: "IN_PROGRESS", date: "2024-05-04", lastReply: "Admin a répondu y a 2h" },
-  { id: "T-1003", subject: "Comment demander un visa de groupe ?", isUrgent: false, status: "RESOLVED", date: "2024-04-28", lastReply: "Résolu" },
-];
+const MOCK_TICKETS: any[] = [];
 
 export function AgencySupport() {
   const [tickets, setTickets] = useState(MOCK_TICKETS);

@@ -6,10 +6,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Eye, EyeOff } from "lucide-react";
 
 export function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [agencyName, setAgencyName] = useState("");
 
   const navigate = useNavigate();
@@ -84,7 +86,12 @@ export function Register() {
              
              <div className="space-y-2">
                <label className="text-sm font-bold text-text-dark">Définir un mot de passe *</label>
-               <Input required type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" className="h-12 bg-gray-50 border-gray-200 focus:border-primary-gold" />
+               <div className="relative">
+                 <Input required type={showPassword ? "text" : "password"} value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" className="h-12 bg-gray-50 border-gray-200 focus:border-primary-gold" />
+                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center text-gray-400 hover:text-gray-600">
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                 </button>
+               </div>
              </div>
           </div>
 

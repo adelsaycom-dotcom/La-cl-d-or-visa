@@ -9,11 +9,7 @@ import { MessageSquare, AlertCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
-const MOCK_TICKETS = [
-  { id: "T-1001", agency: "Global Travel Experiences", subject: "Issue with Application APP-004", isUrgent: true, status: "OPEN", date: "2024-05-05", lastReply: "Waiting for support" },
-  { id: "T-1002", agency: "Oasis Travels", subject: "Recharge amount incorrect", isUrgent: false, status: "IN_PROGRESS", date: "2024-05-04", lastReply: "Admin replied 2 hrs ago" },
-  { id: "T-1003", agency: "Wanderlust Tours", subject: "How to apply for group visa?", isUrgent: false, status: "RESOLVED", date: "2024-04-28", lastReply: "Resolved" },
-];
+const MOCK_TICKETS: any[] = [];
 
 export function SupportManagement() {
   const { supportTickets: tickets, updateSupportTicket } = useAppStore();

@@ -3,6 +3,8 @@ import { LayoutDashboard, WalletCards, Bell, HelpCircle, FileText, Globe, Menu, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { useAppStore } from "../../src/store/useAppStore";
 
@@ -182,7 +184,17 @@ export function AgencyLayout() {
       </header>
 
       <main className="flex-1 w-full bg-bg-white">
-        <Outlet />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={useLocation().pathname}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
       
       {/* Footer */}

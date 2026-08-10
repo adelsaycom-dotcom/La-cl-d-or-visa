@@ -5,7 +5,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, PlaneTakeoff, ShieldCheck, Sparkles, Building2 } from "lucide-react";
+import { ArrowRight, PlaneTakeoff, ShieldCheck, Sparkles, Building2, Eye, EyeOff } from "lucide-react";
 
 export function Login() {
   const navigate = useNavigate();
@@ -13,6 +13,7 @@ export function Login() {
 
   
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,12 +68,17 @@ export function Login() {
                   <label className="text-sm font-bold text-text-dark">Mot de passe</label>
                   <a href="#" className="text-sm font-bold text-primary-gold hover:text-accent-bronze transition-colors">Mot de passe oublié ?</a>
                 </div>
-                <Input 
-                  type="password" value={password} onChange={(e) => setPassword(e.target.value)} 
+                <div className="relative">
+                  <Input 
+                  type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} 
                   placeholder="••••••••" 
                   className="h-14 rounded-xl bg-white border-gray-200 focus:border-primary-gold focus:ring-primary-gold focus:bg-white text-base shadow-sm"
                   required 
                 />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center text-gray-400 hover:text-gray-600">
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
               </div>
             </div>
 

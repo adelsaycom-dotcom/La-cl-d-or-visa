@@ -8,18 +8,14 @@ import { MoreHorizontal, ShieldCheck, ShieldBan, ShieldAlert, Edit, Eye } from "
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 // Mock Data
-const MOCK_AGENCIES = [
-  { id: "1", name: "Global Travel Experiences", email: "contact@gte.com", phone: "+1 555-0198", status: "ACTIVE", balance: 4500, applicationsCount: 12 },
-  { id: "2", name: "Wanderlust Tours", email: "hello@wanderlust.com", phone: "+1 555-0245", status: "PENDING", balance: 0, applicationsCount: 0 },
-  { id: "3", name: "Horizon Adventures", email: "info@horizon.net", phone: "+1 555-0371", status: "SUSPENDED", balance: 120, applicationsCount: 45 },
-  { id: "4", name: "Oasis Travels", email: "bookings@oasistravels.com", phone: "+1 555-0455", status: "ACTIVE", balance: 18500, applicationsCount: 89 },
-];
+const MOCK_AGENCIES: any[] = [];
 
 export function AgencyManagement() {
   const [agencies, setAgencies] = useState(MOCK_AGENCIES);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
-  const [selectedAgency, setSelectedAgency] = useState<any>(null); // For detail/edit modal
+  const [selectedAgency, setSelectedAgency] = useState<any>(null);
+  const [isAddAgencyOpen, setIsAddAgencyOpen] = useState(false); // For detail/edit modal
 
   const filteredAgencies = agencies.filter(agency => {
     const matchesSearch = agency.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -44,8 +40,8 @@ export function AgencyManagement() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold tracking-tight">Agencies</h2>
-        <Button className="bg-black text-white hover:bg-gray-800">Add Agency manually</Button>
+        <h2 className="text-2xl font-semibold tracking-tight">Agences</h2>
+        <Button onClick={() => setIsAddAgencyOpen(true)} className="bg-black text-white hover:bg-gray-800">Ajouter une agence manuellement</Button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
@@ -171,6 +167,26 @@ export function AgencyManagement() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isAddAgencyOpen} onOpenChange={setIsAddAgencyOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <div className="flex flex-col gap-4 py-4">
+            <h3 className="text-lg font-bold">Ajouter une agence</h3>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Nom de l'agence</label>
+              <Input placeholder="Nom" />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Email</label>
+              <Input type="email" placeholder="Email" />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Téléphone</label>
+              <Input placeholder="Téléphone" />
+            </div>
+            <Button onClick={() => setIsAddAgencyOpen(false)} className="w-full bg-primary-gold hover:bg-accent-bronze text-white">Ajouter</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

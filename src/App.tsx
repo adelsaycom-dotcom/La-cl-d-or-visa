@@ -154,7 +154,17 @@ function AdminLayout() {
       </header>
 
       <main className="flex-1 w-full bg-gray-50 px-4 md:px-8 py-8 md:py-10 mx-auto max-w-[1600px]">
-        <Outlet />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={useLocation().pathname}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );
@@ -167,6 +177,9 @@ function AdminCountries() {
   const { countries, addCountry } = useAppStore();
   const [editorOpen, setEditorOpen] = useState(false);
   const [selectedCountryId, setSelectedCountryId] = useState<string | null>(null);
+  const [isAddCountryOpen, setIsAddCountryOpen] = useState(false);
+  const [newCountryName, setNewCountryName] = useState("");
+  const [newCountryFlag, setNewCountryFlag] = useState("🏳️");
 
   const handleAddCountry = () => {
     const name = prompt("Enter Country Name:");
@@ -184,8 +197,8 @@ function AdminCountries() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold tracking-tight">Countries & Visa Types</h2>
-        <button onClick={handleAddCountry} className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition">Add Country</button>
+        <h2 className="text-2xl font-semibold tracking-tight">Pays & Types de Visas</h2>
+        <button onClick={() => setIsAddCountryOpen(true)} className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition">Ajouter un pays</button>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -216,6 +229,35 @@ function AdminCountries() {
         <DialogContent className="max-w-4xl sm:max-w-4xl p-0 border-none bg-transparent shadow-none">
           <div className="sr-only"><h3>Edit Visa Type</h3></div>
           {selectedCountryId && <VisaEditor countryId={selectedCountryId} onSave={() => setEditorOpen(false)} onCancel={() => setEditorOpen(false)} />}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isAddCountryOpen} onOpenChange={setIsAddCountryOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <div className="flex flex-col gap-4 py-4">
+            <h3 className="text-lg font-bold">Ajouter un pays</h3>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Nom du pays</label>
+              <input className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" value={newCountryName} onChange={(e) => setNewCountryName(e.target.value)} placeholder="Ex: France" />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Drapeau (Emoji)</label>
+              <input className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" value={newCountryFlag} onChange={(e) => setNewCountryFlag(e.target.value)} placeholder="Ex: 🇫🇷" />
+            </div>
+            <button onClick={() => {
+              if (newCountryName) {
+                addCountry({
+                  id: Date.now().toString(),
+                  name: newCountryName,
+                  flag: newCountryFlag || "🏳️",
+                  active: true,
+                  visaTypes: []
+                });
+                setIsAddCountryOpen(false);
+                setNewCountryName("");
+                setNewCountryFlag("🏳️");
+              }
+            }} className="w-full bg-black hover:bg-gray-800 text-white h-10 rounded-md font-medium">Ajouter</button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
