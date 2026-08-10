@@ -1,5 +1,6 @@
+import { motion, AnimatePresence } from "framer-motion";
 import { useFirebaseSync } from "./hooks/useFirebaseSync";
-import { BrowserRouter as Router, Routes, Route, Outlet, Link } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Outlet, Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, Earth, FileText, Users, DollarSign, HelpCircle, Bell, Menu, LogOut, Settings, MapPin } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
