@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useAppStore } from "../../src/store/useAppStore";
+import { auth } from "../../src/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -6,17 +8,57 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Plus, MessageSquare, AlertCircle, Clock, CheckCircle2, Ticket } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
-const MOCK_TICKETS: any[] = [];
+
 
 export function AgencySupport() {
-  const [tickets, setTickets] = useState(MOCK_TICKETS);
+  const { supportTickets: tickets, addSupportTicket } = useAppStore();
   const [isNewTicketOpen, setIsNewTicketOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [subject, setSubject] = useState("");
+  const [description, setDescription] = useState("");
+  const [isUrgent, setIsUrgent] = useState(false);
+  const [category, setCategory] = useState("General");
+  const [priority, setPriority] = useState("Normal");
+  const [replyText, setReplyText] = useState("");
+  const { updateSupportTicket } = useAppStore();
+  
+  const handleReply = () => {
+    if (!replyText.trim() || !selectedTicket) return;
+    const newMessages = [...(selectedTicket.messages || []), {
+      sender: 'agency',
+      text: replyText,
+      date: new Date().toISOString()
+    }];
+    updateSupportTicket(selectedTicket.id, { messages: newMessages });
+    setSelectedTicket({ ...selectedTicket, messages: newMessages });
+    setReplyText("");
+  };
+
+
+  const handleSubmit = () => {
+    if (!subject || !description) return;
+        addSupportTicket({
+      agencyId: auth.currentUser?.uid || "mock-agency-id",
+      agencyName: auth.currentUser?.email || "Mock Agency",
+      subject,
+      description,
+      status: "OPEN",
+      isUrgent,
+      messages: [],
+      category,
+      priority
+    });
+    setIsNewTicketOpen(false);
+    setSubject("");
+    setDescription("");
+    setIsUrgent(false);
+  };
+
 
   const stats = [
-    { label: "Tickets ouverts", value: "2", icon: Ticket, color: "text-amber-500", bg: "bg-amber-100" },
-    { label: "En cours", value: "1", icon: Clock, color: "text-blue-500", bg: "bg-blue-100" },
-    { label: "Résolus", value: "45", icon: CheckCircle2, color: "text-green-500", bg: "bg-green-100" },
+    { label: "Tickets ouverts", value: tickets.filter(t => t.status === "OPEN").length.toString(), icon: Ticket, color: "text-amber-500", bg: "bg-amber-100" },
+    { label: "En cours", value: tickets.filter(t => t.status === "IN_PROGRESS").length.toString(), icon: Clock, color: "text-blue-500", bg: "bg-blue-100" },
+    { label: "Résolus", value: tickets.filter(t => t.status === "RESOLVED").length.toString(), icon: CheckCircle2, color: "text-green-500", bg: "bg-green-100" },
   ];
 
   const getStatusBadge = (status: string) => {
@@ -84,8 +126,8 @@ export function AgencySupport() {
                   </div>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500 font-medium">
                     <span className="text-gray-900 font-mono text-xs bg-gray-100 px-2 rounded-md py-0.5">{t.id}</span>
-                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Créé le {t.date}</span>
-                    <span className="text-amber-500">{t.lastReply}</span>
+                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Créé le {new Date(t.createdAt || t.date || Date.now()).toLocaleDateString()}</span>
+                    
                   </div>
                 </div>
               </div>
@@ -103,7 +145,7 @@ export function AgencySupport() {
 
       {/* New Ticket Dialog */}
       <Dialog open={isNewTicketOpen} onOpenChange={setIsNewTicketOpen}>
-        <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-3xl">
+        <DialogContent className="max-w-2xl p-0 overflow-hidden sm:rounded-3xl rounded-none w-full max-h-[100dvh] h-[100dvh] sm:h-auto sm:max-h-[85vh] m-0">
           <div className="p-8 bg-gray-50 border-b border-gray-100">
             <h3 className="text-2xl font-black text-gray-900">Ouvrir un nouveau ticket</h3>
             <p className="text-gray-500 mt-2 font-medium">Décrivez votre problème en détail pour que notre équipe puisse vous aider rapidement.</p>
@@ -111,15 +153,15 @@ export function AgencySupport() {
           <div className="p-8 space-y-6">
             <div className="space-y-3">
               <label className="text-sm font-bold text-gray-900">Sujet détaillé</label>
-              <Input placeholder="Ex: Problème de paiement sur la demande VISA-123" className="rounded-xl bg-gray-50 border-gray-200 focus:bg-white h-12" />
+              <Input value={subject} onChange={e=>setSubject(e.target.value)} placeholder="Ex: Problème de paiement sur la demande VISA-123" className="rounded-xl bg-gray-50 border-gray-200 focus:bg-white h-12" />
             </div>
             <div className="space-y-3">
               <label className="text-sm font-bold text-gray-900">Description du problème</label>
-              <Textarea rows={6} placeholder="Décrivez votre problème en détail. Des captures d'écran peuvent être attachées plus tard..." className="rounded-xl bg-gray-50 border-gray-200 focus:bg-white resize-none" />
+              <Textarea value={description} onChange={e=>setDescription(e.target.value)} rows={6} placeholder="Décrivez votre problème en détail. Des captures d'écran peuvent être attachées plus tard..." className="rounded-xl bg-gray-50 border-gray-200 focus:bg-white resize-none" />
             </div>
             
             <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex items-start gap-3">
-               <input type="checkbox" id="urgent" className="mt-1 w-4 h-4 rounded text-red-600 focus:ring-red-500 border-red-300" />
+               <input type="checkbox" id="urgent" checked={isUrgent} onChange={e=>setIsUrgent(e.target.checked)} className="mt-1 w-4 h-4 rounded text-red-600 focus:ring-red-500 border-red-300" />
                <div>
                   <label htmlFor="urgent" className="text-sm font-bold text-red-800 block cursor-pointer">
                     Marquer ce ticket comme Urgent
@@ -130,7 +172,7 @@ export function AgencySupport() {
             
             <div className="flex justify-end gap-3 pt-4">
               <Button variant="outline" className="rounded-xl py-6 px-6 border-gray-200" onClick={() => setIsNewTicketOpen(false)}>Annuler</Button>
-              <Button className="bg-[var(--color-text-dark)] hover:bg-[var(--color-accent-bronze)] text-white rounded-xl py-6 px-8 font-bold" onClick={() => setIsNewTicketOpen(false)}>Soumettre le ticket</Button>
+              <Button className="bg-[var(--color-text-dark)] hover:bg-[var(--color-accent-bronze)] text-white rounded-xl py-6 px-8 font-bold" onClick={handleSubmit}>Soumettre le ticket</Button>
             </div>
           </div>
         </DialogContent>
@@ -138,61 +180,79 @@ export function AgencySupport() {
       
       {/* View Ticket Dialog */}
       <Dialog open={!!selectedTicket} onOpenChange={(o) => !o && setSelectedTicket(null)}>
-        <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-3xl">
+        <DialogContent className="max-w-2xl p-0 overflow-hidden sm:rounded-3xl rounded-none w-full max-h-[100dvh] h-[100dvh] sm:h-auto sm:max-h-[85vh] m-0">
           {selectedTicket && (
             <div className="flex flex-col h-[80vh] md:h-[600px]">
                {/* Head */}
-               <div className="p-6 border-b border-gray-100 bg-white shrink-0">
-                 <div className="flex justify-between items-start gap-4">
-                    <div>
-                      <div className="flex items-center gap-3 text-sm text-gray-500 mb-2 font-medium">
-                        <Badge variant="outline" className="bg-gray-100 border-none text-gray-600 rounded-md font-mono">{selectedTicket.id}</Badge>
-                        <span>Créé le {selectedTicket.date}</span>
-                        {selectedTicket.isUrgent && <span className="flex items-center text-red-500 text-xs font-bold bg-red-50 px-2 py-0.5 rounded-full"><AlertCircle className="w-3 h-3 mr-1" /> URGENT</span>}
+               <div className="p-4 sm:p-6 border-b border-gray-100 bg-white shrink-0 pr-12">
+                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+                    <div className="w-full">
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 mb-2 font-medium">
+                        <Badge variant="outline" className="bg-gray-100 border-none text-gray-600 rounded-md font-mono shrink-0">{selectedTicket.id}</Badge>
+                        <span className="shrink-0">Créé le {new Date(selectedTicket.createdAt || selectedTicket.date || Date.now()).toLocaleDateString()}</span>
+                        {selectedTicket.isUrgent && <span className="flex items-center text-red-500 text-xs font-bold bg-red-50 px-2 py-0.5 rounded-full shrink-0"><AlertCircle className="w-3 h-3 mr-1" /> URGENT</span>}
+                        <div className="sm:hidden ml-auto">{getStatusBadge(selectedTicket.status)}</div>
                       </div>
-                      <h3 className="text-xl font-black text-gray-900 leading-tight">{selectedTicket.subject}</h3>
+                      <h3 className="text-xl font-black text-gray-900 leading-tight break-words">{selectedTicket.subject}</h3>
                     </div>
-                    <div>{getStatusBadge(selectedTicket.status)}</div>
+                    <div className="hidden sm:block shrink-0">{getStatusBadge(selectedTicket.status)}</div>
                  </div>
                </div>
-               
+                              
                {/* Chat body */}
-               <div className="flex-1 bg-gray-50 overflow-y-auto p-6 space-y-6">
-                 {/* Fake Message 1 */}
-                 <div className="flex gap-4">
-                   <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center font-bold text-gray-500 shrink-0">VO</div>
-                   <div>
-                     <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-4 shadow-sm">
-                       <p className="text-gray-700 text-sm font-medium leading-relaxed">Bonjour, j'ai effectué un paiement pour la demande mais le statut ne s'est pas mis à jour dans mon tableau de bord.</p>
+               <div className="flex-1 bg-gray-50 overflow-y-auto p-4 sm:p-6 space-y-6 h-0">
+                 {/* Original Ticket Description */}
+                 <div className="flex gap-2 sm:gap-4">
+                   <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center font-bold text-gray-500 shrink-0 text-xs sm:text-sm">VO</div>
+                   <div className="max-w-[85%]">
+                     <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-3 sm:p-4 shadow-sm">
+                       <p className="text-gray-700 text-sm font-medium leading-relaxed whitespace-pre-wrap">{selectedTicket.description || "Aucune description fournie"}</p>
                      </div>
-                     <span className="text-[10px] font-bold text-gray-400 mt-2 ml-1 block">{selectedTicket.date} - Vous</span>
+                     <span className="text-[10px] font-bold text-gray-400 mt-2 ml-1 block">{new Date(selectedTicket.createdAt || selectedTicket.date || Date.now()).toLocaleString()} - Vous</span>
                    </div>
                  </div>
-
-                 {/* Fake Admin Reply */}
-                 <div className="flex gap-4 flex-row-reverse">
-                   <div className="w-10 h-10 rounded-full bg-[var(--color-text-dark)] flex items-center justify-center font-bold text-white shrink-0">
-                     <img src="https://ui-avatars.com/api/?name=Support&background=0a192f&color=fff" alt="Support" className="rounded-full" />
-                   </div>
-                   <div className="flex flex-col items-end">
-                     <div className="bg-[var(--color-text-dark)] text-white rounded-2xl rounded-tr-none p-4 shadow-md">
-                       <p className="text-sm font-medium leading-relaxed">Bonjour, nous vérifions le problème avec la passerelle de paiement en ce moment. Nous vous tenons au courant d'ici 30 minutes.</p>
+                 {/* Real Messages Map */}
+                 {(selectedTicket.messages || []).map((msg: any, idx: number) => (
+                   <div key={idx} className={`flex gap-2 sm:gap-4 ${msg.sender === 'admin' ? 'flex-row-reverse' : ''}`}>
+                     {msg.sender === 'admin' ? (
+                       <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-text-dark)] flex items-center justify-center font-bold text-white shrink-0">
+                         <img src="https://ui-avatars.com/api/?name=Support&background=0a192f&color=fff" alt="Support" className="rounded-full w-full h-full object-cover" />
+                       </div>
+                     ) : (
+                       <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center font-bold text-gray-500 shrink-0 text-xs sm:text-sm">VO</div>
+                     )}
+                     <div className={`flex flex-col max-w-[85%] ${msg.sender === 'admin' ? 'items-end' : 'items-start'}`}>
+                       <div className={`${msg.sender === 'admin' ? 'bg-[var(--color-text-dark)] text-white rounded-tr-none shadow-md' : 'bg-white border border-gray-200 rounded-tl-none shadow-sm'} rounded-2xl p-3 sm:p-4`}>
+                         <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                       </div>
+                       <span className={`text-[10px] font-bold text-gray-400 mt-2 ${msg.sender === 'admin' ? 'mr-1' : 'ml-1'} block`}>{new Date(msg.date).toLocaleString()} - {msg.sender === 'admin' ? 'Support Client' : 'Vous'}</span>
                      </div>
-                     <span className="text-[10px] font-bold text-gray-400 mt-2 mr-1 block">Aujourd'hui, 09:30 - Support Client</span>
                    </div>
-                 </div>
+                 ))}
                </div>
                
                {/* Footer / Input */}
                {selectedTicket.status !== "RESOLVED" ? (
                  <div className="p-4 bg-white border-t border-gray-100 shrink-0">
-                   <div className="flex items-end gap-3 bg-gray-50 rounded-2xl border border-gray-200 p-2 focus-within:ring-2 focus-within:ring-amber-500 focus-within:border-amber-500 transition-all">
+                   <div className="flex items-end gap-2 sm:gap-3 bg-gray-50 rounded-2xl border border-gray-200 p-2 focus-within:ring-2 focus-within:ring-amber-500 focus-within:border-amber-500 transition-all">
                      <Textarea 
-                        placeholder="Tapez votre réponse ici..." 
-                        className="border-none bg-transparent shadow-none focus-visible:ring-0 resize-none min-h-[44px] py-3 font-medium placeholder:font-normal"
+                        value={replyText}
+                        onChange={e => setReplyText(e.target.value)}
+                        placeholder="Tapez votre réponse ici..."
+                        className="border-none bg-transparent shadow-none focus-visible:ring-0 resize-none min-h-[44px] py-2 sm:py-3 font-medium placeholder:font-normal"
                         rows={1}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleReply();
+                          }
+                        }}
                      />
-                     <Button className="bg-[var(--color-text-dark)] hover:bg-[var(--color-accent-bronze)] text-white rounded-xl h-11 px-6 shrink-0 font-bold mb-1 mr-1">
+                     <Button 
+                       onClick={handleReply}
+                       className="bg-[var(--color-text-dark)] hover:bg-[var(--color-accent-bronze)] text-white rounded-xl h-11 px-4 sm:px-6 shrink-0 font-bold mb-1 mr-1"
+                       disabled={!replyText.trim()}
+                     >
                        Envoyer
                      </Button>
                    </div>

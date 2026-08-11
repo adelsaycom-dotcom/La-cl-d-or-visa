@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAppStore } from "../../src/store/useAppStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,15 +12,21 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 const MOCK_AGENCIES: any[] = [];
 
 export function AgencyManagement() {
-  const [agencies, setAgencies] = useState(MOCK_AGENCIES);
+  const { agencies, updateAgencyStatus } = useAppStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [selectedAgency, setSelectedAgency] = useState<any>(null);
-  const [isAddAgencyOpen, setIsAddAgencyOpen] = useState(false); // For detail/edit modal
+  const [isAddAgencyOpen, setIsAddAgencyOpen] = useState(false);
+  const [newAgencyName, setNewAgencyName] = useState("");
+  const [newAgencyEmail, setNewAgencyEmail] = useState("");
+  const [newAgencyPhone, setNewAgencyPhone] = useState("");
+  const [newAgencyPwd, setNewAgencyPwd] = useState("");
+  const [newAgencyRc, setNewAgencyRc] = useState("");
+  const [newAgencyManager, setNewAgencyManager] = useState(""); // For detail/edit modal
 
   const filteredAgencies = agencies.filter(agency => {
-    const matchesSearch = agency.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          agency.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (agency.name || agency.agencyName || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (agency.email || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === "ALL" || agency.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
@@ -33,9 +40,7 @@ export function AgencyManagement() {
     }
   };
 
-  const updateStatus = (id: string, newStatus: string) => {
-    setAgencies(agencies.map(a => a.id === id ? { ...a, status: newStatus } : a));
-  };
+  const updateStatus = (id: string, newStatus: string) => { updateAgencyStatus(id, newStatus); };
 
   return (
     <div className="space-y-6">
@@ -84,7 +89,7 @@ export function AgencyManagement() {
             {filteredAgencies.map((agency) => (
               <TableRow key={agency.id}>
                 <TableCell>
-                  <div className="font-medium text-gray-900">{agency.name}</div>
+                  <div className="font-medium text-gray-900">{agency.name || agency.agencyName || "Nom non défini"}</div>
                   <div className="text-xs text-gray-500">ID: {agency.id}</div>
                 </TableCell>
                 <TableCell>
@@ -173,19 +178,67 @@ export function AgencyManagement() {
         <DialogContent className="sm:max-w-[425px]">
           <div className="flex flex-col gap-4 py-4">
             <h3 className="text-lg font-bold">Ajouter une agence</h3>
+            <p className="text-sm text-gray-500 mb-2">Note: L'ajout d'une agence manuellement nécessite une inscription normale. Nous vous recommandons de dire à l'agence de s'inscrire, puis vous pourrez l'approuver ici.</p>
             <div className="grid gap-2">
               <label className="text-sm font-medium">Nom de l'agence</label>
-              <Input placeholder="Nom" />
+              <Input value={newAgencyName} onChange={e=>setNewAgencyName(e.target.value)} placeholder="Wanderlust Tours" />
             </div>
             <div className="grid gap-2">
-              <label className="text-sm font-medium">Email</label>
-              <Input type="email" placeholder="Email" />
+              <label className="text-sm font-medium">N° de registre du commerce</label>
+              <Input value={newAgencyRc} onChange={e=>setNewAgencyRc(e.target.value)} placeholder="RC / NIF" />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Nom complet du gérant</label>
+              <Input value={newAgencyManager} onChange={e=>setNewAgencyManager(e.target.value)} placeholder="Jean Dupont" />
             </div>
             <div className="grid gap-2">
               <label className="text-sm font-medium">Téléphone</label>
-              <Input placeholder="Téléphone" />
+              <Input value={newAgencyPhone} onChange={e=>setNewAgencyPhone(e.target.value)} placeholder="+213 555 12 34 56" />
             </div>
-            <Button onClick={() => setIsAddAgencyOpen(false)} className="w-full bg-primary-gold hover:bg-accent-bronze text-white">Ajouter</Button>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Email</label>
+              <Input type="email" value={newAgencyEmail} onChange={e=>setNewAgencyEmail(e.target.value)} placeholder="contact@agence.com" />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Mot de passe temporaire</label>
+              <Input type="password" value={newAgencyPwd} onChange={e=>setNewAgencyPwd(e.target.value)} placeholder="••••••••" />
+            </div>
+            <Button onClick={async () => {
+              // Creating a secondary app instance to avoid logging out the admin
+              try {
+                const { getApp, initializeApp } = await import("firebase/app");
+                const { getAuth, createUserWithEmailAndPassword } = await import("firebase/auth");
+                const { doc, setDoc } = await import("firebase/firestore");
+                const { db } = await import("../../src/firebase");
+                
+                let secondaryApp;
+                try {
+                  secondaryApp = getApp("SecondaryApp");
+                } catch(e) {
+                  const firebaseConfig = getApp().options;
+                  secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
+                }
+                const secondaryAuth = getAuth(secondaryApp);
+                const userCred = await createUserWithEmailAndPassword(secondaryAuth, newAgencyEmail, newAgencyPwd);
+                await setDoc(doc(db, "users", userCred.user.uid), {
+                  email: newAgencyEmail,
+                  role: "agency",
+                  agencyName: newAgencyName,
+                  phone: newAgencyPhone,
+                  rc: newAgencyRc,
+                  managerName: newAgencyManager,
+                  applicationsCount: 0,
+                  balance: 0,
+                  status: "ACTIVE",
+                  createdAt: new Date().toISOString()
+                });
+                await secondaryAuth.signOut();
+                setIsAddAgencyOpen(false);
+                alert("Agence ajoutée avec succès !");
+              } catch(err: any) {
+                alert("Erreur lors de l'ajout: " + err.message);
+              }
+            }} className="w-full bg-primary-gold hover:bg-accent-bronze text-white">Ajouter</Button>
           </div>
         </DialogContent>
       </Dialog>

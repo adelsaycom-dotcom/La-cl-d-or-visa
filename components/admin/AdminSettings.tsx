@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAppStore } from "../../src/store/useAppStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Save } from "lucide-react";
 
 export function AdminSettings() {
+  const clearData = useAppStore(state => state.clearData);
   const [platformName, setPlatformName] = useState("La Clé d'Or B2B");
   const [contactEmail, setContactEmail] = useState("admin@cle-dor-visa.com");
   

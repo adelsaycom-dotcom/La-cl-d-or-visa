@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { useAppStore } from "../../src/store/useAppStore";
 
 export function AgencyDashboard() {
-  const { agencyBalance } = useAppStore();
+  const { agencyBalance, applications } = useAppStore();
   const balanceColor = agencyBalance > 10000 ? "text-green-500" : agencyBalance > 0 ? "text-amber-500" : "text-red-500";
   const [selectedPassport, setSelectedPassport] = useState("Algérien");
 
@@ -18,6 +18,9 @@ export function AgencyDashboard() {
   };
 
   const data = passportData[selectedPassport] || passportData["Algérien"];
+  const pendingApps = applications.filter(a => a.status === "Pending").length;
+  const approvedApps = applications.filter(a => a.status === "Approved").length;
+  const rejectedApps = applications.filter(a => a.status === "Rejected").length;
 
   return (
     <div className="space-y-12 pb-12">
@@ -86,15 +89,15 @@ export function AgencyDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
                   <div className="text-sm font-medium text-gray-500 mb-2">Total demandes en cours</div>
-                  <div className="text-4xl font-black text-text-dark">12</div>
+                  <div className="text-4xl font-black text-text-dark">{pendingApps}</div>
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
                   <div className="text-sm font-medium text-gray-500 mb-2">Demandes approuvées</div>
-                  <div className="text-4xl font-black text-text-dark">8</div>
+                  <div className="text-4xl font-black text-text-dark">{approvedApps}</div>
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
                   <div className="text-sm font-medium text-gray-500 mb-2">Demandes rejetées</div>
-                  <div className="text-4xl font-black text-text-dark">1</div>
+                  <div className="text-4xl font-black text-text-dark">{rejectedApps}</div>
                 </div>
               </div>
             </div>

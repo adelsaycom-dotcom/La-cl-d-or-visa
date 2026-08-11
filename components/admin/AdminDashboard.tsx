@@ -1,8 +1,19 @@
 import { Users, FileText, CheckCircle2, Clock, Map, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAppStore } from "../../src/store/useAppStore";
 
 export function AdminDashboard() {
+  const { applications, agencies, transactions, rechargeRequests } = useAppStore();
+  const today = new Date().toISOString().split("T")[0];
+  const appsToday = applications.filter(a => a.submissionDate?.startsWith(today)).length;
+  const pendingApps = applications.filter(a => a.status === "Pending").length;
+  const activeAgencies = agencies.filter(a => a.status === "ACTIVE").length;
+  const pendingRecharges = (rechargeRequests || []).filter(r => r.status === "Pending").length;
+  const totalVolume = transactions.reduce((acc, tx) => acc + (tx.amount || 0), 0);
+  const formattedVolume = totalVolume > 1000000 ? (totalVolume/1000000).toFixed(1) + "M" : totalVolume.toLocaleString();
+
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -22,7 +33,7 @@ export function AdminDashboard() {
               <FileText className="w-4 h-4 text-primary-gold" />
             </div>
           </div>
-          <div className="text-3xl font-bold mt-2">14</div>
+          <div className="text-3xl font-bold mt-2">{appsToday}</div>
           <p className="text-xs text-primary-gold flex items-center mt-auto pt-4 border-t border-gray-50"><TrendingUp className="w-3 h-3 mr-1"/> +12% par rapport à hier</p>
         </div>
         
@@ -33,7 +44,7 @@ export function AdminDashboard() {
               <Clock className="w-4 h-4 text-primary-gold" />
             </div>
           </div>
-          <div className="text-3xl font-bold text-amber-700 mt-2">32</div>
+          <div className="text-3xl font-bold text-amber-700 mt-2">{pendingApps}</div>
           <p className="text-xs text-primary-gold mt-auto pt-4 border-t border-amber-50">Demandes nécessitant une attention</p>
         </div>
 
@@ -44,9 +55,9 @@ export function AdminDashboard() {
               <Users className="w-4 h-4 text-primary-gold" />
             </div>
           </div>
-          <div className="text-3xl font-bold mt-2">128</div>
+          <div className="text-3xl font-bold mt-2">{activeAgencies}</div>
           <p className="text-xs text-gray-400 mt-auto pt-4 border-t border-gray-50 flex items-center gap-1">
-             <span className="w-2 h-2 rounded-full bg-red-400"></span> 3 en attente d'approbation
+             <span className="w-2 h-2 rounded-full bg-red-400"></span> {pendingRecharges} recharges en attente
           </p>
         </div>
 
@@ -57,7 +68,7 @@ export function AdminDashboard() {
               <CheckCircle2 className="w-4 h-4 text-primary-gold" />
             </div>
           </div>
-          <div className="text-3xl font-bold font-mono tracking-tight mt-2">1.2M <span className="text-lg">DA</span></div>
+          <div className="text-3xl font-bold font-mono tracking-tight mt-2">{formattedVolume} <span className="text-lg">DA</span></div>
           <p className="text-xs text-primary-gold flex items-center mt-auto pt-4 border-t border-gray-50"><TrendingUp className="w-3 h-3 mr-1"/> Mois en cours</p>
         </div>
       </div>

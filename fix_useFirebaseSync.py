@@ -1,4 +1,7 @@
+import re
 
+content = open('src/hooks/useFirebaseSync.ts').read()
+replacement = '''
 import { useEffect, useRef } from 'react';
 import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -7,23 +10,16 @@ import { useAppStore } from '../store/useAppStore';
 export function useFirebaseSync() {
   const setStore = useAppStore.setState;
   const unsubsRef = useRef<(() => void)[]>([]);
-  const currentUidRef = useRef<string | null>(null);
 
   useEffect(() => {
     const unsubAuth = auth.onAuthStateChanged(async user => {
-      // Clear previous listeners synchronously
+      // Clear previous listeners
       unsubsRef.current.forEach(fn => fn());
       unsubsRef.current = [];
-      currentUidRef.current = user ? user.uid : null;
-      const expectedUid = currentUidRef.current;
 
       if (user) {
         // Fetch role
         const userDoc = await getDoc(doc(db, 'users', user.uid));
-        
-        // If auth state changed while fetching role, abort to prevent dangling listeners
-        if (currentUidRef.current !== expectedUid) return;
-        
         const role = userDoc.exists() ? userDoc.data().role : 'agency';
 
         // Helper to get query
@@ -89,7 +85,8 @@ export function useFirebaseSync() {
       unsubAuth();
       unsubsRef.current.forEach(fn => fn());
       unsubsRef.current = [];
-      currentUidRef.current = null;
     };
   }, [setStore]);
 }
+'''
+open('src/hooks/useFirebaseSync.ts', 'w').write(replacement)

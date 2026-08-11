@@ -1,4 +1,4 @@
-import { Outlet, Link } from "react-router-dom";
+import { Outlet, Link, useNavigate } from "react-router-dom";
 import { LayoutDashboard, WalletCards, Bell, HelpCircle, FileText, Globe, Menu, LogOut, Settings, MapPin, ChevronDown, Plane, Building2, Car, ShieldCheck, GraduationCap, Mail, CalendarDays } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -9,9 +9,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore } from "../../src/store/useAppStore";
 
 export function AgencyLayout() {
-  const { agencyBalance } = useAppStore();
+    const { agencyBalance, applications, rechargeRequests, supportTickets } = useAppStore();
+  
+  // Dynamic notifications for Agency
+  const recentApps = applications.filter(a => a.status === 'Approved' || a.status === 'Rejected').slice(0, 2);
+  const recentRecharges = (rechargeRequests || []).filter(r => r.status === 'Approved').slice(0, 1);
+  const recentTickets = (supportTickets || []).filter(t => t.status === 'RESOLVED').slice(0, 1);
+  const notificationsCount = recentApps.length + recentRecharges.length + recentTickets.length;
+
   const balanceColor = agencyBalance > 10000 ? "text-emerald-400" : agencyBalance > 0 ? "text-amber-300" : "text-red-400";
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   const NavLinks = () => (
     <>
@@ -120,20 +128,38 @@ export function AgencyLayout() {
               <DropdownMenu>
                 <DropdownMenuTrigger className="relative p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/10">
                   <Bell className="w-5 h-5" />
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-[var(--color-text-dark)] pointer-events-none"></span>
+                  {notificationsCount > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-[var(--color-text-dark)] pointer-events-none"></span>}
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-80">
                   <DropdownMenuGroup>
                     <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="flex flex-col items-start p-3 cursor-pointer">
-                      <span className="text-sm font-medium text-green-600">Visa Approuvé</span>
-                      <span className="text-xs text-gray-500 mt-1">La demande APP-003 pour Ali Benmoussa est approuvée !</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="flex flex-col items-start p-3 cursor-pointer">
-                      <span className="text-sm font-medium">Recharge Validée</span>
-                      <span className="text-xs text-gray-500 mt-1">L'admin a ajouté 5,000 DA à votre portefeuille.</span>
-                    </DropdownMenuItem>
+                    
+                    {notificationsCount === 0 && (
+                      <div className="p-4 text-sm text-gray-500 text-center">Aucune nouvelle notification</div>
+                    )}
+
+                    {recentApps.map(app => (
+                      <DropdownMenuItem key={app.id} className="flex flex-col items-start p-3 cursor-pointer" onClick={() => navigate("/agency/applications")}>
+                        <span className={`text-sm font-medium ${app.status === 'Approved' ? 'text-green-600' : 'text-red-600'}`}>Visa {app.status === 'Approved' ? 'Approuvé' : 'Rejeté'}</span>
+                        <span className="text-xs text-gray-500 mt-1">La demande {app.id} pour {app.travelerName} a été {app.status === 'Approved' ? 'approuvée' : 'rejetée'}.</span>
+                      </DropdownMenuItem>
+                    ))}
+
+                    {recentRecharges.map(req => (
+                      <DropdownMenuItem key={req.id} className="flex flex-col items-start p-3 cursor-pointer" onClick={() => navigate("/agency/wallet")}>
+                        <span className="text-sm font-medium text-green-600">Recharge Validée</span>
+                        <span className="text-xs text-gray-500 mt-1">Votre recharge de {req.amount.toLocaleString()} DA a été approuvée.</span>
+                      </DropdownMenuItem>
+                    ))}
+
+                    {recentTickets.map(ticket => (
+                      <DropdownMenuItem key={ticket.id} className="flex flex-col items-start p-3 cursor-pointer" onClick={() => navigate("/agency/support")}>
+                        <span className="text-sm font-medium text-blue-600">Ticket Résolu</span>
+                        <span className="text-xs text-gray-500 mt-1">Le ticket "{ticket.subject}" a été marqué comme résolu.</span>
+                      </DropdownMenuItem>
+                    ))}
+
                     <DropdownMenuSeparator />
                     <DropdownMenuItem className="text-center font-medium text-blue-600 justify-center">
                       Tout marquer comme lu

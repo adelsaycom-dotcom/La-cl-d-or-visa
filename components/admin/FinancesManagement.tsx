@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { db } from "../../src/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -21,6 +23,13 @@ export function FinancesManagement() {
   const handleApprove = () => {
     if (!creditAmount) return;
     updateRechargeRequestStatus(selectedReq.id, 'Approved');
+    // Mettre à jour le solde
+    const userRef = doc(db, 'users', selectedReq.agencyId);
+    getDoc(userRef).then(docSnap => {
+      if(docSnap.exists()) {
+        updateDoc(userRef, { balance: (docSnap.data().balance || 0) + Number(creditAmount) });
+      }
+    });
     addTransaction({
       agencyId: selectedReq.agencyId,
       type: 'CREDIT',

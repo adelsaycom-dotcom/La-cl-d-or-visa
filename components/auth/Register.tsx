@@ -13,6 +13,9 @@ export function Register() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agencyName, setAgencyName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [managerName, setManagerName] = useState("");
+  const [rc, setRc] = useState("");
 
   const navigate = useNavigate();
   
@@ -30,6 +33,11 @@ export function Register() {
         role: role,
         agencyName: agencyName,
         balance: 0,
+        status: "PENDING",
+        phone: phone,
+        managerName: managerName,
+        rc: rc,
+        applicationsCount: 0,
         createdAt: new Date().toISOString()
       });
       alert("Demande envoyée avec succès ! Notre équipe examinera le profil de votre agence.");
@@ -59,18 +67,18 @@ export function Register() {
                </div>
                <div className="space-y-2">
                  <label className="text-sm font-bold text-text-dark">N° de registre du commerce *</label>
-                 <Input required placeholder="RC / NIF" className="h-12 bg-gray-50 border-gray-200 focus:border-primary-gold" />
+                 <Input required value={rc} onChange={e=>setRc(e.target.value)} placeholder="RC / NIF" className="h-12 bg-gray-50 border-gray-200 focus:border-primary-gold" />
                </div>
              </div>
 
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                <div className="space-y-2">
                  <label className="text-sm font-bold text-text-dark">Nom complet du gérant *</label>
-                 <Input required placeholder="Jean Dupont" className="h-12 bg-gray-50 border-gray-200 focus:border-primary-gold" />
+                 <Input required value={managerName} onChange={e=>setManagerName(e.target.value)} placeholder="Jean Dupont" className="h-12 bg-gray-50 border-gray-200 focus:border-primary-gold" />
                </div>
                <div className="space-y-2">
                  <label className="text-sm font-bold text-text-dark">Numéro de téléphone *</label>
-                 <Input required placeholder="+213 555 12 34 56" type="tel" className="h-12 bg-gray-50 border-gray-200 focus:border-primary-gold" />
+                 <Input required value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+213 555 12 34 56" type="tel" className="h-12 bg-gray-50 border-gray-200 focus:border-primary-gold" />
                </div>
              </div>
 

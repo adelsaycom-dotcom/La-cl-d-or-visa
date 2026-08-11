@@ -1,4 +1,7 @@
+import re
 
+content = open('src/hooks/useFirebaseSync.ts').read()
+replacement = '''
 import { useEffect, useRef } from 'react';
 import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -93,3 +96,5 @@ export function useFirebaseSync() {
     };
   }, [setStore]);
 }
+'''
+open('src/hooks/useFirebaseSync.ts', 'w').write(replacement)

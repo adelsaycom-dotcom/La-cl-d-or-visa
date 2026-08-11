@@ -25,7 +25,15 @@ export function Login() {
         if (role === 'admin') {
           navigate("/admin");
         } else {
-          navigate("/agency");
+          const status = userDoc.data().status;
+          if (status === 'PENDING') {
+            alert("Votre compte est en attente de validation par l'administrateur.");
+            // auth.signOut(); // optional
+          } else if (status === 'SUSPENDED') {
+            alert("Votre compte a été suspendu. Veuillez contacter le support.");
+          } else {
+            navigate("/agency");
+          }
         }
       } else {
         alert("Utilisateur introuvable dans la base de données.");

@@ -1,10 +1,22 @@
+export interface Agency {
+  id: string;
+  name?: string;
+  agencyName?: string;
+  email: string;
+  phone: string;
+  status: string;
+  balance: number;
+  applicationsCount: number;
+  role: string;
+}
 import { create } from "zustand";
 import { collection, doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 export interface VisaType {
   id: string;
-  name: string;
+  name?: string;
+  agencyName?: string;
   price: number;
   processingTime: string;
   description: string;
@@ -15,7 +27,8 @@ export interface VisaType {
 
 export interface Country {
   id: string;
-  name: string;
+  name?: string;
+  agencyName?: string;
   flag: string;
   active: boolean;
   visaTypes: VisaType[];
@@ -87,6 +100,8 @@ export interface AppState {
   setAgencyBalance: (balance: number) => void;
   
   countries: Country[];
+  agencies: Agency[];
+  updateAgencyStatus: (id: string, status: string) => void;
   applications: Application[];
   organizedTrips: OrganizedTrip[];
   tripReservations: TripReservation[];
@@ -109,6 +124,7 @@ export interface AppState {
   addApplication: (application: Application) => void;
   updateApplicationStatus: (id: string, status: Application["status"]) => void;
   updateApplication: (id: string, updates: Partial<Application>) => void;
+  clearData: () => void;
 }
 
 export const useAppStore = create<AppState>()((set, get) => ({
@@ -142,6 +158,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
     await updateDoc(doc(db, 'rechargeRequests', id), { status });
   },
 
+  agencies: [],
+  updateAgencyStatus: async (id, status) => { await updateDoc(doc(db, "users", id), { status }); },
   countries: [],
   applications: [],
   organizedTrips: [],
@@ -250,6 +268,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   updateApplication: async (id, updates) => {
     await updateDoc(doc(db, 'applications', id), updates);
+  },
+  clearData: () => {
+    set({ agencies: [], supportTickets: [], transactions: [], rechargeRequests: [], countries: [], applications: [], organizedTrips: [], tripReservations: [] });
   }
 }));
 
@@ -261,6 +282,8 @@ export interface SupportTicket {
   agency?: string;
   isUrgent?: boolean;
   subject: string;
+  description?: string;
+  date?: string;
   category: string;
   priority: "Faible" | "Moyenne" | "Haute" | "Critique" | string;
   status: "Ouvert" | "En cours" | "Résolu" | string;
