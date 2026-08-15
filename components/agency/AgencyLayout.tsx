@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { Logo } from '@/components/Logo';
 
 import { useAppStore } from "../../src/store/useAppStore";
 
@@ -104,10 +105,7 @@ export function AgencyLayout() {
               {/* Logo / Branch Name */}
               <div className="shrink-0 flex items-center">
                 <Link to="/agency" className="text-xl font-bold font-sans text-white flex items-center gap-2">
-                  <div className="bg-gradient-to-tr from-amber-400 to-amber-200 text-amber-900 p-1.5 rounded-lg">
-                    <Globe className="w-5 h-5" />
-                  </div>
-                  <span className="tracking-tight">La Clé d'Or <span className="text-amber-400">Visa</span></span>
+                  <Logo imageClassName="h-8 sm:h-10" />
                 </Link>
               </div>
               

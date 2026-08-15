@@ -6,6 +6,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useState, lazy, Suspense } from "react";
+import { Logo } from '@/components/Logo';
 
 // Eager imports for layout components
 import { VisaEditor } from "@/components/admin/VisaEditor";
@@ -90,10 +91,7 @@ function AdminLayout() {
               <div className="shrink-0 flex items-center">
                 <Link to="/admin" className="text-xl font-bold font-sans text-text-dark flex items-center gap-2">
                   <span className="bg-primary-gold text-white px-2 py-1 rounded text-sm uppercase tracking-wider">Admin</span>
-                  <div className="bg-gradient-to-tr from-amber-400 to-amber-200 text-amber-900 p-1 rounded-md">
-                    <Earth className="w-5 h-5" />
-                  </div>
-                  <span className="tracking-tight">La Clé d'Or <span className="text-amber-500">Visa</span></span>
+                  <Logo imageClassName="h-8 sm:h-10" />
                 </Link>
               </div>
               
