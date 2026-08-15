@@ -78,9 +78,10 @@ export function VisaWizard() {
 
   const currentService = serviceTitles[serviceParam] || serviceTitles["evisa"];
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const price = selectedVisa?.price || 0;
-    addApplication({
+    try {
+      await addApplication({
       id: "APP-" + Math.floor(Math.random() * 100000),
       agencyId: auth.currentUser?.uid || "a1",
       agencyName: auth.currentUser?.email || "Current Agency",
@@ -116,11 +117,13 @@ export function VisaWizard() {
         inviterName: applicant.inviterName,
         relationship: applicant.relationship,
         notes: applicant.notes,
-      },
-    });
-    setAgencyBalance(agencyBalance - price);
-    alert("Demande soumise avec succès !");
-    navigate("/agency/applications");
+      }
+      });
+      alert("Demande soumise avec succès !");
+      navigate("/agency/applications");
+    } catch (err: any) {
+      alert("Erreur lors de la soumission : " + (err.message || "Solde insuffisant ou erreur réseau."));
+    }
   };
 
   const steps = [

@@ -1,4 +1,10 @@
-import { useState } from "react";
+import re
+
+with open('components/admin/FinancesManagement.tsx', 'r') as f:
+    content = f.read()
+
+# Make it entirely a new content
+new_content = """import { useState } from "react";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "../../src/firebase";
 import { Button } from "@/components/ui/button";
@@ -305,3 +311,7 @@ export function FinancesManagement() {
     </div>
   );
 }
+"""
+
+with open('components/admin/FinancesManagement.tsx', 'w') as f:
+    f.write(new_content)

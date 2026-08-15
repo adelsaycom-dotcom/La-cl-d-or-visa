@@ -3,18 +3,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { WalletCards, ArrowDownRight, ArrowUpRight, Clock } from "lucide-react";
+import { WalletCards, ArrowDownRight, ArrowUpRight, Clock, FileText, Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAppStore } from "../../src/store/useAppStore";
 import { auth } from "../../src/firebase";
 
 export function AgencyWallet() {
   const { agencyBalance, transactions, rechargeRequests, addRechargeRequest } = useAppStore();
-  
   const balanceColor = agencyBalance > 10000 ? "text-green-500" : agencyBalance > 0 ? "text-amber-500" : "text-red-500";
+  
   const [rechargeOpen, setRechargeOpen] = useState(false);
   const [rechargeAmount, setRechargeAmount] = useState("");
   const [rechargeNote, setRechargeNote] = useState("");
+  const [activeTab, setActiveTab] = useState<"transactions" | "recharges">("transactions");
 
   const handleRechargeSubmit = () => {
     if(!rechargeAmount) return;
@@ -27,9 +28,23 @@ export function AgencyWallet() {
       date: new Date().toISOString()
     });
     setRechargeOpen(false);
+    setRechargeAmount("");
+    setRechargeNote("");
   };
 
-  const pendingRequests = (rechargeRequests || []).filter(r => r.status === 'Pending');
+  const pendingRequests = (rechargeRequests || []).filter(r => r.status.toLowerCase() === 'pending');
+  const pastRecharges = (rechargeRequests || []).filter(r => r.status.toLowerCase() !== 'pending').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const getStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "approved":
+        return <Badge className="bg-green-100 text-green-700 border-green-200">Approuvée</Badge>;
+      case "rejected":
+        return <Badge className="bg-red-100 text-red-700 border-red-200">Rejetée</Badge>;
+      default:
+        return <Badge className="bg-gray-100 text-gray-700 border-gray-200">{status}</Badge>;
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-10">
@@ -42,7 +57,7 @@ export function AgencyWallet() {
           <WalletCards className="w-4 h-4 mr-2" /> Demander une Recharge
         </Button>
       </div>
-
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-[var(--color-text-dark)] text-white p-6 rounded-2xl shadow-lg md:col-span-1 relative overflow-hidden">
            <div className="absolute top-0 right-0 p-8 opacity-10">
@@ -56,7 +71,7 @@ export function AgencyWallet() {
              </div>
            </div>
         </div>
-
+        
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm md:col-span-2 space-y-4">
            <h3 className="font-semibold border-b pb-2 flex items-center justify-between">
              Demandes de Recharge en Attente
@@ -80,47 +95,103 @@ export function AgencyWallet() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
-        <h3 className="font-semibold p-4 border-b bg-gray-50">Historique des Transactions</h3>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="whitespace-nowrap">Date / Heure</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead className="whitespace-nowrap">Description</TableHead>
-              <TableHead>Référence</TableHead>
-              <TableHead className="text-right whitespace-nowrap">Montant (DA)</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(transactions || []).length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-4 text-gray-500">Aucune transaction trouvée.</TableCell>
-              </TableRow>
-            )}
-            {(transactions || []).map((tx) => (
-              <TableRow key={tx.id}>
-                <TableCell className="text-sm text-gray-600 whitespace-nowrap">{tx.date}</TableCell>
-                <TableCell>
-                  {tx.type === "CREDIT" ? (
-                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-none flex w-min items-center gap-1">
-                      <ArrowDownRight className="w-3 h-3" /> Crédit
-                    </Badge>
-                  ) : (
-                    <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100 border-none flex w-min items-center gap-1">
-                      <ArrowUpRight className="w-3 h-3 text-red-500" /> Débit
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell className="font-medium text-sm whitespace-nowrap">{tx.note}</TableCell>
-                <TableCell className="font-mono text-xs text-gray-500 whitespace-nowrap">{tx.ref}</TableCell>
-                <TableCell className={`text-right font-mono font-bold whitespace-nowrap ${tx.type === "CREDIT" ? "text-green-600" : "text-gray-900"}`}>
-                  {tx.type === "CREDIT" ? "+" : "-"}{tx.amount}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="border-b border-gray-100 px-6 py-4 flex gap-6 bg-gray-50/50">
+            <button 
+              className={`pb-1 border-b-2 font-bold text-sm transition-colors ${activeTab === 'transactions' ? 'border-primary-gold text-primary-gold' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+              onClick={() => setActiveTab('transactions')}
+            >
+              Historique des Transactions
+            </button>
+            <button 
+              className={`pb-1 border-b-2 font-bold text-sm transition-colors ${activeTab === 'recharges' ? 'border-primary-gold text-primary-gold' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
+              onClick={() => setActiveTab('recharges')}
+            >
+              Historique des Recharges
+            </button>
+        </div>
+
+        {activeTab === 'transactions' && (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="whitespace-nowrap">Date / Heure</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="whitespace-nowrap">Description</TableHead>
+                  <TableHead>Référence</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Montant (DA)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(transactions || []).length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">Aucune transaction trouvée.</TableCell>
+                  </TableRow>
+                )}
+                {(transactions || []).map((tx) => (
+                  <TableRow key={tx.id}>
+                    <TableCell className="text-sm text-gray-600 whitespace-nowrap">
+                       {new Date(tx.date).toLocaleDateString()} à {new Date(tx.date).toLocaleTimeString()}
+                    </TableCell>
+                    <TableCell>
+                      {tx.type === "CREDIT" || tx.type === "credit" ? (
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-none flex w-min items-center gap-1">
+                          <ArrowDownRight className="w-3 h-3" /> Crédit
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100 border-none flex w-min items-center gap-1">
+                          <ArrowUpRight className="w-3 h-3 text-red-500" /> Débit
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-medium text-sm whitespace-nowrap">{tx.note}</TableCell>
+                    <TableCell className="font-mono text-xs text-gray-500 whitespace-nowrap">{tx.ref}</TableCell>
+                    <TableCell className={`text-right font-mono font-bold whitespace-nowrap ${tx.type === "CREDIT" || tx.type === "credit" ? "text-green-600" : "text-gray-900"}`}>
+                      {tx.type === "CREDIT" || tx.type === "credit" ? "+" : "-"}{tx.amount?.toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        {activeTab === 'recharges' && (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="whitespace-nowrap">Date / Heure</TableHead>
+                  <TableHead>Note / Référence</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Montant (DA)</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Statut</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pastRecharges.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-8 text-gray-500">Aucun historique de recharge.</TableCell>
+                  </TableRow>
+                )}
+                {pastRecharges.map((req) => (
+                  <TableRow key={req.id}>
+                    <TableCell className="text-sm text-gray-600 whitespace-nowrap">
+                       {new Date(req.date).toLocaleDateString()} à {new Date(req.date).toLocaleTimeString()}
+                    </TableCell>
+                    <TableCell className="font-medium text-sm whitespace-nowrap">{req.note}</TableCell>
+                    <TableCell className="text-right font-mono font-bold whitespace-nowrap">
+                      {req.amount.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                       {getStatusBadge(req.status)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
 
       <Dialog open={rechargeOpen} onOpenChange={setRechargeOpen}>

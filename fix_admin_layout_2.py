@@ -3,61 +3,9 @@ import re
 with open('src/App.tsx', 'r') as f:
     content = f.read()
 
-# Finding AdminLayout in src/App.tsx
-admin_layout_pattern = r"""function AdminLayout\(\) \{
-  const \{ applications, rechargeRequests, supportTickets \} = useAppStore\(\);
-  const adminPendingApps = applications\.filter\(\(a: any\) => a\.status === 'Pending'\)\.slice\(0, 2\);
-  const adminPendingRecharges = \(rechargeRequests \|\| \[\]\)\.filter\(\(r: any\) => r\.status === 'Pending'\)\.slice\(0, 2\);
-  const adminOpenTickets = \(supportTickets \|\| \[\]\)\.filter\(\(t: any\) => t\.status === 'OPEN'\)\.slice\(0, 1\);
-  const adminNotifsCount = adminPendingApps\.length \+ adminPendingRecharges\.length \+ adminOpenTickets\.length;"""
-
-new_vars = """function AdminLayout() {
-  const { notifications, markNotificationAsRead, markAllNotificationsAsRead } = useAppStore();
-  const unreadNotifications = (notifications || []).filter(n => !n.read && n.agencyId === 'admin').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  const adminNotifsCount = unreadNotifications.length;"""
-
-content = re.sub(admin_layout_pattern, new_vars, content)
-
-old_dropdown = r"""              <DropdownMenu>
-                <DropdownMenuTrigger className="relative p-2 text-gray-500 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-100">
-                  <Bell className="w-5 h-5" />
-                  \{adminNotifsCount > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white pointer-events-none"><\/span>\}
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
-                  <DropdownMenuGroup>
-                    <DropdownMenuLabel>Notifications<\/DropdownMenuLabel>
-                    <DropdownMenuSeparator \/>
-                    
-                    \{adminNotifsCount === 0 && \(
-                      <div className="p-4 text-sm text-gray-500 text-center">Aucune notification<\/div>
-                    \)\}
-                    \{adminPendingApps\.map\(app => \(
-                      <DropdownMenuItem key=\{app\.id\} className="flex flex-col items-start p-3 cursor-pointer" onClick=\{\(\) => navigate\("/admin/applications"\)\}>
-                        <span className="text-sm font-medium">Nouvelle Demande Visa<\/span>
-                        <span className="text-xs text-gray-500 mt-1">\{app\.agencyName\} a soumis une demande \(\{app\.id\}\)<\/span>
-                      <\/DropdownMenuItem>
-                    \)\)\}
-                    \{adminPendingRecharges\.map\(req => \(
-                      <DropdownMenuItem key=\{req\.id\} className="flex flex-col items-start p-3 cursor-pointer" onClick=\{\(\) => navigate\("/admin/finances"\)\}>
-                        <span className="text-sm font-medium">Demande de Recharge<\/span>
-                        <span className="text-xs text-gray-500 mt-1">\{req\.agencyName\} demande \{req\.amount\.toLocaleString\(\)\} DA<\/span>
-                      <\/DropdownMenuItem>
-                    \)\)\}
-                    \{adminOpenTickets\.map\(ticket => \(
-                      <DropdownMenuItem key=\{ticket\.id\} className="flex flex-col items-start p-3 cursor-pointer" onClick=\{\(\) => navigate\("/admin/support"\)\}>
-                        <span className="text-sm font-medium">Nouveau Ticket<\/span>
-                        <span className="text-xs text-gray-500 mt-1">\{ticket\.agencyName\} a ouvert un ticket<\/span>
-                      <\/DropdownMenuItem>
-                    \)\)\}
-                    <DropdownMenuSeparator \/>
-                    <DropdownMenuItem className="text-center font-medium text-blue-600 justify-center">
-                      Mark all as read
-                    <\/DropdownMenuItem>
-                  <\/DropdownMenuGroup>
-                <\/DropdownMenuContent>
-              <\/DropdownMenu>"""
-
-new_dropdown = """              {/* Notifications */}
+old_dropdown = re.search(r'<DropdownMenu>.*?Mark all as read.*?<\/DropdownMenu>', content, flags=re.DOTALL)
+if old_dropdown:
+    new_dropdown = """{/* Notifications */}
               <DropdownMenu>
                 <DropdownMenuTrigger className="relative p-2 text-gray-400 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-100 outline-none">
                   <Bell className="w-5 h-5" />
@@ -123,8 +71,10 @@ new_dropdown = """              {/* Notifications */}
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>"""
-
-content = re.sub(old_dropdown, new_dropdown, content)
-
-with open('src/App.tsx', 'w') as f:
-    f.write(content)
+    
+    content = content.replace(old_dropdown.group(0), new_dropdown)
+    with open('src/App.tsx', 'w') as f:
+        f.write(content)
+    print("Replaced dropdown")
+else:
+    print("Dropdown not found")

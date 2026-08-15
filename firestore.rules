@@ -5,20 +5,32 @@ service cloud.firestore {
     // Global Helper Functions
     function isSignedIn() { return request.auth != null; }
     function isAdmin() { 
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; 
-    }
+       return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; 
+     }
     function isAgency() { 
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agency'; 
-    }
+       return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agency'; 
+     }
+    
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      // Only admins can create or update users for now, or users can update their own data.
-      allow write: if isAdmin() || request.auth.uid == userId;
+      // Agency cannot manipulate their role. They can ONLY decrease their balance (spending money) during an atomic transaction.
+      allow create: if isAdmin() || (
+        isSignedIn() && 
+        request.auth.uid == userId && 
+        (incoming().role == 'agency' || (incoming().role == 'admin' && request.auth.token.email == 'adel.saycom@gmail.com')) && 
+        incoming().balance == 0
+      );
+      allow update: if isAdmin() || (
+        request.auth.uid == userId && 
+        incoming().role == existing().role && 
+        incoming().balance <= existing().balance
+      );
+      allow delete: if isAdmin();
     }
 
     match /countries/{countryId} {
@@ -28,8 +40,10 @@ service cloud.firestore {
 
     match /applications/{applicationId} {
       allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      allow create: if isAgency() && incoming().agencyId == request.auth.uid;
-      allow update: if isAdmin() || (isAgency() && existing().agencyId == request.auth.uid);
+      // Agencies must create applications as 'pending'
+      allow create: if isAdmin() || (isAgency() && incoming().agencyId == request.auth.uid && incoming().status.lower() == 'pending');
+      // Agencies cannot update the status field of existing applications
+      allow update: if isAdmin() || (isAgency() && existing().agencyId == request.auth.uid && incoming().status == existing().status);
       allow delete: if isAdmin();
     }
 
@@ -40,27 +54,40 @@ service cloud.firestore {
 
     match /tripReservations/{reservationId} {
       allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      allow create: if isAgency() && incoming().agencyId == request.auth.uid;
-      allow update: if isAdmin() || (isAgency() && existing().agencyId == request.auth.uid);
+      // Agencies must create reservations as 'pending'
+      allow create: if isAdmin() || (isAgency() && incoming().agencyId == request.auth.uid && incoming().status.lower() == 'pending');
+      // Agencies cannot update the status field
+      allow update: if isAdmin() || (isAgency() && existing().agencyId == request.auth.uid && incoming().status == existing().status);
       allow delete: if isAdmin();
     }
 
     match /transactions/{transactionId} {
       allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      allow create, update, delete: if isAdmin();
+      allow create: if isAdmin() || (isAgency() && incoming().agencyId == request.auth.uid && incoming().type == 'debit');
+      allow update, delete: if isAdmin();
     }
 
     match /rechargeRequests/{requestId} {
       allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      allow create: if isAgency() && incoming().agencyId == request.auth.uid;
-      allow update, delete: if isAdmin();
+      // Agencies must create recharge requests as 'pending'
+      allow create: if isAdmin() || (isAgency() && incoming().agencyId == request.auth.uid && incoming().status.lower() == 'pending');
+      // Agencies cannot update the status of recharge requests
+      allow update: if isAdmin() || (isAgency() && existing().agencyId == request.auth.uid && incoming().status == existing().status);
+      allow delete: if isAdmin();
     }
 
     match /supportTickets/{ticketId} {
       allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      allow create: if isAgency() && incoming().agencyId == request.auth.uid;
+      allow create: if isAdmin() || (isAgency() && incoming().agencyId == request.auth.uid);
       allow update: if isAdmin() || (isAgency() && existing().agencyId == request.auth.uid);
       allow delete: if isAdmin();
+    }
+
+    match /notifications/{notifId} {
+      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow create: if isSignedIn() && (isAdmin() || incoming().agencyId == request.auth.uid || incoming().agencyId == 'admin');
+      allow update: if isSignedIn() && (isAdmin() || (existing().agencyId == request.auth.uid && incoming().read == true));
+      allow delete: if isAdmin() || (isAgency() && existing().agencyId == request.auth.uid);
     }
   }
 }

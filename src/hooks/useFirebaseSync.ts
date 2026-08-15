@@ -39,6 +39,12 @@ export function useFirebaseSync() {
           }));
         }
 
+        
+        const notifQuery = role === 'admin' ? query(collection(db, 'notifications'), where('agencyId', '==', 'admin')) : getQuery('notifications');
+        unsubsRef.current.push(onSnapshot(notifQuery, snapshot => {
+          const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setStore({ notifications: docs as any });
+        }));
         unsubsRef.current.push(onSnapshot(getQuery('applications'), snapshot => {
           const apps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           setStore({ applications: apps as any });

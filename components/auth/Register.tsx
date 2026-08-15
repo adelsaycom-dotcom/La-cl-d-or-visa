@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { auth, db } from "../../src/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, collection } from "firebase/firestore";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ export function Register() {
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
       // Create user doc
       let role = "agency";
-      if (email === "adel.saycom@gmail.com" || email.includes("admin")) {
+      if (email === "adel.saycom@gmail.com") {
         role = "admin";
       }
       await setDoc(doc(db, 'users', userCred.user.uid), {
@@ -40,6 +40,20 @@ export function Register() {
         applicationsCount: 0,
         createdAt: new Date().toISOString()
       });
+      
+      if (role === 'agency') {
+        const notifRef = doc(collection(db, 'notifications'));
+        await setDoc(notifRef, {
+          id: notifRef.id,
+          agencyId: 'admin',
+          title: 'Nouvelle Inscription',
+          message: `L'agence ${agencyName} vient de s'inscrire et attend votre validation.`,
+          type: 'warning',
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: '/admin/agencies'
+        });
+      }
       alert("Demande envoyée avec succès ! Notre équipe examinera le profil de votre agence.");
       navigate("/login");
     } catch(err: any) {

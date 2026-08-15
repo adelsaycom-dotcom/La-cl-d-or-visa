@@ -29,9 +29,10 @@ export default function OrganizedTrips() {
     t.destination.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleBook = () => {
+  const handleBook = async () => {
     if (selectedTrip && clientName && numberOfPeople > 0) {
-      addTripReservation({
+      try {
+        await addTripReservation({
         tripId: selectedTrip.id,
         agencyId: auth.currentUser?.uid || 'agency_1',
 agencyName: auth.currentUser?.email || 'Agency',
@@ -41,16 +42,19 @@ agencyName: auth.currentUser?.email || 'Agency',
         numberOfPeople,
         notes,
         customFormData
-      });
-      setIsBookingOpen(false);
+        });
+        setIsBookingOpen(false);
       setClientName('');
       setClientEmail('');
       setClientPhone('');
       setNumberOfPeople(1);
       setNotes('');
       setCustomFormData({});
-      // Optionally show success toast here
-      alert('Réservation effectuée avec succès !');
+        // Optionally show success toast here
+        alert('Réservation effectuée avec succès !');
+      } catch (err: any) {
+        alert("Erreur : " + (err.message || "Solde insuffisant ou erreur serveur."));
+      }
     }
   };
 

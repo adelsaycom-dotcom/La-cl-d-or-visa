@@ -42,11 +42,9 @@ const SuspenseFallback = () => (
 
 // Admin Layout
 function AdminLayout() {
-  const { applications, rechargeRequests, supportTickets } = useAppStore();
-  const adminPendingApps = applications.filter((a: any) => a.status === 'Pending').slice(0, 2);
-  const adminPendingRecharges = (rechargeRequests || []).filter((r: any) => r.status === 'Pending').slice(0, 2);
-  const adminOpenTickets = (supportTickets || []).filter((t: any) => t.status === 'OPEN').slice(0, 1);
-  const adminNotifsCount = adminPendingApps.length + adminPendingRecharges.length + adminOpenTickets.length;
+  const { notifications, markNotificationAsRead, markAllNotificationsAsRead } = useAppStore();
+  const unreadNotifications = (notifications || []).filter(n => !n.read && n.agencyId === 'admin').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const adminNotifsCount = unreadNotifications.length;
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
@@ -102,46 +100,70 @@ function AdminLayout() {
             </div>
 
             <div className="flex items-center gap-4">
+              {/* Notifications */}
               <DropdownMenu>
-                <DropdownMenuTrigger className="relative p-2 text-gray-500 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-100">
+                <DropdownMenuTrigger className="relative p-2 text-gray-400 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-100 outline-none">
                   <Bell className="w-5 h-5" />
-                  {adminNotifsCount > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white pointer-events-none"></span>}
+                  {adminNotifsCount > 0 && (
+                    <span className="absolute top-1 right-1 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+                    </span>
+                  )}
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
-                  <DropdownMenuGroup>
-                    <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    
-                    {adminNotifsCount === 0 && (
-                      <div className="p-4 text-sm text-gray-500 text-center">Aucune notification</div>
+                <DropdownMenuContent align="end" className="w-80 sm:w-96 p-0 border-gray-200 overflow-hidden shadow-xl rounded-xl">
+                  <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
+                    <span className="font-bold text-gray-900">Notifications Admin</span>
+                    {adminNotifsCount > 0 && (
+                      <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs font-bold">{adminNotifsCount} nouvelle(s)</span>
                     )}
-
-                    {adminPendingApps.map(app => (
-                      <DropdownMenuItem key={app.id} className="flex flex-col items-start p-3 cursor-pointer" onClick={() => navigate("/admin/applications")}>
-                        <span className="text-sm font-medium">Nouvelle Demande Visa</span>
-                        <span className="text-xs text-gray-500 mt-1">{app.agencyName} a soumis une demande ({app.id})</span>
-                      </DropdownMenuItem>
-                    ))}
-
-                    {adminPendingRecharges.map(req => (
-                      <DropdownMenuItem key={req.id} className="flex flex-col items-start p-3 cursor-pointer" onClick={() => navigate("/admin/finances")}>
-                        <span className="text-sm font-medium">Demande de Recharge</span>
-                        <span className="text-xs text-gray-500 mt-1">{req.agencyName} demande {req.amount.toLocaleString()} DA</span>
-                      </DropdownMenuItem>
-                    ))}
-
-                    {adminOpenTickets.map(ticket => (
-                      <DropdownMenuItem key={ticket.id} className="flex flex-col items-start p-3 cursor-pointer" onClick={() => navigate("/admin/support")}>
-                        <span className="text-sm font-medium">Nouveau Ticket</span>
-                        <span className="text-xs text-gray-500 mt-1">{ticket.agencyName} a ouvert un ticket</span>
-                      </DropdownMenuItem>
-                    ))}
-
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-center font-medium text-blue-600 justify-center">
-                      Mark all as read
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
+                  </div>
+                  <div className="max-h-[60vh] overflow-y-auto">
+                    {adminNotifsCount === 0 ? (
+                      <div className="p-8 text-center flex flex-col items-center justify-center">
+                        <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
+                          <Bell className="w-6 h-6 text-gray-300" />
+                        </div>
+                        <p className="text-sm font-medium text-gray-900">Aucune nouvelle notification</p>
+                        <p className="text-xs text-gray-500 mt-1">Vous êtes à jour !</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-100">
+                        <AnimatePresence>
+                          {unreadNotifications.map(notif => (
+                            <motion.div 
+                              key={notif.id}
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="group p-4 hover:bg-gray-50 transition-colors cursor-pointer flex gap-3 items-start"
+                              onClick={() => {
+                                markNotificationAsRead(notif.id);
+                                if(notif.link) navigate(notif.link);
+                              }}
+                            >
+                              <div className={`shrink-0 w-2 h-2 mt-2 rounded-full ${notif.type === 'success' ? 'bg-green-500' : notif.type === 'error' ? 'bg-red-500' : notif.type === 'warning' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                              <div className="flex-1 space-y-1">
+                                <p className="text-sm font-bold text-gray-900 leading-tight">{notif.title}</p>
+                                <p className="text-xs text-gray-600 line-clamp-2">{notif.message}</p>
+                                <p className="text-[10px] text-gray-400 font-medium">{new Date(notif.createdAt).toLocaleString()}</p>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                      </div>
+                    )}
+                  </div>
+                  {adminNotifsCount > 0 && (
+                    <div className="p-2 border-t bg-gray-50">
+                      <button 
+                        className="w-full py-2 text-xs font-bold text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                        onClick={() => markAllNotificationsAsRead("admin")}
+                      >
+                        Tout marquer comme lu
+                      </button>
+                    </div>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
 

@@ -1,28 +1,16 @@
 import re
 
-content = open('src/hooks/useFirebaseSync.ts').read()
+with open('src/hooks/useFirebaseSync.ts', 'r') as f:
+    content = f.read()
 
-sync_code = """
-        // Support Tickets
-        unsubs.push(onSnapshot(collection(db, 'supportTickets'), snapshot => {
+# Add notifications listener
+if 'getQuery(\'notifications\')' not in content:
+    notif_listener = """
+        unsubsRef.current.push(onSnapshot(getQuery('notifications'), snapshot => {
           const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setStore({ supportTickets: docs as any });
-        }));
+          setStore({ notifications: docs as any });
+        }));"""
+    content = content.replace("unsubsRef.current.push(onSnapshot(getQuery('applications')", notif_listener + "\n        unsubsRef.current.push(onSnapshot(getQuery('applications')")
 
-        // Transactions
-        unsubs.push(onSnapshot(collection(db, 'transactions'), snapshot => {
-          const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setStore({ transactions: docs as any });
-        }));
-
-        // Recharge Requests
-        unsubs.push(onSnapshot(collection(db, 'rechargeRequests'), snapshot => {
-          const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setStore({ rechargeRequests: docs as any });
-        }));
-"""
-
-if "supportTickets" not in content:
-    content = content.replace("// Countries", sync_code + "\n        // Countries")
-
-open('src/hooks/useFirebaseSync.ts', 'w').write(content)
+with open('src/hooks/useFirebaseSync.ts', 'w') as f:
+    f.write(content)

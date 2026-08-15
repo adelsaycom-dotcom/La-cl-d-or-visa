@@ -10,7 +10,7 @@ export interface Agency {
   role: string;
 }
 import { create } from "zustand";
-import { collection, doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, deleteDoc, runTransaction } from 'firebase/firestore';
 import { db } from '../firebase';
 
 export interface VisaType {
@@ -101,6 +101,9 @@ export interface AppState {
   
   countries: Country[];
   agencies: Agency[];
+  notifications: Notification[];
+  markNotificationAsRead: (id: string) => void;
+  markAllNotificationsAsRead: (agencyId: string) => void;
   updateAgencyStatus: (id: string, status: string) => void;
   applications: Application[];
   organizedTrips: OrganizedTrip[];
@@ -145,6 +148,41 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
   updateSupportTicket: async (id, updates) => {
     await updateDoc(doc(db, 'supportTickets', id), updates);
+    
+    // Check if new message was added by agency
+    if (updates.messages) {
+      const messages = updates.messages as any[];
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage && lastMessage.sender === 'agency') {
+        const ticket = get().supportTickets.find(t => t.id === id);
+        const notifId = doc(collection(db, 'notifications')).id;
+        await setDoc(doc(db, 'notifications', notifId), {
+          id: notifId,
+          agencyId: 'admin',
+          title: 'Nouveau message Support',
+          message: `${ticket?.agencyName || 'Agence'} a répondu au ticket: "${ticket?.subject}"`,
+          type: 'info',
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: '/admin/support'
+        });
+      }
+      
+      if (lastMessage && lastMessage.sender === 'admin') {
+         const ticket = get().supportTickets.find(t => t.id === id);
+         const notifId = doc(collection(db, 'notifications')).id;
+         await setDoc(doc(db, 'notifications', notifId), {
+          id: notifId,
+          agencyId: ticket?.agencyId,
+          title: 'Réponse Support',
+          message: `L'administrateur a répondu à votre ticket: "${ticket?.subject}"`,
+          type: 'info',
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: '/agency/support'
+        });
+      }
+    }
   },
   addTransaction: async (tx) => {
     const id = doc(collection(db, 'transactions')).id;
@@ -156,9 +194,36 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
   updateRechargeRequestStatus: async (id, status) => {
     await updateDoc(doc(db, 'rechargeRequests', id), { status });
+    // Add Notification
+    const req = get().rechargeRequests.find(r => r.id === id);
+    if (req && status !== 'Pending') {
+      const notifId = doc(collection(db, 'notifications')).id;
+      await setDoc(doc(db, 'notifications', notifId), {
+        id: notifId,
+        agencyId: req.agencyId,
+        title: status === 'Approved' ? 'Recharge Approuvée' : 'Recharge Rejetée',
+        message: status === 'Approved' ? `Votre demande de recharge de ${req.amount} DA a été approuvée.` : `Votre demande de recharge de ${req.amount} DA a été rejetée.`,
+        type: status === 'Approved' ? 'success' : 'error',
+        read: false,
+        createdAt: new Date().toISOString(),
+        link: '/agency/wallet'
+      });
+    }
   },
 
+  markNotificationAsRead: async (id) => {
+    await updateDoc(doc(db, 'notifications', id), { read: true });
+  },
+  markAllNotificationsAsRead: async (agencyId) => {
+    // This will be done in the component by looping or batch, but we can do a simple batch here
+    const q = query(collection(db, 'notifications'), where('agencyId', '==', agencyId), where('read', '==', false));
+    const snap = await getDocs(q);
+    const batch = writeBatch(db);
+    snap.docs.forEach(d => batch.update(d.ref, { read: true }));
+    await batch.commit();
+  },
   agencies: [],
+  notifications: [],
   updateAgencyStatus: async (id, status) => { await updateDoc(doc(db, "users", id), { status }); },
   countries: [],
   applications: [],
@@ -256,25 +321,95 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   addApplication: async (application) => {
     const appId = application.id || doc(collection(db, 'applications')).id;
-    await setDoc(doc(db, 'applications', appId), {
-      ...application,
-      id: appId
+    const userRef = doc(db, 'users', application.agencyId);
+    
+    await runTransaction(db, async (transaction) => {
+      const userDoc = await transaction.get(userRef);
+      if (!userDoc.exists()) {
+        throw new Error("Agence introuvable");
+      }
+      
+      const currentBalance = userDoc.data().balance || 0;
+      const price = application.price || 0;
+      
+      if (currentBalance < price) {
+        throw new Error("Solde insuffisant pour cette opération.");
+      }
+      
+      transaction.update(userRef, { balance: currentBalance - price });
+      transaction.set(doc(db, 'applications', appId), {
+        ...application,
+        id: appId
+      });
+      
+      // Also create a transaction record
+      const txRef = doc(collection(db, 'transactions'));
+      transaction.set(txRef, {
+        id: txRef.id,
+        agencyId: application.agencyId,
+        agencyName: application.agencyName || '',
+        amount: price,
+        type: 'debit',
+        status: 'completed',
+        date: new Date().toISOString().split('T')[0],
+        description: `Paiement pour visa ${application.visaType || 'Service'} (${application.travelerName || ''})`
+      });
+      
+      // Notify Admin
+      const notifRef = doc(collection(db, 'notifications'));
+      transaction.set(notifRef, {
+        id: notifRef.id,
+        agencyId: 'admin',
+        title: 'Nouvelle demande de Visa',
+        message: `${application.agencyName || 'Une agence'} a soumis une demande pour ${application.travelerName || 'un client'}.`,
+        type: 'info',
+        read: false,
+        createdAt: new Date().toISOString(),
+        link: '/admin/applications'
+      });
     });
   },
 
   updateApplicationStatus: async (id, status) => {
     await updateDoc(doc(db, 'applications', id), { status });
+    // Add Notification
+    const app = get().applications.find(a => a.id === id);
+    if (app) {
+      const notifId = doc(collection(db, 'notifications')).id;
+      await setDoc(doc(db, 'notifications', notifId), {
+        id: notifId,
+        agencyId: app.agencyId,
+        title: `Visa ${status}`,
+        message: `Le statut de la demande de visa pour ${app.travelerName || 'votre client'} est maintenant: ${status}.`,
+        type: status === 'Approved' ? 'success' : (status === 'Rejected' ? 'error' : 'info'),
+        read: false,
+        createdAt: new Date().toISOString(),
+        link: '/agency/applications'
+      });
+    }
   },
 
   updateApplication: async (id, updates) => {
     await updateDoc(doc(db, 'applications', id), updates);
   },
   clearData: () => {
-    set({ agencies: [], supportTickets: [], transactions: [], rechargeRequests: [], countries: [], applications: [], organizedTrips: [], tripReservations: [] });
+    set({ agencies: [],
+  notifications: [], supportTickets: [], transactions: [], rechargeRequests: [], countries: [], applications: [], organizedTrips: [], tripReservations: [] });
   }
 }));
 
 // Add support tickets, transactions, and recharge requests to the store
+export interface Notification {
+  id: string;
+  agencyId: string;
+  title: string;
+  message: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+  read: boolean;
+  createdAt: string;
+  link?: string;
+}
+
 export interface SupportTicket {
   id: string;
   agencyId: string;
