@@ -1,4 +1,7 @@
-import { useState } from "react";
+import re
+
+# We will just write a new component structure based on the old one, but improved.
+content = """import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -357,22 +360,12 @@ export function ApplicationManagement() {
                                 <input 
                                   type="file" 
                                   className="hidden" 
-                                  accept=".pdf,.jpg,.jpeg,.png"
                                   onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
-                                      if (file.size > 700 * 1024) {
-                                        alert("Erreur : Le fichier est trop volumineux (Max 700 Ko). Veuillez compresser votre document.");
-                                        return;
-                                      }
                                       const reader = new FileReader();
-                                      reader.onload = async (event) => {
-                                        try {
-                                          await updateApplication(selectedApp.id, { extraData: { ...(selectedApp.extraData || {}), finalDocument: event.target?.result as string } });
-                                          alert("Document remplacé avec succès !");
-                                        } catch (err) {
-                                          alert("Erreur lors du remplacement du document. Fichier trop volumineux.");
-                                        }
+                                      reader.onload = (event) => {
+                                        updateApplication(selectedApp.id, { extraData: { ...(selectedApp.extraData || {}), finalDocument: event.target?.result as string } });
                                       };
                                       reader.readAsDataURL(file);
                                     }
@@ -386,26 +379,16 @@ export function ApplicationManagement() {
                               <span className="text-sm font-bold text-green-800 block">
                                 Sélectionner un fichier
                               </span>
-                              <span className="text-xs font-medium text-green-600/70 block mt-1">PDF, JPG, PNG (Max 700 Ko pour la démo)</span>
+                              <span className="text-xs font-medium text-green-600/70 block mt-1">PDF, JPG, PNG (Max 5Mo)</span>
                               <input 
                                 type="file" 
                                 className="hidden" 
-                                accept=".pdf,.jpg,.jpeg,.png"
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
                                   if (file) {
-                                    if (file.size > 700 * 1024) {
-                                      alert("Erreur : Le fichier est trop volumineux (Max 700 Ko) pour notre base de données de test Firestore. Veuillez compresser votre PDF ou utiliser un fichier plus léger.");
-                                      return;
-                                    }
                                     const reader = new FileReader();
-                                    reader.onload = async (event) => {
-                                      try {
-                                        await updateApplication(selectedApp.id, { extraData: { ...(selectedApp.extraData || {}), finalDocument: event.target?.result as string } });
-                                        alert("Document téléversé avec succès !");
-                                      } catch (err) {
-                                        alert("Erreur lors de l'envoi du document. Il est peut-être trop volumineux.");
-                                      }
+                                    reader.onload = (event) => {
+                                      updateApplication(selectedApp.id, { extraData: { ...(selectedApp.extraData || {}), finalDocument: event.target?.result as string } });
                                     };
                                     reader.readAsDataURL(file);
                                   }
@@ -444,3 +427,7 @@ export function ApplicationManagement() {
     </div>
   );
 }
+"""
+
+with open('components/admin/ApplicationManagement.tsx', 'w') as f:
+    f.write(content)

@@ -20,17 +20,18 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { EvisaForm, ResidenceForm, AssuranceForm, GenericServiceForm } from "./forms";
 import { useAppStore, ServiceType } from "../../src/store/useAppStore";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 export function VisaWizard() {
-  const { countries, addApplication, agencyBalance, setAgencyBalance } = useAppStore();
+  const { services, addApplication, agencyBalance, setAgencyBalance } = useAppStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const serviceParam = searchParams.get("service") || "evisa";
 
   const [step, setStep] = useState(1);
-  const [selectedCountry, setSelectedCountry] = useState<any>(null);
+  const [selectedService, setSelectedService] = useState<any>(null);
   const [selectedVisa, setSelectedVisa] = useState<any>(null);
 
   const [customFormData, setCustomFormData] = useState<Record<string, any>>({});
@@ -79,15 +80,15 @@ export function VisaWizard() {
   const currentService = serviceTitles[serviceParam] || serviceTitles["evisa"];
 
   const handleSubmit = async () => {
-    const price = selectedVisa?.price || 0;
+    const price = (selectedService?.price || 0) || 0;
     try {
       await addApplication({
       id: "APP-" + Math.floor(Math.random() * 100000),
       agencyId: auth.currentUser?.uid || "a1",
       agencyName: auth.currentUser?.email || "Current Agency",
-      country: selectedCountry?.name || "Unknown",
-      visaType: selectedVisa?.name || "Standard",
-      serviceType: currentService.type,
+      country: selectedService?.destination || "Unknown",
+      visaType: selectedService?.title || "Standard",
+      serviceType: selectedService?.type || "Evisa",
       travelerName: `${applicant.firstName} ${applicant.lastName}`,
       passportNumber: applicant.passportNumber,
       status: "Pending",
@@ -203,114 +204,60 @@ export function VisaWizard() {
               <div className="space-y-6">
                 <div>
                   <h3 className="text-2xl font-bold text-slate-900">
-                    Où voyagent-ils ? / Option
+                    Choisir la prestation
                   </h3>
                   <p className="text-slate-500 mt-1">
-                    Sélectionnez le pays de destination et l'option de{" "}
-                    {currentService.title.toLowerCase()}.
+                    Sélectionnez la prestation souhaitée dans le catalogue.
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {countries
-                    .filter((c) => c.active)
-                    .map((c) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {services
+                    .filter((s) => s.active && s.type.toLowerCase() === (serviceParam === 'dossier' ? 'dossier' : serviceParam.toLowerCase()))
+                    .map((s) => (
                       <div
-                        key={c.id}
-                        className={`p-6 rounded-2xl border-2 transition-all duration-200 group
+                        key={s.id}
+                        className={`p-6 rounded-2xl border-2 transition-all duration-200 group cursor-pointer
                         ${
-                          selectedCountry?.id === c.id
+                          selectedService?.id === s.id
                             ? "border-blue-600 bg-blue-50/50 shadow-md shadow-blue-100/50"
-                            : "border-slate-100 hover:border-blue-200 hover:shadow-sm"
+                            : "border-slate-100 hover:border-blue-200 hover:shadow-sm bg-white"
                         }`}
+                        onClick={() => setSelectedService(s)}
                       >
-                        <div
-                          className="flex justify-between items-start cursor-pointer"
-                          onClick={() => setSelectedCountry(c)}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="text-4xl bg-white w-16 h-16 rounded-xl shadow-sm flex items-center justify-center border border-slate-100">
-                              {c.flag}
-                            </div>
-                            <div>
-                              <div className="font-bold text-slate-900 text-lg group-hover:text-blue-600 transition-colors">
-                                {c.name}
-                              </div>
-                            </div>
+                        <div className="flex justify-between items-start mb-4">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm ${selectedService?.id === s.id ? 'bg-white' : 'bg-gray-50'}`}>
+                            {s.flag}
+                          </div>
+                          <div className={`px-2 py-1 rounded text-xs font-bold ${selectedService?.id === s.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                            {s.price.toLocaleString()} DZD
                           </div>
                         </div>
-
-                        {selectedCountry?.id === c.id &&
-                          c.visaTypes.length > 0 && (
-                            <div className="mt-4 pt-3 border-t border-blue-200/50">
-                              <h4 className="text-sm font-semibold mb-2 text-slate-700">
-                                Choisir l'option:
-                              </h4>
-                              <div className="space-y-1">
-                                {c.visaTypes.map((v) => (
-                                  <div key={v.id} className="space-y-1">
-                                    <div
-                                      onClick={() => setSelectedVisa(v)}
-                                      className={`p-3 rounded-lg border cursor-pointer text-sm flex justify-between items-center ${selectedVisa?.id === v.id ? "bg-blue-600 text-white border-blue-700" : "bg-white text-slate-700 border-slate-200 hover:border-blue-300"}`}
-                                    >
-                                      <div>
-                                        <div className="font-semibold">
-                                          {v.name}
-                                        </div>
-                                        <div className={`text-xs opacity-80`}>
-                                          {v.processingTime}
-                                        </div>
-                                      </div>
-                                      <div className="font-bold">
-                                        {v.price} DA
-                                      </div>
-                                    </div>
-                                    {selectedVisa?.id === v.id &&
-                                      v.conditions &&
-                                      v.conditions.length > 0 && (
-                                        <div className="bg-amber-50 text-amber-900 text-xs p-3 rounded-lg border border-amber-200/60 flex flex-col gap-1.5">
-                                          <div className="font-bold flex items-center gap-1.5">
-                                            <Info className="w-3.5 h-3.5" />{" "}
-                                            Conditions
-                                          </div>
-                                          <ul className="list-disc pl-4 space-y-0.5">
-                                            {v.conditions.map(
-                                              (
-                                                condition: string,
-                                                i: number,
-                                              ) => (
-                                                <li key={i}>{condition}</li>
-                                              ),
-                                            )}
-                                          </ul>
-                                        </div>
-                                      )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        {selectedCountry?.id === c.id &&
-                          c.visaTypes.length === 0 && (
-                            <div className="mt-4 pt-3 border-t border-blue-200/50 text-sm text-red-500">
-                              Aucune option disponible pour ce pays.
-                            </div>
-                          )}
+                        <h4 className="font-bold text-slate-900 text-lg leading-tight mb-1">{s.title}</h4>
+                        <p className="text-sm text-slate-500 font-medium">{s.destination}</p>
+                        
+                        <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-3 text-xs text-slate-500">
+                          <span className="flex items-center gap-1"><Info className="w-3.5 h-3.5" /> {s.processingTime}</span>
+                        </div>
                       </div>
                     ))}
+                    
+                  {services.filter((s) => s.active && s.type.toLowerCase() === (serviceParam === 'dossier' ? 'dossier' : serviceParam.toLowerCase())).length === 0 && (
+                    <div className="col-span-full p-8 text-center text-gray-500 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                       Aucune prestation active trouvée pour ce type de service.
+                    </div>
+                  )}
                 </div>
               </div>
             )}
-
             {step === 2 && (
               <div className="space-y-6 max-w-3xl mx-auto">
                 <div className="text-center">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-semibold mb-4">
-                    <span>{selectedCountry?.flag}</span> {selectedCountry?.name}{" "}
-                    - {selectedVisa?.name}
+                    <span>{selectedService?.flag}</span> {selectedService?.destination} - {selectedService?.title}
                   </div>
                   <h3 className="text-2xl font-bold text-slate-900">
-                    Détails du demandeur
+                    Détails du dossier
                   </h3>
                   <p className="text-slate-500 mt-1">
                     Saisissez les informations exactement comme elles
@@ -326,507 +273,14 @@ export function VisaWizard() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 pb-1 border-b border-slate-200">
-                    <h4 className="font-bold text-slate-800">
-                      Informations Personnelles
-                    </h4>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-semibold text-slate-700">
-                      Prénom <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      className="h-9 text-sm bg-white"
-                      placeholder="Prénoms"
-                      value={applicant.firstName}
-                      onChange={(e) =>
-                        setApplicant({
-                          ...applicant,
-                          firstName: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-semibold text-slate-700">
-                      Nom de famille <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      className="h-9 text-sm bg-white"
-                      placeholder="Nom"
-                      value={applicant.lastName}
-                      onChange={(e) =>
-                        setApplicant({ ...applicant, lastName: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-semibold text-slate-700">
-                      Date de naissance <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      className="h-9 text-sm bg-white"
-                      type="date"
-                      value={applicant.dob}
-                      onChange={(e) =>
-                        setApplicant({ ...applicant, dob: e.target.value })
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-1 lg:col-span-2">
-                    <label className="text-sm font-semibold text-slate-700">
-                      Nationalité <span className="text-red-500">*</span>
-                    </label>
-                    <Select
-                      value={applicant.nationality}
-                      onValueChange={(v) =>
-                        setApplicant({ ...applicant, nationality: v })
-                      }
-                    >
-                      <SelectTrigger className="h-9 text-sm bg-white">
-                        <SelectValue placeholder="Sélectionnez la nationalité..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="dz">Algérienne</SelectItem>
-                        <SelectItem value="fr">Française</SelectItem>
-                        <SelectItem value="uk">Britannique</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 pb-1 pt-3 border-b border-slate-200">
-                    <h4 className="font-bold text-slate-800">Coordonnées</h4>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-semibold text-slate-700">
-                      Numéro de téléphone{" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      className="h-9 text-sm bg-white"
-                      placeholder="Ex: 0555 12 34 56"
-                      value={applicant.phoneNumber}
-                      onChange={(e) =>
-                        setApplicant({
-                          ...applicant,
-                          phoneNumber: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-semibold text-slate-700">
-                      Adresse email <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      type="email"
-                      className="h-9 text-sm bg-white"
-                      placeholder="Email"
-                      value={applicant.email}
-                      onChange={(e) =>
-                        setApplicant({ ...applicant, email: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1 lg:col-span-3">
-                    <label className="text-sm font-semibold text-slate-700">
-                      Adresse de résidence{" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      className="h-9 text-sm bg-white"
-                      placeholder="Adresse complète"
-                      value={applicant.residenceAddress}
-                      onChange={(e) =>
-                        setApplicant({
-                          ...applicant,
-                          residenceAddress: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 pb-1 pt-3 border-b border-slate-200">
-                    <h4 className="font-bold text-slate-800">Filiation</h4>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-semibold text-slate-700">
-                      Nom et prénom du père (Français)
-                    </label>
-                    <Input
-                      className="h-9 text-sm bg-white"
-                      placeholder="En français"
-                      value={applicant.fatherNameFr}
-                      onChange={(e) =>
-                        setApplicant({
-                          ...applicant,
-                          fatherNameFr: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-semibold text-slate-700">
-                      Nom et prénom du père (Arabe)
-                    </label>
-                    <Input
-                      className="h-9 text-sm bg-white text-right"
-                      placeholder="بالعربية"
-                      value={applicant.fatherNameAr}
-                      onChange={(e) =>
-                        setApplicant({
-                          ...applicant,
-                          fatherNameAr: e.target.value,
-                        })
-                      }
-                      dir="rtl"
-                    />
-                  </div>
-                  <div className="hidden lg:block"></div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-semibold text-slate-700">
-                      Nom et prénom de la mère (Français)
-                    </label>
-                    <Input
-                      className="h-9 text-sm bg-white"
-                      placeholder="En français"
-                      value={applicant.motherNameFr}
-                      onChange={(e) =>
-                        setApplicant({
-                          ...applicant,
-                          motherNameFr: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-semibold text-slate-700">
-                      Nom et prénom de la mère (Arabe)
-                    </label>
-                    <Input
-                      className="h-9 text-sm bg-white text-right"
-                      placeholder="بالعربية"
-                      value={applicant.motherNameAr}
-                      onChange={(e) =>
-                        setApplicant({
-                          ...applicant,
-                          motherNameAr: e.target.value,
-                        })
-                      }
-                      dir="rtl"
-                    />
-                  </div>
-                  <div className="hidden lg:block"></div>
-
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 pb-1 pt-3 border-b border-slate-200">
-                    <h4 className="font-bold text-slate-800">Passeport</h4>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-semibold text-slate-700">
-                      Numéro de passeport{" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      className="h-9 text-sm bg-white font-mono uppercase text-lg"
-                      placeholder="AB123456"
-                      value={applicant.passportNumber}
-                      onChange={(e) =>
-                        setApplicant({
-                          ...applicant,
-                          passportNumber: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-semibold text-slate-700">
-                      Date de délivrance <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      className="h-9 text-sm bg-white"
-                      type="date"
-                      value={applicant.passportIssueDate}
-                      onChange={(e) =>
-                        setApplicant({
-                          ...applicant,
-                          passportIssueDate: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-semibold text-slate-700">
-                      Date d'expiration <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      className="h-9 text-sm bg-white"
-                      type="date"
-                      value={applicant.passportExpiryDate}
-                      onChange={(e) =>
-                        setApplicant({
-                          ...applicant,
-                          passportExpiryDate: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-
-                  {currentService.type === "Assurance" && (
-                    <>
-                      <div className="col-span-1 sm:col-span-2 lg:col-span-3 pb-1 pt-3 border-b border-slate-200">
-                        <h4 className="font-bold text-slate-800">
-                          Détails de l'assurance
-                        </h4>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">
-                          Date de départ prévue
-                        </label>
-                        <Input
-                          className="h-9 text-sm bg-white"
-                          type="date"
-                          value={applicant.travelStartDate}
-                          onChange={(e) =>
-                            setApplicant({
-                              ...applicant,
-                              travelStartDate: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">
-                          Date de retour prévue
-                        </label>
-                        <Input
-                          className="h-9 text-sm bg-white"
-                          type="date"
-                          value={applicant.travelEndDate}
-                          onChange={(e) =>
-                            setApplicant({
-                              ...applicant,
-                              travelEndDate: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {currentService.type === "Permis" && (
-                    <>
-                      <div className="col-span-1 sm:col-span-2 lg:col-span-3 pb-1 pt-3 border-b border-slate-200">
-                        <h4 className="font-bold text-slate-800">
-                          Permis de conduire national
-                        </h4>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">
-                          Numéro du permis national
-                        </label>
-                        <Input
-                          className="h-9 text-sm bg-white"
-                          placeholder="N° de permis"
-                          value={applicant.nationalLicenseNumber}
-                          onChange={(e) =>
-                            setApplicant({
-                              ...applicant,
-                              nationalLicenseNumber: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">
-                          Groupe sanguin
-                        </label>
-                        <Select
-                          value={applicant.bloodType}
-                          onValueChange={(v) =>
-                            setApplicant({ ...applicant, bloodType: v })
-                          }
-                        >
-                          <SelectTrigger className="h-9 text-sm bg-white">
-                            <SelectValue placeholder="Sélectionnez..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="O+">O+</SelectItem>
-                            <SelectItem value="O-">O-</SelectItem>
-                            <SelectItem value="A+">A+</SelectItem>
-                            <SelectItem value="A-">A-</SelectItem>
-                            <SelectItem value="B+">B+</SelectItem>
-                            <SelectItem value="B-">B-</SelectItem>
-                            <SelectItem value="AB+">AB+</SelectItem>
-                            <SelectItem value="AB-">AB-</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </>
-                  )}
-
-                  {currentService.type === "Rendez-vous" && (
-                    <>
-                      <div className="col-span-1 sm:col-span-2 lg:col-span-3 pb-1 pt-3 border-b border-slate-200">
-                        <h4 className="font-bold text-slate-800">
-                          Préférences du rendez-vous
-                        </h4>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">
-                          Consulat / Ambassade / Centre
-                        </label>
-                        <Input
-                          className="h-9 text-sm bg-white"
-                          placeholder="Ex: TLS Contact, VFS Global"
-                          value={applicant.consulate}
-                          onChange={(e) =>
-                            setApplicant({
-                              ...applicant,
-                              consulate: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">
-                          Date souhaitée
-                        </label>
-                        <Input
-                          className="h-9 text-sm bg-white"
-                          type="date"
-                          value={applicant.preferredDate}
-                          onChange={(e) =>
-                            setApplicant({
-                              ...applicant,
-                              preferredDate: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {currentService.type === "Etude" && (
-                    <>
-                      <div className="col-span-1 sm:col-span-2 lg:col-span-3 pb-1 pt-3 border-b border-slate-200">
-                        <h4 className="font-bold text-slate-800">
-                          Détails des études
-                        </h4>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">
-                          Niveau d'étude prévu
-                        </label>
-                        <Input
-                          className="h-9 text-sm bg-white"
-                          placeholder="Ex: Licence, Master"
-                          value={applicant.studyLevel}
-                          onChange={(e) =>
-                            setApplicant({
-                              ...applicant,
-                              studyLevel: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">
-                          Nom de l'établissement
-                        </label>
-                        <Input
-                          className="h-9 text-sm bg-white"
-                          placeholder="Université / Ecole"
-                          value={applicant.university}
-                          onChange={(e) =>
-                            setApplicant({
-                              ...applicant,
-                              university: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {currentService.type === "Invitation" && (
-                    <>
-                      <div className="col-span-1 sm:col-span-2 lg:col-span-3 pb-1 pt-3 border-b border-slate-200">
-                        <h4 className="font-bold text-slate-800">
-                          Informations de l'invitant
-                        </h4>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">
-                          Nom complet de l'invitant
-                        </label>
-                        <Input
-                          className="h-9 text-sm bg-white"
-                          placeholder="Nom et prénom"
-                          value={applicant.inviterName}
-                          onChange={(e) =>
-                            setApplicant({
-                              ...applicant,
-                              inviterName: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">
-                          Lien de parenté / Relation
-                        </label>
-                        <Input
-                          className="h-9 text-sm bg-white"
-                          placeholder="Ex: Oncle, Ami"
-                          value={applicant.relationship}
-                          onChange={(e) =>
-                            setApplicant({
-                              ...applicant,
-                              relationship: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">
-                          Date d'arrivée prévue
-                        </label>
-                        <Input
-                          className="h-9 text-sm bg-white"
-                          type="date"
-                          value={applicant.travelStartDate}
-                          onChange={(e) =>
-                            setApplicant({
-                              ...applicant,
-                              travelStartDate: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 pb-1 pt-3 border-b border-slate-200">
-                    <h4 className="font-bold text-slate-800">
-                      Notes / Informations complémentaires
-                    </h4>
-                  </div>
-                  <div className="space-y-1 lg:col-span-3">
-                    <Input
-                      className="h-9 text-sm bg-white"
-                      placeholder="Remarques (optionnel)"
-                      value={applicant.notes}
-                      onChange={(e) =>
-                        setApplicant({ ...applicant, notes: e.target.value })
-                      }
-                    />
-                  </div>
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                  {selectedService?.type === 'Evisa' && <EvisaForm data={applicant} onChange={setApplicant} />}
+                  {selectedService?.type === 'Residence' && <ResidenceForm data={applicant} onChange={setApplicant} />}
+                  {selectedService?.type === 'Assurance' && <AssuranceForm data={applicant} onChange={setApplicant} />}
+                  {!['Evisa', 'Residence', 'Assurance'].includes(selectedService?.type) && <GenericServiceForm data={applicant} onChange={setApplicant} />}
                 </div>
               </div>
             )}
-
             {step === 3 && (
               <div className="space-y-6 max-w-4xl mx-auto">
                 <div className="text-center">
@@ -840,9 +294,9 @@ export function VisaWizard() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {selectedVisa?.requiredDocuments &&
-                  selectedVisa.requiredDocuments.length > 0 ? (
-                    selectedVisa.requiredDocuments.map(
+                  {selectedService?.requiredDocuments &&
+                  selectedService.requiredDocuments.length > 0 ? (
+                    selectedService.requiredDocuments.map(
                       (doc: string, i: number) => (
                         <label
                           key={i}
@@ -862,7 +316,7 @@ export function VisaWizard() {
                             className="hidden" 
                             onChange={(e) => {
                               const file = e.target.files?.[0];
-                              if (file) {
+                              if (file) { if (file.size > 700 * 1024) { alert("Erreur : Le fichier est trop volumineux (Max 700 Ko) pour notre base de données de test Firestore. Veuillez compresser votre PDF ou utiliser un fichier plus léger."); return; }
                                 const reader = new FileReader();
                                 reader.onload = (event) => {
                                   setCustomFormData(prev => ({
@@ -891,7 +345,7 @@ export function VisaWizard() {
                         </div>
                         <input type="file" className="hidden" onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) {
+                          if (file) { if (file.size > 700 * 1024) { alert("Erreur : Le fichier est trop volumineux (Max 700 Ko) pour notre base de données de test Firestore. Veuillez compresser votre PDF ou utiliser un fichier plus léger."); return; }
                             const reader = new FileReader();
                             reader.onload = (event) => setCustomFormData(prev => ({ ...prev, "Passeport": event.target?.result }));
                             reader.readAsDataURL(file);
@@ -910,7 +364,7 @@ export function VisaWizard() {
                         </div>
                         <input type="file" className="hidden" onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) {
+                          if (file) { if (file.size > 700 * 1024) { alert("Erreur : Le fichier est trop volumineux (Max 700 Ko) pour notre base de données de test Firestore. Veuillez compresser votre PDF ou utiliser un fichier plus léger."); return; }
                             const reader = new FileReader();
                             reader.onload = (event) => setCustomFormData(prev => ({ ...prev, "Photo": event.target?.result }));
                             reader.readAsDataURL(file);
@@ -937,7 +391,7 @@ export function VisaWizard() {
                       </div>
                       <input type="file" multiple className="hidden" onChange={(e) => {
                         const files = Array.from(e.target.files || []);
-                        files.forEach((file, index) => {
+                        files.forEach((file, index) => { if (file.size > 700 * 1024) { alert("Erreur : Le fichier " + file.name + " est trop volumineux (Max 700 Ko)."); return; }
                           const reader = new FileReader();
                           reader.onload = (event) => {
                             setCustomFormData(prev => ({ 
@@ -993,15 +447,15 @@ export function VisaWizard() {
                     <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-100">
                       <div className="flex items-center gap-4 mb-6 pb-6 border-b border-slate-200">
                         <div className="text-4xl bg-white w-16 h-16 rounded-xl shadow-sm flex items-center justify-center border border-slate-100">
-                          {selectedCountry?.flag || "🌍"}
+                          {selectedService?.flag || "🌍"}
                         </div>
                         <div>
                           <div className="font-bold text-slate-900 text-xl">
                             {currentService.title} -{" "}
-                            {selectedCountry?.name || "Général"}
+                            {selectedService?.destination || "Général"}
                           </div>
                           <div className="text-slate-500 font-medium">
-                            {selectedVisa?.name}
+                            {selectedService?.title}
                           </div>
                         </div>
                       </div>
@@ -1036,9 +490,9 @@ export function VisaWizard() {
                           </dt>
                           <dd className="font-bold text-green-600 flex items-center gap-1.5 text-base">
                             <CheckCircle2 className="w-5 h-5" />{" "}
-                            {selectedVisa?.requiredDocuments &&
-                            selectedVisa.requiredDocuments.length > 0
-                              ? selectedVisa.requiredDocuments.length
+                            {selectedService?.requiredDocuments &&
+                            selectedService.requiredDocuments.length > 0
+                              ? selectedService.requiredDocuments.length
                               : 2}{" "}
                             Fichiers Téléchargés
                           </dd>
@@ -1070,7 +524,7 @@ export function VisaWizard() {
                             Frais de service
                           </span>
                           <span className="font-mono font-medium text-red-300">
-                            -{selectedVisa?.price || 0} DA
+                            -{(selectedService?.price || 0) || 0} DA
                           </span>
                         </div>
                       </div>
@@ -1080,7 +534,7 @@ export function VisaWizard() {
                           Restant
                         </span>
                         <span className="font-mono text-3xl font-black text-emerald-400">
-                          {4500 - (selectedVisa?.price || 0)}{" "}
+                          {4500 - ((selectedService?.price || 0) || 0)}{" "}
                           <span className="text-lg text-emerald-400/70">
                             DA
                           </span>
@@ -1110,7 +564,7 @@ export function VisaWizard() {
           <Button
             onClick={nextStep}
             disabled={
-              (step === 1 && (!selectedCountry || !selectedVisa)) ||
+              (step === 1 && (!selectedService)) ||
               (step === 2 &&
                 (!applicant.firstName ||
                   !applicant.lastName ||

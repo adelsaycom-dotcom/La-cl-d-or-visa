@@ -98,12 +98,11 @@ export default function OrganizedTripsManagement() {
         </div>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <div onClick={() => setIsAddOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium"><Plus className="w-4 h-4 mr-2" /> Nouveau Voyage</div>
-          <DialogContent className="sm:max-w-[600px] bg-white max-h-[90vh]">
+          <DialogContent className="sm:max-w-[600px] bg-white max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Publier un Voyage Organisé</DialogTitle>
             </DialogHeader>
-            <ScrollArea className="h-[60vh] pr-4">
-            <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4 py-4 pr-2">
               <div className="col-span-2">
                 <label className="text-sm font-semibold mb-1 block">Titre de l'offre</label>
                 <Input value={newTrip.title} onChange={e => setNewTrip({...newTrip, title: e.target.value})} placeholder="Ex: Découverte de la Cappadoce" />
@@ -122,6 +121,8 @@ export default function OrganizedTripsManagement() {
                        <img src={newTrip.photoUrl} className="w-full h-full object-cover" alt="Preview" />
                     </div>
                   )}
+            </div>
+          </ScrollArea>
                 </div>
               </div>
               <div className="col-span-2 sm:col-span-1">
@@ -222,12 +223,14 @@ export default function OrganizedTripsManagement() {
                       Aucun champ personnalisé
                     </div>
                   )}
+            </div>
+          </ScrollArea>
                 </div>
               </div>
 
             </div>
-            </ScrollArea>
-            <div className="flex justify-end gap-2 mt-4 border-t pt-4">
+            
+            <div className="flex justify-end gap-2 mt-4 border-t pt-4 bg-white sticky bottom-0 z-10 pb-2">
               <Button variant="outline" onClick={() => setIsAddOpen(false)}>Annuler</Button>
               <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleAddTrip}>Créer l'offre</Button>
             </div>
@@ -269,6 +272,8 @@ export default function OrganizedTripsManagement() {
                     <ImageIcon className="w-12 h-12 text-slate-300" />
                   </div>
                 )}
+            </div>
+          </ScrollArea>
                 <div className="absolute top-3 left-3 flex gap-2">
                   <Badge className={trip.status === 'active' ? 'bg-green-500' : trip.status === 'draft' ? 'bg-slate-500' : 'bg-blue-500'}>
                     {trip.status === 'active' ? 'Publié' : trip.status === 'draft' ? 'Brouillon' : 'Terminé'}
@@ -372,12 +377,16 @@ export default function OrganizedTripsManagement() {
                                     ) : (
                                       <span className="text-slate-800 font-semibold">{val as string}</span>
                                     )}
+            </div>
+          </ScrollArea>
                                   </div>
                                 );
                               })}
                             </div>
                           </div>
                         )}
+            </div>
+          </ScrollArea>
                         <p className="text-xs text-slate-400 mt-2">Effectuée le {new Date(res.createdAt).toLocaleString('fr-FR')}</p>
                       </div>
 
@@ -401,6 +410,8 @@ export default function OrganizedTripsManagement() {
               )}
             </div>
           </ScrollArea>
+            </div>
+          
         </DialogContent>
       </Dialog>
     </div>

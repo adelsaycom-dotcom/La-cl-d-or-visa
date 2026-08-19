@@ -1,4 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import re
+
+with open('components/admin/SupportManagement.tsx', 'r') as f:
+    content = f.read()
+
+new_content = """import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, AlertCircle, Send, ArrowLeft, Search, CheckCircle, Clock, Info } from "lucide-react";
@@ -11,7 +16,7 @@ export function SupportManagement() {
   const { supportTickets: tickets, updateSupportTicket } = useAppStore();
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
-  const [filter, setFilter] = useState("ACTIVE");
+  const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -45,7 +50,7 @@ export function SupportManagement() {
   };
 
   const filteredTickets = tickets.filter(t => {
-    const matchesFilter = filter === "ALL" ? true : filter === "ACTIVE" ? t.status !== "RESOLVED" : t.status === filter;
+    const matchesFilter = filter === "ALL" || t.status === filter;
     const matchesSearch = (t.agencyName || t.agency || "").toLowerCase().includes(search.toLowerCase()) || 
                           t.id.toLowerCase().includes(search.toLowerCase()) ||
                           t.subject.toLowerCase().includes(search.toLowerCase());
@@ -89,14 +94,13 @@ export function SupportManagement() {
               </div>
               <Select value={filter} onValueChange={setFilter}>
                 <SelectTrigger className="w-full bg-gray-50 border-gray-200">
-                  <SelectValue placeholder="Tickets Actifs" />
+                  <SelectValue placeholder="Tous les statuts" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ACTIVE">Tickets Actifs</SelectItem>
                   <SelectItem value="ALL">Tous les statuts</SelectItem>
                   <SelectItem value="OPEN">Nouveau (Ouvert)</SelectItem>
                   <SelectItem value="IN_PROGRESS">En cours</SelectItem>
-                  <SelectItem value="RESOLVED">Archivés (Résolus)</SelectItem>
+                  <SelectItem value="RESOLVED">Résolu</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -273,3 +277,7 @@ export function SupportManagement() {
     </div>
   );
 }
+"""
+
+with open('components/admin/SupportManagement.tsx', 'w') as f:
+    f.write(new_content)

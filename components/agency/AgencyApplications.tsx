@@ -36,7 +36,7 @@ export function AgencyApplications() {
       case "Approved":
         return (
           <Badge className="bg-green-100 text-green-800 border-none">
-            Approuvé
+            Terminé
           </Badge>
         );
       case "Pending":
@@ -48,7 +48,7 @@ export function AgencyApplications() {
       case "Processing":
         return (
           <Badge className="bg-blue-100 text-blue-800 border-none">
-            En révision
+            En cours de traitement
           </Badge>
         );
       case "Rejected":
@@ -81,8 +81,8 @@ export function AgencyApplications() {
           <SelectContent>
             <SelectItem value="ALL">Tous les statuts</SelectItem>
             <SelectItem value="Pending">En attente</SelectItem>
-            <SelectItem value="Processing">En révision</SelectItem>
-            <SelectItem value="Approved">Approuvé</SelectItem>
+            <SelectItem value="Processing">En cours de traitement</SelectItem>
+            <SelectItem value="Approved">Terminé</SelectItem>
             <SelectItem value="Rejected">Rejeté</SelectItem>
           </SelectContent>
         </Select>
@@ -495,7 +495,7 @@ export function AgencyApplications() {
                   {selectedApp.status === "Approved" && (
                     <div className="bg-green-50 p-6 rounded-lg border border-green-200 text-center">
                       <h4 className="font-bold text-green-900 mb-2">
-                        Le visa est prêt !
+                        Le document est prêt !
                       </h4>
                       <p className="text-sm text-green-700 mb-4">
                         Vous pouvez maintenant télécharger le document final.
@@ -518,7 +518,7 @@ export function AgencyApplications() {
                         Demande Refusée
                       </h4>
                       <p className="text-sm text-red-700 mb-4">
-                        Cette demande a été rejetée par l'administration.
+                        Cette demande a été rejetée par nos services. Veuillez nous contacter pour plus de détails.
                       </p>
                     </div>
                   )}

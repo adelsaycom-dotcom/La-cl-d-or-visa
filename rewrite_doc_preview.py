@@ -1,12 +1,26 @@
-import { useState, useEffect } from "react";
+import re
+
+content = """import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Eye, FileDown } from "lucide-react";
 
+// Convert base64 to Blob
+function base64ToBlob(base64: string): Blob {
+  const arr = base64.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1] || '';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
+}
+
 export function DocumentPreview({ url, name }: { url: string; name: string }) {
   const [open, setOpen] = useState(false);
   const [objectUrl, setObjectUrl] = useState<string>("");
-  const [error, setError] = useState<string>("");
   
   const isImage = url.startsWith("data:image/") || url.includes("image/");
   const isPdf = url.startsWith("data:application/pdf") || url.includes("pdf");
@@ -22,29 +36,18 @@ export function DocumentPreview({ url, name }: { url: string; name: string }) {
 
   useEffect(() => {
     let finalUrl = url;
-    let isMounted = true;
-
-    const processUrl = async () => {
-      if (url.startsWith("data:")) {
-        try {
-          const res = await fetch(url);
-          const blob = await res.blob();
-          finalUrl = URL.createObjectURL(blob);
-          if (isMounted) setObjectUrl(finalUrl);
-        } catch (e) {
-          console.error("Failed to parse base64", e);
-          if (isMounted) setError("Erreur de lecture du document");
-        }
-      } else {
-        if (isMounted) setObjectUrl(url);
+    if (url.startsWith("data:")) {
+      try {
+        const blob = base64ToBlob(url);
+        finalUrl = URL.createObjectURL(blob);
+      } catch (e) {
+        console.error("Failed to parse base64", e);
       }
-    };
-
-    processUrl();
+    }
+    setObjectUrl(finalUrl);
     
     return () => {
-      isMounted = false;
-      if (finalUrl && finalUrl.startsWith("blob:")) {
+      if (finalUrl.startsWith("blob:")) {
         URL.revokeObjectURL(finalUrl);
       }
     };
@@ -67,11 +70,7 @@ export function DocumentPreview({ url, name }: { url: string; name: string }) {
             <DialogTitle className="text-xl font-bold">{name}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-hidden mt-4 bg-slate-100/50 rounded-xl border border-slate-200 flex items-center justify-center min-h-[60vh] relative">
-            {error ? (
-              <div className="text-red-500 text-center p-8 font-medium">
-                Le document n'a pas pu être chargé (Fichier corrompu ou illisible).
-              </div>
-            ) : isImage ? (
+            {isImage ? (
               <img src={objectUrl || url} alt={name} className="w-full h-full object-contain p-2" />
             ) : isPdf ? (
               <iframe src={objectUrl || url} className="absolute inset-0 w-full h-full border-none" title={name} />
@@ -87,3 +86,7 @@ export function DocumentPreview({ url, name }: { url: string; name: string }) {
     </>
   );
 }
+"""
+
+with open('components/DocumentPreview.tsx', 'w') as f:
+    f.write(content)

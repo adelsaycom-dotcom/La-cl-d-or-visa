@@ -1,7 +1,9 @@
-import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
+import re
+
+content = """import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, WalletCards, Bell, HelpCircle, FileText, 
-  Settings, LogOut, Plane, Building2, ShieldCheck, MapPin, Menu, X, ChevronRight, User, Globe2
+  Settings, LogOut, Plane, Building2, ShieldCheck, MapPin, Menu, X, ChevronRight, User
 } from "lucide-react";
 import { 
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger 
@@ -30,7 +32,6 @@ export function AgencyLayout() {
 
   const navItems = [
     { name: "Tableau de Bord", path: "/agency", icon: LayoutDashboard },
-    { name: "Index Passeport", path: "/agency/passport-index", icon: Globe2 },
     { name: "Nouvelle Demande", path: "/agency/apply", icon: FileText, highlight: true },
     { name: "Mes Dossiers", path: "/agency/applications", icon: Plane },
     { name: "Voyages Organisés", path: "/agency/trips", icon: MapPin },
@@ -213,3 +214,7 @@ export function AgencyLayout() {
     </div>
   );
 }
+"""
+
+with open('components/agency/AgencyLayout.tsx', 'w') as f:
+    f.write(content)

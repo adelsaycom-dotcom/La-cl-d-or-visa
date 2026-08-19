@@ -1,4 +1,6 @@
-import { Users, FileText, CheckCircle2, Clock, Map, TrendingUp, Wallet, ArrowRight } from "lucide-react";
+import re
+
+content = """import { Users, FileText, CheckCircle2, Clock, Map, TrendingUp, Wallet, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAppStore } from "../../src/store/useAppStore";
 
@@ -170,3 +172,7 @@ export function AdminDashboard() {
     </div>
   );
 }
+"""
+
+with open('components/admin/AdminDashboard.tsx', 'w') as f:
+    f.write(content)

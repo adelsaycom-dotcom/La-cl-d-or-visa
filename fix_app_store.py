@@ -1,6 +1,11 @@
 import re
 
-content = open('src/store/useAppStore.ts').read()
-if 'addSupportTicket' in content and 'createdAt' in content:
-    # Just to be sure the store handles all required properties properly. It already does since we saw `Omit<SupportTicket, 'id' | 'createdAt'>`
-    pass
+with open('src/store/useAppStore.ts', 'r') as f:
+    content = f.read()
+
+# Fix mock intitializer at the end of the file
+if "addService:" not in content.split("create(")[-1]:
+    content = content.replace("clearData: () => {", "addService: (s) => {}, updateService: (id, s) => {}, deleteService: (id) => {}, clearData: () => {")
+
+with open('src/store/useAppStore.ts', 'w') as f:
+    f.write(content)

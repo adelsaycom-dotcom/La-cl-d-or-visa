@@ -10,7 +10,7 @@ export interface Agency {
   role: string;
 }
 import { create } from "zustand";
-import { collection, doc, setDoc, updateDoc, deleteDoc, runTransaction } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, deleteDoc, runTransaction, writeBatch, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 
 export interface VisaType {
@@ -32,6 +32,19 @@ export interface Country {
   flag: string;
   active: boolean;
   visaTypes: VisaType[];
+}
+
+export interface PrestationService {
+  id: string;
+  title: string;
+  type: "Evisa" | "Residence" | "Permis" | "Assurance" | "Etude" | "Invitation" | "Rendez-vous" | "Dossier";
+  destination: string; // 'Monde' or specific country
+  flag?: string;
+  price: number;
+  processingTime: string;
+  requiredDocuments: string[];
+  conditions: string[];
+  active: boolean;
 }
 
 export interface OrganizedTrip {
@@ -84,6 +97,8 @@ export interface Application {
   price: number;
   extraData?: Record<string, string>;
   customFormData?: Record<string, any>;
+  finalDocument?: string;
+  adminNotes?: string;
 }
 
 export interface AppState {
@@ -100,6 +115,10 @@ export interface AppState {
   setAgencyBalance: (balance: number) => void;
   
   countries: Country[];
+  services: PrestationService[];
+  addService: (s: PrestationService) => void;
+  updateService: (id: string, s: Partial<PrestationService>) => void;
+  deleteService: (id: string) => void;
   agencies: Agency[];
   notifications: Notification[];
   markNotificationAsRead: (id: string) => void;
@@ -226,9 +245,18 @@ export const useAppStore = create<AppState>()((set, get) => ({
   notifications: [],
   updateAgencyStatus: async (id, status) => { await updateDoc(doc(db, "users", id), { status }); },
   countries: [],
+  services: [
+    { id: '1', title: 'Visa Touristique (E-Visa)', type: 'Evisa', destination: 'Turquie', flag: '🇹🇷', price: 15000, processingTime: '3-5 jours', requiredDocuments: ['Passeport', 'Photo'], conditions: ['Passeport valide 6 mois'], active: true },
+    { id: '2', title: 'Dossier Résidence (Non Lucrative)', type: 'Residence', destination: 'Espagne', flag: '🇪🇸', price: 25000, processingTime: '10 jours', requiredDocuments: ['Passeport', 'Fiche Familiale', 'Justificatif de revenus'], conditions: ['Revenus réguliers'], active: true },
+    { id: '3', title: 'Assurance Voyage 30 Jours', type: 'Assurance', destination: 'Monde Entier', flag: '🌍', price: 5000, processingTime: 'Immédiat', requiredDocuments: ['Passeport'], conditions: ['Age < 75 ans'], active: true }
+  ],
   applications: [],
   organizedTrips: [],
   tripReservations: [],
+
+  addService: (s) => set((state) => ({ services: [...state.services, s] })),
+  updateService: (id, s) => set((state) => ({ services: state.services.map(x => x.id === id ? { ...x, ...s } : x) })),
+  deleteService: (id) => set((state) => ({ services: state.services.filter(x => x.id !== id) })),
 
   addOrganizedTrip: async (tripData) => {
     const tripId = doc(collection(db, 'organizedTrips')).id;
@@ -394,7 +422,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
   clearData: () => {
     set({ agencies: [],
-  notifications: [], supportTickets: [], transactions: [], rechargeRequests: [], countries: [], applications: [], organizedTrips: [], tripReservations: [] });
+  notifications: [], supportTickets: [], transactions: [], rechargeRequests: [], countries: [],
+  services: [
+    { id: '1', title: 'Visa Touristique (E-Visa)', type: 'Evisa', destination: 'Turquie', flag: '🇹🇷', price: 15000, processingTime: '3-5 jours', requiredDocuments: ['Passeport', 'Photo'], conditions: ['Passeport valide 6 mois'], active: true },
+    { id: '2', title: 'Dossier Résidence (Non Lucrative)', type: 'Residence', destination: 'Espagne', flag: '🇪🇸', price: 25000, processingTime: '10 jours', requiredDocuments: ['Passeport', 'Fiche Familiale', 'Justificatif de revenus'], conditions: ['Revenus réguliers'], active: true },
+    { id: '3', title: 'Assurance Voyage 30 Jours', type: 'Assurance', destination: 'Monde Entier', flag: '🌍', price: 5000, processingTime: 'Immédiat', requiredDocuments: ['Passeport'], conditions: ['Age < 75 ans'], active: true }
+  ], applications: [], organizedTrips: [], tripReservations: [] });
   }
 }));
 
@@ -429,11 +462,14 @@ export interface SupportTicket {
 export interface Transaction {
   id: string;
   agencyId: string;
+  agencyName?: string;
   type: string;
   amount: number;
   date: string;
-  ref: string;
-  note: string;
+  ref?: string;
+  note?: string;
+  description?: string;
+  status?: string;
   createdAt: string;
 }
 

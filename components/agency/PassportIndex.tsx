@@ -29,19 +29,19 @@ export function PassportIndex() {
 
   const getStatusColor = (status: VisaStatus) => {
     switch (status) {
-      case "free": return "text-green-700 bg-green-50 border-green-200";
+      case "free": return "text-emerald-700 bg-emerald-50 border-emerald-200";
       case "voa": return "text-blue-700 bg-blue-50 border-blue-200";
       case "eta": return "text-purple-700 bg-purple-50 border-purple-200";
-      case "required": return "text-red-700 bg-red-50 border-red-200";
+      case "required": return "text-rose-700 bg-rose-50 border-rose-200";
     }
   };
 
   const getStatusIcon = (status: VisaStatus) => {
     switch (status) {
-      case "free": return <CheckCircle2 className="w-4 h-4 text-green-600" />;
+      case "free": return <CheckCircle2 className="w-4 h-4 text-emerald-600" />;
       case "voa": return <Clock className="w-4 h-4 text-blue-600" />;
       case "eta": return <Globe2 className="w-4 h-4 text-purple-600" />;
-      case "required": return <AlertCircle className="w-4 h-4 text-red-600" />;
+      case "required": return <AlertCircle className="w-4 h-4 text-rose-600" />;
     }
   };
 
@@ -72,9 +72,13 @@ export function PassportIndex() {
                 <SelectValue placeholder="Choisir un passeport" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Algérien">🇩🇿 Passeport Algérien</SelectItem>
-                <SelectItem value="Français">🇫🇷 Passeport Français</SelectItem>
                 <SelectItem value="Émirati">🇦🇪 Passeport Émirati</SelectItem>
+                <SelectItem value="Français">🇫🇷 Passeport Français</SelectItem>
+                <SelectItem value="Canadien">🇨🇦 Passeport Canadien</SelectItem>
+                <SelectItem value="Algérien">🇩🇿 Passeport Algérien</SelectItem>
+                <SelectItem value="Marocain">🇲🇦 Passeport Marocain</SelectItem>
+                <SelectItem value="Tunisien">🇹🇳 Passeport Tunisien</SelectItem>
+                <SelectItem value="Sénégalais">🇸🇳 Passeport Sénégalais</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -92,21 +96,21 @@ export function PassportIndex() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-8 border-t border-gray-100">
-          <div className="bg-green-50/50 rounded-xl p-4 flex flex-col justify-center items-center border border-green-100">
-            <div className="text-3xl font-bold text-green-600">{data.stats.free}</div>
-            <div className="text-xs uppercase tracking-wider text-green-600 mt-1 font-semibold flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500"></div>Sans Visa</div>
+          <div className="bg-emerald-50/50 rounded-xl p-4 flex flex-col justify-center items-center border border-emerald-100 shadow-sm hover:shadow transition-shadow">
+            <div className="text-4xl font-black text-emerald-600 mb-1">{data.stats.free}</div>
+            <div className="text-[10px] uppercase tracking-wider text-emerald-600 font-bold flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>Sans Visa</div>
           </div>
-          <div className="bg-blue-50/50 rounded-xl p-4 flex flex-col justify-center items-center border border-blue-100">
-            <div className="text-3xl font-bold text-blue-600">{data.stats.voa}</div>
-            <div className="text-xs uppercase tracking-wider text-blue-600 mt-1 font-semibold flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"></div>Visa à l'arrivée</div>
+          <div className="bg-blue-50/50 rounded-xl p-4 flex flex-col justify-center items-center border border-blue-100 shadow-sm hover:shadow transition-shadow">
+            <div className="text-4xl font-black text-blue-600 mb-1">{data.stats.voa}</div>
+            <div className="text-[10px] uppercase tracking-wider text-blue-600 font-bold flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>Visa à l'arrivée</div>
           </div>
-          <div className="bg-purple-50/50 rounded-xl p-4 flex flex-col justify-center items-center border border-purple-100">
-            <div className="text-3xl font-bold text-purple-600">{data.stats.eta}</div>
-            <div className="text-xs uppercase tracking-wider text-purple-600 mt-1 font-semibold flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-purple-500"></div>eTA / e-Visa</div>
+          <div className="bg-purple-50/50 rounded-xl p-4 flex flex-col justify-center items-center border border-purple-100 shadow-sm hover:shadow transition-shadow">
+            <div className="text-4xl font-black text-purple-600 mb-1">{data.stats.eta}</div>
+            <div className="text-[10px] uppercase tracking-wider text-purple-600 font-bold flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>eTA / e-Visa</div>
           </div>
-          <div className="bg-red-50/50 rounded-xl p-4 flex flex-col justify-center items-center border border-red-100">
-            <div className="text-3xl font-bold text-red-600">{data.stats.required}</div>
-            <div className="text-xs uppercase tracking-wider text-red-600 mt-1 font-semibold flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500"></div>Requis</div>
+          <div className="bg-rose-50/50 rounded-xl p-4 flex flex-col justify-center items-center border border-rose-100 shadow-sm hover:shadow transition-shadow">
+            <div className="text-4xl font-black text-rose-600 mb-1">{data.stats.required}</div>
+            <div className="text-[10px] uppercase tracking-wider text-rose-600 font-bold flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>Requis</div>
           </div>
         </div>
       </div>

@@ -1,6 +1,8 @@
-import { 
+import re
+
+content = """import { 
   WalletCards, CheckCircle2, Clock, Plane, Building2, Car, ShieldCheck, 
-  GraduationCap, Mail, CalendarDays, FileText, ArrowUpRight, TrendingUp, Globe
+  GraduationCap, Mail, CalendarDays, FileText, ArrowUpRight, TrendingUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -17,11 +19,11 @@ export function AgencyDashboard() {
     { name: "E-Visa", icon: Plane, path: "/agency/apply?service=evisa", color: "bg-blue-50 text-blue-600 border-blue-100" },
     { name: "Résidence", icon: Building2, path: "/agency/apply?service=residence", color: "bg-indigo-50 text-indigo-600 border-indigo-100" },
     { name: "Assurance", icon: ShieldCheck, path: "/agency/apply?service=assurance", color: "bg-emerald-50 text-emerald-600 border-emerald-100" },
-    { name: "Index Passeport", icon: Globe, path: "/agency/passport-index", color: "bg-cyan-50 text-cyan-600 border-cyan-100" },
     { name: "Permis Intl.", icon: Car, path: "/agency/apply?service=permis", color: "bg-amber-50 text-amber-600 border-amber-100" },
     { name: "Études", icon: GraduationCap, path: "/agency/apply?service=etude", color: "bg-purple-50 text-purple-600 border-purple-100" },
     { name: "Invitation", icon: Mail, path: "/agency/apply?service=invitation", color: "bg-pink-50 text-pink-600 border-pink-100" },
     { name: "Rendez-vous", icon: CalendarDays, path: "/agency/apply?service=rendezvous", color: "bg-orange-50 text-orange-600 border-orange-100" },
+    { name: "Traitement", icon: FileText, path: "/agency/apply?service=dossier", color: "bg-slate-50 text-slate-600 border-slate-200" },
   ];
 
   return (
@@ -166,3 +168,7 @@ export function AgencyDashboard() {
     </div>
   );
 }
+"""
+
+with open('components/agency/Dashboard.tsx', 'w') as f:
+    f.write(content)
