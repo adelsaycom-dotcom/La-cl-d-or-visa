@@ -70,6 +70,11 @@ export function useFirebaseSync() {
           setStore({ countries: countries as any });
         }));
 
+        unsubsRef.current.push(onSnapshot(collection(db, 'services'), snapshot => {
+          const services = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setStore({ services: services as any });
+        }));
+
         unsubsRef.current.push(onSnapshot(collection(db, 'organizedTrips'), snapshot => {
           const trips = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           setStore({ organizedTrips: trips as any });

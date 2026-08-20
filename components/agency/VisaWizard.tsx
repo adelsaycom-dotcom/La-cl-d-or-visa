@@ -18,6 +18,7 @@ import {
   User,
   CreditCard,
   ChevronLeft,
+  FileText
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EvisaForm, ResidenceForm, AssuranceForm, GenericServiceForm } from "./forms";
@@ -217,7 +218,7 @@ export function VisaWizard() {
                     .map((s) => (
                       <div
                         key={s.id}
-                        className={`p-6 rounded-2xl border-2 transition-all duration-200 group cursor-pointer
+                        className={`p-6 rounded-2xl border-2 transition-all duration-200 group cursor-pointer relative overflow-hidden
                         ${
                           selectedService?.id === s.id
                             ? "border-blue-600 bg-blue-50/50 shadow-md shadow-blue-100/50"
@@ -225,19 +226,24 @@ export function VisaWizard() {
                         }`}
                         onClick={() => setSelectedService(s)}
                       >
-                        <div className="flex justify-between items-start mb-4">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm ${selectedService?.id === s.id ? 'bg-white' : 'bg-gray-50'}`}>
+                        {selectedService?.id === s.id && (
+                           <div className="absolute top-0 right-0 w-24 h-24 bg-blue-600/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3"></div>
+                        )}
+                        <div className="flex justify-between items-start mb-4 relative z-10">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm ${selectedService?.id === s.id ? 'bg-white border border-blue-100' : 'bg-gray-50 border border-gray-100'}`}>
                             {s.flag}
                           </div>
-                          <div className={`px-2 py-1 rounded text-xs font-bold ${selectedService?.id === s.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                            {s.price.toLocaleString()} DZD
+                          <div className={`px-2 py-1 rounded-md text-xs font-bold shadow-sm ${selectedService?.id === s.id ? 'bg-blue-600 text-white' : 'bg-white border border-slate-100 text-slate-700'}`}>
+                            {s.price.toLocaleString()} DA
                           </div>
                         </div>
-                        <h4 className="font-bold text-slate-900 text-lg leading-tight mb-1">{s.title}</h4>
-                        <p className="text-sm text-slate-500 font-medium">{s.destination}</p>
+                        <h4 className="font-bold text-slate-900 text-lg leading-tight mb-1 relative z-10">{s.title}</h4>
+                        <p className="text-sm text-slate-500 font-medium flex items-center gap-1.5 relative z-10">
+                          <Globe2 className="w-3.5 h-3.5" /> {s.destination}
+                        </p>
                         
-                        <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-3 text-xs text-slate-500">
-                          <span className="flex items-center gap-1"><Info className="w-3.5 h-3.5" /> {s.processingTime}</span>
+                        <div className={`mt-4 pt-4 border-t flex items-center gap-3 text-xs font-medium relative z-10 ${selectedService?.id === s.id ? 'border-blue-100 text-blue-700' : 'border-slate-100 text-slate-500'}`}>
+                          <span className="flex items-center gap-1"><Info className="w-4 h-4" /> Délai: {s.processingTime}</span>
                         </div>
                       </div>
                     ))}
@@ -248,6 +254,22 @@ export function VisaWizard() {
                     </div>
                   )}
                 </div>
+
+                {selectedService && selectedService.description && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-8 bg-blue-50/50 border border-blue-100 p-6 rounded-2xl"
+                  >
+                    <h4 className="font-bold text-blue-900 mb-2 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-blue-600" /> 
+                      Description & Conditions de la prestation
+                    </h4>
+                    <div className="text-sm text-blue-800/80 leading-relaxed whitespace-pre-wrap">
+                      {selectedService.description}
+                    </div>
+                  </motion.div>
+                )}
               </div>
             )}
             {step === 2 && (

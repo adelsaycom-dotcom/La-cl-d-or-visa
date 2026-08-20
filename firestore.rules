@@ -38,6 +38,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /services/{serviceId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     match /applications/{applicationId} {
       allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
       // Agencies must create applications as 'pending'

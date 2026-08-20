@@ -42,6 +42,7 @@ export interface PrestationService {
   flag?: string;
   price: number;
   processingTime: string;
+  description?: string;
   requiredDocuments: string[];
   conditions: string[];
   active: boolean;
@@ -254,9 +255,16 @@ export const useAppStore = create<AppState>()((set, get) => ({
   organizedTrips: [],
   tripReservations: [],
 
-  addService: (s) => set((state) => ({ services: [...state.services, s] })),
-  updateService: (id, s) => set((state) => ({ services: state.services.map(x => x.id === id ? { ...x, ...s } : x) })),
-  deleteService: (id) => set((state) => ({ services: state.services.filter(x => x.id !== id) })),
+  addService: async (s) => {
+    const sId = s.id || doc(collection(db, 'services')).id;
+    await setDoc(doc(db, 'services', sId), { ...s, id: sId });
+  },
+  updateService: async (id, s) => {
+    await updateDoc(doc(db, 'services', id), s);
+  },
+  deleteService: async (id) => {
+    await deleteDoc(doc(db, 'services', id));
+  },
 
   addOrganizedTrip: async (tripData) => {
     const tripId = doc(collection(db, 'organizedTrips')).id;
