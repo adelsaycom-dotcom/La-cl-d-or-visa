@@ -21,7 +21,8 @@ export default function OrganizedTrips() {
   const [clientPhone, setClientPhone] = useState('');
   const [numberOfPeople, setNumberOfPeople] = useState(1);
   const [notes, setNotes] = useState('');
-  const [customFormData, setCustomFormData] = useState<Record<string, string>>({});
+  const [customFormData, setCustomFormData] = useState<Record<string, any>>({});
+  const [passengers, setPassengers] = useState(Array.from({ length: 1 }, () => ({ firstName: '', lastName: '', passportNumber: '' })));
 
   const activeTrips = (organizedTrips || []).filter(t => t.status === 'active' || !t.status);
   const filteredTrips = activeTrips.filter(t => 
@@ -35,13 +36,14 @@ export default function OrganizedTrips() {
         await addTripReservation({
         tripId: selectedTrip.id,
         agencyId: auth.currentUser?.uid || 'agency_1',
-agencyName: auth.currentUser?.email || 'Agency',
+        agencyName: auth.currentUser?.email || 'Agency',
         clientName,
         clientEmail,
         clientPhone,
         numberOfPeople,
         notes,
-        customFormData
+        customFormData: { ...customFormData, passengers },
+        passengerNames: passengers.map(p => p.firstName + ' ' + p.lastName)
         });
         setIsBookingOpen(false);
       setClientName('');
@@ -218,18 +220,74 @@ agencyName: auth.currentUser?.email || 'Agency',
                                 variant="ghost" 
                                 size="icon" 
                                 className="h-8 w-8 rounded-md hover:bg-slate-100"
-                                onClick={() => setNumberOfPeople(Math.max(1, numberOfPeople - 1))}
+                                onClick={() => {
+                                const newCount = Math.max(1, numberOfPeople - 1);
+                                setNumberOfPeople(newCount);
+                                setPassengers(prev => prev.slice(0, newCount));
+                              }}
                               >-</Button>
                               <span className="font-bold text-lg w-8 text-center">{numberOfPeople}</span>
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
                                 className="h-8 w-8 rounded-md hover:bg-slate-100"
-                                onClick={() => setNumberOfPeople(Math.min(trip.availableSeats, numberOfPeople + 1))}
+                                onClick={() => {
+                                const newCount = Math.min(trip.availableSeats, numberOfPeople + 1);
+                                setNumberOfPeople(newCount);
+                                setPassengers(prev => {
+                                  const newArr = [...prev];
+                                  if (newCount > newArr.length) {
+                                    newArr.push({ firstName: '', lastName: '', passportNumber: '' });
+                                  }
+                                  return newArr;
+                                });
+                              }}
                               >+</Button>
                             </div>
                           </div>
-                          <div>
+                          
+                          <div className="border-t border-slate-100 pt-6">
+                            <h3 className="font-bold text-slate-800 mb-4 text-lg">Informations des Voyageurs</h3>
+                            <div className="space-y-4">
+                              {passengers.map((p, idx) => (
+                                <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                  <h4 className="font-bold text-slate-800 mb-3 text-sm">Passager {idx + 1}</h4>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <Input 
+                                      placeholder="Nom" 
+                                      value={p.lastName} 
+                                      onChange={e => {
+                                        const newP = [...passengers];
+                                        newP[idx].lastName = e.target.value;
+                                        setPassengers(newP);
+                                      }}
+                                    />
+                                    <Input 
+                                      placeholder="Prénom" 
+                                      value={p.firstName} 
+                                      onChange={e => {
+                                        const newP = [...passengers];
+                                        newP[idx].firstName = e.target.value;
+                                        setPassengers(newP);
+                                      }}
+                                    />
+                                    <Input 
+                                      className="sm:col-span-2"
+                                      placeholder="N° de Passeport" 
+                                      value={p.passportNumber} 
+                                      onChange={e => {
+                                        const newP = [...passengers];
+                                        newP[idx].passportNumber = e.target.value;
+                                        setPassengers(newP);
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="mt-4">
                             <label className="text-sm font-semibold text-slate-700 block mb-1">Notes / Demandes spéciales</label>
                             <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Régime alimentaire, etc..." />
                           </div>

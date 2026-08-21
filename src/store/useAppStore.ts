@@ -78,6 +78,7 @@ export interface TripReservation {
   numberOfPeople: number;
   status: 'pending' | 'confirmed' | 'cancelled';
   totalPrice: number;
+  paidAmount?: number;
   createdAt: string;
   passengerNames?: string[];
 }
@@ -135,6 +136,7 @@ export interface AppState {
 
   addTripReservation: (reservation: Omit<TripReservation, 'id' | 'createdAt' | 'status' | 'totalPrice'>) => void;
   updateTripReservationStatus: (id: string, status: TripReservation['status']) => void;
+  updateTripReservationPayment: (id: string, amount: number) => void;
 
   addCountry: (country: Country) => void;
   updateCountry: (id: string, data: Partial<Country>) => void;
@@ -294,13 +296,21 @@ export const useAppStore = create<AppState>()((set, get) => ({
       id: resId,
       createdAt: new Date().toISOString(),
       status: 'pending',
-      totalPrice: trip.price * resData.numberOfPeople
+      totalPrice: trip.price * resData.numberOfPeople,
+      paidAmount: 0
     });
 
     // Deduct seats
     await updateDoc(doc(db, 'organizedTrips', resData.tripId), {
       availableSeats: trip.availableSeats - resData.numberOfPeople
     });
+  },
+
+  updateTripReservationPayment: async (id, amount) => {
+    const reservation = get().tripReservations.find(r => r.id === id);
+    if (!reservation) return;
+    const newPaidAmount = (reservation.paidAmount || 0) + amount;
+    await updateDoc(doc(db, 'tripReservations', id), { paidAmount: newPaidAmount });
   },
 
   updateTripReservationStatus: async (id, status) => {
