@@ -1,6 +1,6 @@
 import { 
   WalletCards, CheckCircle2, Clock, Plane, Building2, Car, ShieldCheck, 
-  GraduationCap, Mail, CalendarDays, FileText, ArrowUpRight, TrendingUp, Globe
+  GraduationCap, Mail, CalendarDays, FileText, ArrowUpRight, TrendingUp, Globe, Map, FolderOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -22,6 +22,8 @@ export function AgencyDashboard() {
     { name: "Études", icon: GraduationCap, path: "/agency/apply?service=etude", color: "bg-purple-50 text-purple-600 border-purple-100" },
     { name: "Invitation", icon: Mail, path: "/agency/apply?service=invitation", color: "bg-pink-50 text-pink-600 border-pink-100" },
     { name: "Rendez-vous", icon: CalendarDays, path: "/agency/apply?service=rendezvous", color: "bg-orange-50 text-orange-600 border-orange-100" },
+    { name: "Dossier", icon: FolderOpen, path: "/agency/apply?service=dossier", color: "bg-teal-50 text-teal-600 border-teal-100" },
+    { name: "Voyage Org.", icon: Map, path: "/agency/organized-trips", color: "bg-rose-50 text-rose-600 border-rose-100" },
   ];
 
   return (
@@ -54,7 +56,7 @@ export function AgencyDashboard() {
                 Démarrer une demande
               </h2>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
               {services.map((srv, idx) => (
                 <Link 
                   key={idx} 

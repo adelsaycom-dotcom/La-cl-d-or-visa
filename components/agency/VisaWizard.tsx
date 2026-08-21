@@ -21,7 +21,7 @@ import {
   FileText
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { EvisaForm, ResidenceForm, AssuranceForm, GenericServiceForm } from "./forms";
+import { StandardVisaForm, DossierForm, EtudeForm, PermisForm, AssuranceForm, GenericServiceForm } from "./forms";
 import { useAppStore, ServiceType } from "../../src/store/useAppStore";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -41,23 +41,35 @@ export function VisaWizard() {
     lastName: "",
     passportNumber: "",
     dob: "",
+    birthPlace: "",
     nationality: "",
     phoneNumber: "",
     email: "",
     residenceAddress: "",
     fatherNameFr: "",
+    fatherFirstName: "",
     fatherNameAr: "",
     motherNameFr: "",
+    motherFullName: "",
     motherNameAr: "",
     passportIssueDate: "",
     passportExpiryDate: "",
+    passportIssuePlace: "",
     travelStartDate: "",
     travelEndDate: "",
+    workplaceOrSchool: "",
+    employerPhone: "",
+    workplaceAddress: "",
+    employerEmail: "",
+    beneficiaryPhone: "",
+    studyLevel: "",
+    gradeAverage: "",
+    specialty: "",
+    licenseType: "",
     nationalLicenseNumber: "",
     bloodType: "",
     consulate: "",
     preferredDate: "",
-    studyLevel: "",
     university: "",
     inviterName: "",
     relationship: "",
@@ -98,23 +110,35 @@ export function VisaWizard() {
       customFormData,
       extraData: {
         dob: applicant.dob,
+        birthPlace: applicant.birthPlace,
         nationality: applicant.nationality,
         phoneNumber: applicant.phoneNumber,
         email: applicant.email,
         residenceAddress: applicant.residenceAddress,
+        fatherFirstName: applicant.fatherFirstName,
         fatherNameFr: applicant.fatherNameFr,
         fatherNameAr: applicant.fatherNameAr,
+        motherFullName: applicant.motherFullName,
         motherNameFr: applicant.motherNameFr,
         motherNameAr: applicant.motherNameAr,
         passportIssueDate: applicant.passportIssueDate,
         passportExpiryDate: applicant.passportExpiryDate,
+        passportIssuePlace: applicant.passportIssuePlace,
         travelStartDate: applicant.travelStartDate,
         travelEndDate: applicant.travelEndDate,
+        workplaceOrSchool: applicant.workplaceOrSchool,
+        employerPhone: applicant.employerPhone,
+        workplaceAddress: applicant.workplaceAddress,
+        employerEmail: applicant.employerEmail,
+        beneficiaryPhone: applicant.beneficiaryPhone,
+        studyLevel: applicant.studyLevel,
+        gradeAverage: applicant.gradeAverage,
+        specialty: applicant.specialty,
+        licenseType: applicant.licenseType,
         nationalLicenseNumber: applicant.nationalLicenseNumber,
         bloodType: applicant.bloodType,
         consulate: applicant.consulate,
         preferredDate: applicant.preferredDate,
-        studyLevel: applicant.studyLevel,
         university: applicant.university,
         inviterName: applicant.inviterName,
         relationship: applicant.relationship,
@@ -296,10 +320,12 @@ export function VisaWizard() {
                 </div>
 
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                  {selectedService?.type === 'Evisa' && <EvisaForm data={applicant} onChange={setApplicant} />}
-                  {selectedService?.type === 'Residence' && <ResidenceForm data={applicant} onChange={setApplicant} />}
+                  {['Evisa', 'Residence', 'Rendez-vous', 'Invitation'].includes(selectedService?.type) && <StandardVisaForm data={applicant} onChange={setApplicant} />}
+                  {selectedService?.type === 'Dossier' && <DossierForm data={applicant} onChange={setApplicant} />}
+                  {selectedService?.type === 'Etude' && <EtudeForm data={applicant} onChange={setApplicant} />}
+                  {selectedService?.type === 'Permis' && <PermisForm data={applicant} onChange={setApplicant} />}
                   {selectedService?.type === 'Assurance' && <AssuranceForm data={applicant} onChange={setApplicant} />}
-                  {!['Evisa', 'Residence', 'Assurance'].includes(selectedService?.type) && <GenericServiceForm data={applicant} onChange={setApplicant} />}
+                  {!['Evisa', 'Residence', 'Rendez-vous', 'Invitation', 'Dossier', 'Etude', 'Permis', 'Assurance'].includes(selectedService?.type) && <GenericServiceForm data={applicant} onChange={setApplicant} />}
                 </div>
               </div>
             )}
@@ -589,8 +615,7 @@ export function VisaWizard() {
               (step === 1 && (!selectedService)) ||
               (step === 2 &&
                 (!applicant.firstName ||
-                  !applicant.lastName ||
-                  !applicant.passportNumber))
+                  !applicant.lastName))
             }
             className="px-8 h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all text-base"
           >

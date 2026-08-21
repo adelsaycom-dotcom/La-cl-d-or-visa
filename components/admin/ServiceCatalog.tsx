@@ -138,7 +138,7 @@ export function ServiceCatalog() {
       </div>
 
       <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
-        <DialogContent className="sm:max-w-4xl p-0 overflow-hidden sm:rounded-[2rem] border-0 shadow-2xl bg-slate-50">
+        <DialogContent className="sm:max-w-4xl p-0 overflow-hidden sm:rounded-[2rem] border-0 shadow-2xl bg-slate-50 flex flex-col max-h-[90vh] !top-1/2 !-translate-y-1/2">
            <div className="bg-indigo-600 p-8 text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
               <DialogTitle className="text-2xl font-black text-white">{editingId ? 'Modifier le service' : 'Créer un nouveau service'}</DialogTitle>
@@ -147,7 +147,7 @@ export function ServiceCatalog() {
               </DialogDescription>
            </div>
            
-           <ScrollArea className="max-h-[70vh]">
+           <ScrollArea className="flex-1 overflow-y-auto">
              <div className="p-8 space-y-10">
                {/* Informations Générales */}
                <section>
@@ -185,6 +185,7 @@ export function ServiceCatalog() {
                           <SelectItem value="Etude">Visa Étude</SelectItem>
                           <SelectItem value="Rendez-vous">Prise de Rendez-vous</SelectItem>
                           <SelectItem value="Dossier">Traitement de Dossier</SelectItem>
+                          <SelectItem value="Permis">Permis International / Traduction</SelectItem>
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-slate-500">Définit les champs demandés à l'agence.</p>
@@ -279,12 +280,14 @@ export function ServiceCatalog() {
              </div>
            </ScrollArea>
            
-           <DialogFooter className="p-6 bg-white border-t border-slate-100 flex justify-end gap-3 rounded-b-[2rem]">
-              <Button variant="outline" className="rounded-xl px-6 h-12 font-bold border-slate-200" onClick={() => setIsEditorOpen(false)}>Annuler</Button>
-              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-10 h-12 font-bold shadow-lg shadow-indigo-200" onClick={handleSave}>
-                <CheckCircle2 className="w-5 h-5 mr-2" /> Enregistrer le service
-              </Button>
-           </DialogFooter>
+           <div className="p-6 bg-white border-t border-slate-100 rounded-b-[2rem]">
+              <div className="flex flex-col sm:flex-row justify-end gap-3 w-full">
+                <Button variant="outline" className="rounded-xl px-6 h-12 font-bold border-slate-200 w-full sm:w-auto" onClick={() => setIsEditorOpen(false)}>Annuler</Button>
+                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-10 h-12 font-bold shadow-lg shadow-indigo-200 w-full sm:w-auto" onClick={handleSave}>
+                  <CheckCircle2 className="w-5 h-5 mr-2" /> Enregistrer le service
+                </Button>
+              </div>
+           </div>
         </DialogContent>
       </Dialog>
     </div>
