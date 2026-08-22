@@ -1,4 +1,5 @@
-import { useState } from "react";
+const fs = require('fs');
+const content = `import { useState } from "react";
 import { useAppStore, Application } from "../../src/store/useAppStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,14 +119,14 @@ export function AgencyApplications() {
                   </div>
                 ) : (
                   selectedApp.timeline.map(entry => (
-                    <div key={entry.id} className={`flex flex-col ${entry.sender === 'Agency' ? 'items-end' : entry.sender === 'System' ? 'items-center' : 'items-start'}`}>
-                      <div className={`max-w-[80%] rounded-2xl p-4 ${
+                    <div key={entry.id} className={\`flex flex-col \${entry.sender === 'Agency' ? 'items-end' : entry.sender === 'System' ? 'items-center' : 'items-start'}\`}>
+                      <div className={\`max-w-[80%] rounded-2xl p-4 \${
                         entry.sender === 'Agency' ? 'bg-blue-600 text-white rounded-br-none shadow-md shadow-blue-600/20' : 
                         entry.sender === 'Admin' ? 'bg-white border border-slate-200 text-slate-800 rounded-bl-none shadow-sm' :
                         'bg-slate-200 text-slate-600 text-sm py-2 rounded-full'
-                      }`}>
+                      }\`}>
                         {entry.sender !== 'System' && (
-                          <div className={`text-[10px] font-bold uppercase mb-1 ${entry.sender === 'Agency' ? 'text-blue-200' : 'text-slate-400'}`}>
+                          <div className={\`text-[10px] font-bold uppercase mb-1 \${entry.sender === 'Agency' ? 'text-blue-200' : 'text-slate-400'}\`}>
                             {entry.sender === 'Admin' ? 'Administration' : 'Vous'} • {new Date(entry.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </div>
                         )}
@@ -214,11 +215,11 @@ export function AgencyApplications() {
           <button
             key={status}
             onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+            className={\`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all \${
               filter === status 
                 ? 'bg-slate-900 text-white shadow-md shadow-slate-900/10' 
                 : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-            }`}
+            }\`}
           >
             {status === 'ALL' ? 'Tous les dossiers' : 
              status === 'ActionRequired' ? 'Action Requise' :
@@ -246,7 +247,7 @@ export function AgencyApplications() {
               <div 
                 key={app.id} 
                 onClick={() => setSelectedAppId(app.id)}
-                className={`p-4 sm:p-6 hover:bg-slate-50 transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${getStatusColor(app.status)}`}
+                className={\`p-4 sm:p-6 hover:bg-slate-50 transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 \${getStatusColor(app.status)}\`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
                   <div className="hidden sm:flex w-12 h-12 bg-slate-100 rounded-2xl items-center justify-center shrink-0">
@@ -280,3 +281,5 @@ export function AgencyApplications() {
     </div>
   );
 }
+`;
+fs.writeFileSync('components/agency/AgencyApplications.tsx', content);

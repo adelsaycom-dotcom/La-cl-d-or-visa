@@ -79,7 +79,7 @@ export default function OrganizedTripsManagement() {
       if (editingTripId) {
         updateOrganizedTrip(editingTripId, tripData);
       } else {
-        addOrganizedTrip({ ...tripData, createdAt: new Date().toISOString() });
+        addOrganizedTrip(tripData as any);
       }
       
       setIsAddOpen(false);

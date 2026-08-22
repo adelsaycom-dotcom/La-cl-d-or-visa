@@ -1,4 +1,5 @@
-import { useState } from "react";
+const fs = require('fs');
+const content = `import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -50,7 +51,7 @@ export function ApplicationManagement() {
     await updateApplication(selectedApp.id, { status: newStatus });
     await addApplicationTimelineEntry(selectedApp.id, {
       title: "Changement de statut",
-      message: `Le dossier est passé en statut : ${newStatus}`,
+      message: \`Le dossier est passé en statut : \${newStatus}\`,
       sender: "System"
     });
   };
@@ -95,7 +96,7 @@ export function ApplicationManagement() {
 
       <div className="flex-1 flex gap-6 min-h-0">
         {/* Left/Main Column - List of applications */}
-        <div className={`flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-300 ${selectedApp ? 'w-1/3 hidden lg:flex' : 'w-full'}`}>
+        <div className={\`flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-300 \${selectedApp ? 'w-1/3 hidden lg:flex' : 'w-full'}\`}>
           <div className="p-4 border-b border-slate-100 space-y-4 shrink-0 bg-slate-50/50">
             <Input
               placeholder="Rechercher par nom, passeport ou agence..."
@@ -108,11 +109,11 @@ export function ApplicationManagement() {
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
+                  className={\`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors \${
                     statusFilter === status 
                       ? 'bg-slate-900 text-white' 
                       : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                  }`}
+                  }\`}
                 >
                   {status === 'ALL' ? 'Tous' : 
                    status === 'Pending' ? 'En attente' :
@@ -132,11 +133,11 @@ export function ApplicationManagement() {
                 <div 
                   key={app.id} 
                   onClick={() => setSelectedAppId(app.id)}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md ${
+                  className={\`p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md \${
                     selectedAppId === app.id 
                       ? 'bg-blue-50/50 border-blue-200 ring-1 ring-blue-200' 
                       : 'bg-white border-slate-200 hover:border-blue-300'
-                  }`}
+                  }\`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div className="font-bold text-slate-900">{app.travelerName}</div>
@@ -219,15 +220,15 @@ export function ApplicationManagement() {
                       <p className="text-sm text-slate-500 text-center py-4 bg-slate-50 rounded-lg">Aucun historique pour ce dossier.</p>
                     )}
                     {selectedApp.timeline?.map(entry => (
-                      <div key={entry.id} className={`p-3 rounded-xl border ${
+                      <div key={entry.id} className={\`p-3 rounded-xl border \${
                         entry.sender === 'Admin' ? 'bg-blue-50 border-blue-100 ml-4' : 
                         entry.sender === 'Agency' ? 'bg-white border-slate-200 mr-4 shadow-sm' :
                         'bg-slate-50 border-slate-100 mx-8 text-center'
-                      }`}>
-                        <div className={`text-xs font-bold mb-1 ${
+                      }\`}>
+                        <div className={\`text-xs font-bold mb-1 \${
                           entry.sender === 'Admin' ? 'text-blue-700' :
                           entry.sender === 'System' ? 'text-slate-500' : 'text-slate-700'
-                        }`}>
+                        }\`}>
                           {entry.sender === 'System' ? 'Système' : entry.sender === 'Admin' ? 'Vous (Admin)' : 'Agence'} • {new Date(entry.date).toLocaleDateString()} {new Date(entry.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                         </div>
                         <div className="text-sm text-slate-800">{entry.message}</div>
@@ -334,3 +335,5 @@ export function ApplicationManagement() {
     </div>
   );
 }
+`;
+fs.writeFileSync('components/admin/ApplicationManagement.tsx', content);

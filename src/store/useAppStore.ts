@@ -61,7 +61,6 @@ export interface OrganizedTrip {
   image?: string;
   photoUrl?: string;
   featured?: boolean;
-  createdAt?: string;
   status?: string;
   customFormFields?: any[];
   createdAt: string;
@@ -96,7 +95,14 @@ export interface Application {
   visaType: string;
   travelerName: string;
   passportNumber: string;
-  status: "Pending" | "Processing" | "Approved" | "Rejected";
+  status: "Pending" | "Processing" | "ActionRequired" | "Approved" | "Rejected";
+  timeline?: {
+    id: string;
+    date: string;
+    title: string;
+    message: string;
+    sender: "Admin" | "Agency" | "System";
+  }[];
   submissionDate: string;
   price: number;
   extraData?: Record<string, string>;
@@ -151,6 +157,7 @@ export interface AppState {
   addApplication: (application: Application) => void;
   updateApplicationStatus: (id: string, status: Application["status"]) => void;
   updateApplication: (id: string, updates: Partial<Application>) => void;
+  addApplicationTimelineEntry: (id: string, entry: Omit<NonNullable<Application["timeline"]>[0], "id" | "date">) => Promise<void>;
   clearData: () => void;
 }
 
@@ -439,6 +446,22 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   updateApplication: async (id, updates) => {
     await updateDoc(doc(db, 'applications', id), updates);
+  },
+  addApplicationTimelineEntry: async (id, entry) => {
+    const appRef = doc(db, 'applications', id);
+    const newEntry = {
+      ...entry,
+      id: Math.random().toString(36).substring(2, 9),
+      date: new Date().toISOString()
+    };
+    
+    // Using arrayUnion directly via a direct firestore import or manual local update (simplified for store)
+    // We'll update via the store's current apps to make it simple
+    const currentApp = get().applications.find(a => a.id === id);
+    if (currentApp) {
+      const newTimeline = [...(currentApp.timeline || []), newEntry];
+      await updateDoc(appRef, { timeline: newTimeline });
+    }
   },
   clearData: () => {
     set({ agencies: [],

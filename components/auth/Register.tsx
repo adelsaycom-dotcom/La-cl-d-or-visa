@@ -41,12 +41,18 @@ export function Register() {
         contactName: `${formData.managerFirstName} ${formData.managerLastName}`, // Legacy support
         email: formData.email,
         phone: formData.phone,
+        balance: 0,
         createdAt: new Date().toISOString()
       });
       alert("Demande envoyée avec succès. Vous serez recontacté(e) sous peu.");
       navigate("/login");
     } catch(err: any) {
-      setError("Erreur lors de l'inscription. L'email est peut-être déjà utilisé.");
+      console.error("Erreur d'inscription complète:", err);
+      if (err.code === 'auth/email-already-in-use') {
+        setError("Cette adresse email est déjà utilisée par un autre compte.");
+      } else {
+        setError("Erreur lors de l'inscription. Veuillez vérifier vos informations ou réessayer plus tard.");
+      }
     } finally {
       setIsLoading(false);
     }
