@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppStore, OrganizedTrip, TripReservation } from '../../src/store/useAppStore';
-import { Plus, Edit, Trash2, Users, MapPin, Calendar, DollarSign, Search, Image as ImageIcon, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, MapPin, Calendar, DollarSign, Search, Image as ImageIcon, ChevronRight, Star } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
@@ -16,6 +16,7 @@ export default function OrganizedTripsManagement() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<OrganizedTrip | null>(null);
   const [isReservationsOpen, setIsReservationsOpen] = useState(false);
+  const [editingTripId, setEditingTripId] = useState<string | null>(null);
 
   const [newTrip, setNewTrip] = useState<Partial<OrganizedTrip>>({
     title: '', destination: '', description: '', photoUrl: '', totalSeats: 0, price: 0, startDate: '', endDate: '', status: 'active', customFormFields: []
@@ -60,9 +61,9 @@ export default function OrganizedTripsManagement() {
     }
   };
 
-  const handleAddTrip = () => {
+  const handleSaveTrip = () => {
     if (newTrip.title && newTrip.destination && newTrip.totalSeats && newTrip.price && newTrip.startDate && newTrip.endDate) {
-      addOrganizedTrip({
+      const tripData = {
         title: newTrip.title,
         destination: newTrip.destination,
         description: newTrip.description || '',
@@ -73,10 +74,35 @@ export default function OrganizedTripsManagement() {
         endDate: newTrip.endDate,
         status: newTrip.status as OrganizedTrip['status'],
         customFormFields: newTrip.customFormFields
-      });
+      };
+      
+      if (editingTripId) {
+        updateOrganizedTrip(editingTripId, tripData);
+      } else {
+        addOrganizedTrip({ ...tripData, createdAt: new Date().toISOString() });
+      }
+      
       setIsAddOpen(false);
+      setEditingTripId(null);
       setNewTrip({ title: '', destination: '', description: '', photoUrl: '', totalSeats: 0, price: 0, startDate: '', endDate: '', status: 'active', customFormFields: [] });
     }
+  };
+  
+  const handleEditClick = (trip: OrganizedTrip) => {
+    setEditingTripId(trip.id);
+    setNewTrip({
+      title: trip.title,
+      destination: trip.destination,
+      description: trip.description,
+      photoUrl: trip.photoUrl,
+      totalSeats: trip.totalSeats,
+      price: trip.price,
+      startDate: trip.startDate,
+      endDate: trip.endDate,
+      status: trip.status,
+      customFormFields: trip.customFormFields
+    });
+    setIsAddOpen(true);
   };
 
   const filteredTrips = (organizedTrips || []).filter(t => {
@@ -97,139 +123,81 @@ export default function OrganizedTripsManagement() {
           <p className="text-slate-500 text-sm">Gérez les offres de voyages de groupe pour les agences</p>
         </div>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <div onClick={() => setIsAddOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium"><Plus className="w-4 h-4 mr-2" /> Nouveau Voyage</div>
-          <DialogContent className="sm:max-w-[600px] bg-white max-h-[90vh]">
+          <div onClick={() => { setEditingTripId(null); setNewTrip({ title: '', destination: '', description: '', photoUrl: '', totalSeats: 0, price: 0, startDate: '', endDate: '', status: 'active', customFormFields: [] }); setIsAddOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium"><Plus className="w-4 h-4 mr-2" /> Nouveau Voyage</div>
+          <DialogContent className="w-[95vw] sm:max-w-[700px] bg-white max-h-[90vh] overflow-hidden flex flex-col">
             <DialogHeader>
-              <DialogTitle>Publier un Voyage Organisé</DialogTitle>
+              <DialogTitle>{editingTripId ? "Modifier le Voyage Organisé" : "Publier un Voyage Organisé"}</DialogTitle>
             </DialogHeader>
-            <ScrollArea className="h-[60vh] pr-4">
-            <div className="grid grid-cols-2 gap-4 py-4">
-              <div className="col-span-2">
-                <label className="text-sm font-semibold mb-1 block">Titre de l'offre</label>
-                <Input value={newTrip.title} onChange={e => setNewTrip({...newTrip, title: e.target.value})} placeholder="Ex: Découverte de la Cappadoce" />
+            <div className="flex-1 overflow-y-auto min-h-0 pr-4 -mr-4 p-1">
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4 px-1">
+              <div className="md:col-span-2">
+                <label className="text-sm font-bold text-slate-700 mb-1.5 block">Titre de l'offre</label>
+                <Input className="h-11 bg-slate-50 border-slate-200 focus:bg-white" value={newTrip.title} onChange={e => setNewTrip({...newTrip, title: e.target.value})} placeholder="Ex: Merveilles de la Cappadoce" />
               </div>
-              <div className="col-span-2 sm:col-span-1">
-                <label className="text-sm font-semibold mb-1 block">Destination</label>
-                <Input value={newTrip.destination} onChange={e => setNewTrip({...newTrip, destination: e.target.value})} placeholder="Ex: Turquie" />
+              <div>
+                <label className="text-sm font-bold text-slate-700 mb-1.5 block">Destination</label>
+                <Input className="h-11 bg-slate-50 border-slate-200 focus:bg-white" value={newTrip.destination} onChange={e => setNewTrip({...newTrip, destination: e.target.value})} placeholder="Ex: Turquie" />
               </div>
               
-              <div className="col-span-2 sm:col-span-1">
-                <label className="text-sm font-semibold mb-1 block">Photo (Téléverser)</label>
-                <div className="flex items-center gap-2">
-                  <Input type="file" accept="image/*" onChange={handleImageUpload} className="cursor-pointer file:text-blue-600 file:font-semibold file:bg-blue-50 file:border-0 file:rounded-md file:px-3 file:py-1 hover:file:bg-blue-100" />
+              <div>
+                <label className="text-sm font-bold text-slate-700 mb-1.5 block">Photo d'illustration</label>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                    <Button type="button" variant="outline" className="h-11 bg-slate-50 border-slate-200">Choisir une image</Button>
+                  </div>
                   {newTrip.photoUrl && newTrip.photoUrl.startsWith('data:') && (
-                    <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0 border border-slate-200">
+                    <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 border border-slate-200 shadow-sm">
                        <img src={newTrip.photoUrl} className="w-full h-full object-cover" alt="Preview" />
                     </div>
                   )}
                 </div>
               </div>
-              <div className="col-span-2 sm:col-span-1">
-                <label className="text-sm font-semibold mb-1 block">Date de départ</label>
-                <Input type="date" value={newTrip.startDate} onChange={e => setNewTrip({...newTrip, startDate: e.target.value})} />
+
+              <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm font-bold text-slate-700 mb-1.5 block">Date de départ</label>
+                  <Input type="date" className="h-11 bg-white" value={newTrip.startDate} onChange={e => setNewTrip({...newTrip, startDate: e.target.value})} />
+                </div>
+                <div>
+                  <label className="text-sm font-bold text-slate-700 mb-1.5 block">Date de retour</label>
+                  <Input type="date" className="h-11 bg-white" value={newTrip.endDate} onChange={e => setNewTrip({...newTrip, endDate: e.target.value})} />
+                </div>
+                <div>
+                  <label className="text-sm font-bold text-slate-700 mb-1.5 block">Nombre de places</label>
+                  <Input type="number" min="1" className="h-11 bg-white font-bold" value={newTrip.totalSeats} onChange={e => setNewTrip({...newTrip, totalSeats: Number(e.target.value)})} />
+                </div>
               </div>
-              <div className="col-span-2 sm:col-span-1">
-                <label className="text-sm font-semibold mb-1 block">Date de retour</label>
-                <Input type="date" value={newTrip.endDate} onChange={e => setNewTrip({...newTrip, endDate: e.target.value})} />
+
+              <div>
+                <label className="text-sm font-bold text-slate-700 mb-1.5 block">Prix net B2B (DZD)</label>
+                <Input type="number" min="0" className="h-11 bg-slate-50 border-slate-200 font-bold text-emerald-600 focus:bg-white" value={newTrip.price} onChange={e => setNewTrip({...newTrip, price: Number(e.target.value)})} />
               </div>
-              <div className="col-span-2 sm:col-span-1">
-                <label className="text-sm font-semibold mb-1 block">Nombre de places (Total)</label>
-                <Input type="number" min="1" value={newTrip.totalSeats} onChange={e => setNewTrip({...newTrip, totalSeats: Number(e.target.value)})} />
-              </div>
-              <div className="col-span-2 sm:col-span-1">
-                <label className="text-sm font-semibold mb-1 block">Prix par personne</label>
-                <Input type="number" min="0" value={newTrip.price} onChange={e => setNewTrip({...newTrip, price: Number(e.target.value)})} />
-              </div>
-              <div className="col-span-2">
-                <label className="text-sm font-semibold mb-1 block">Statut de publication</label>
-                <Select value={newTrip.status} onValueChange={(val: any) => setNewTrip({...newTrip, status: val})}>
-                  <SelectTrigger><SelectValue/></SelectTrigger>
+
+              <div>
+                <label className="text-sm font-bold text-slate-700 mb-1.5 block">Statut initial</label>
+                <Select value={newTrip.status} onValueChange={(val) => setNewTrip({...newTrip, status: val})}>
+                  <SelectTrigger className="h-11 bg-slate-50 border-slate-200 focus:bg-white"><SelectValue/></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Actif (Publié)</SelectItem>
-                    <SelectItem value="draft">Brouillon</SelectItem>
+                    <SelectItem value="active">Actif (Visible par les agences)</SelectItem>
+                    <SelectItem value="draft">Brouillon (Caché)</SelectItem>
                     <SelectItem value="completed">Terminé</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2">
-                <label className="text-sm font-semibold mb-1 block">Description détaillée (Programme)</label>
-                <Textarea className="h-32" value={newTrip.description} onChange={e => setNewTrip({...newTrip, description: e.target.value})} placeholder="Jour 1: Arrivée...&#10;Jour 2: Visite..." />
+
+              <div className="md:col-span-2">
+                <label className="text-sm font-bold text-slate-700 mb-1.5 block">Programme détaillé</label>
+                <Textarea className="min-h-[120px] bg-slate-50 border-slate-200 focus:bg-white leading-relaxed" value={newTrip.description} onChange={e => setNewTrip({...newTrip, description: e.target.value})} placeholder="Jour 1: Arrivée et transfert...&#10;Jour 2: Visite de la ville..." />
               </div>
             
 
-              <div className="col-span-2 border-t pt-4 mt-2">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-bold text-slate-800">Formulaire de réservation personnalisé</label>
-                  <Button variant="outline" size="sm" onClick={() => setNewTrip({
-                    ...newTrip,
-                    customFormFields: [...(newTrip.customFormFields || []), { id: Math.random().toString(36).substr(2,9), label: '', type: 'text', required: false }]
-                  })}>
-                    <Plus className="w-3 h-3 mr-1" /> Ajouter un champ
-                  </Button>
-                </div>
-                <p className="text-xs text-slate-500 mb-3">Définissez les informations et documents nécessaires lors de la réservation (ex: Copie passeport, type de chambre...)</p>
-                
-                <div className="space-y-3">
-                  {(newTrip.customFormFields || []).map((field, idx) => (
-                    <div key={field.id} className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                      <Input 
-                        className="h-8 text-sm" 
-                        placeholder="Nom du champ (ex: Passeport)" 
-                        value={field.label}
-                        onChange={e => {
-                          const fields = [...(newTrip.customFormFields || [])];
-                          fields[idx].label = e.target.value;
-                          setNewTrip({...newTrip, customFormFields: fields});
-                        }}
-                      />
-                      <Select 
-                        value={field.type} 
-                        onValueChange={(val: any) => {
-                          const fields = [...(newTrip.customFormFields || [])];
-                          fields[idx].type = val;
-                          setNewTrip({...newTrip, customFormFields: fields});
-                        }}
-                      >
-                        <SelectTrigger className="w-[120px] h-8 text-sm"><SelectValue/></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="text">Texte</SelectItem>
-                          <SelectItem value="number">Nombre</SelectItem>
-                          <SelectItem value="file">Fichier / Image</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <label className="flex items-center gap-1 text-xs whitespace-nowrap cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={field.required}
-                          onChange={e => {
-                            const fields = [...(newTrip.customFormFields || [])];
-                            fields[idx].required = e.target.checked;
-                            setNewTrip({...newTrip, customFormFields: fields});
-                          }}
-                        /> Obligatoire
-                      </label>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => {
-                        const fields = [...(newTrip.customFormFields || [])];
-                        fields.splice(idx, 1);
-                        setNewTrip({...newTrip, customFormFields: fields});
-                      }}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  {(!newTrip.customFormFields || newTrip.customFormFields.length === 0) && (
-                    <div className="text-center py-4 bg-slate-50 rounded-lg border border-dashed border-slate-200 text-slate-400 text-sm">
-                      Aucun champ personnalisé
-                    </div>
-                  )}
-                </div>
-              </div>
-
             </div>
-            </ScrollArea>
+            </div>
             <div className="flex justify-end gap-2 mt-4 border-t pt-4">
               <Button variant="outline" onClick={() => setIsAddOpen(false)}>Annuler</Button>
-              <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleAddTrip}>Créer l'offre</Button>
+              <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleSaveTrip}>{editingTripId ? "Enregistrer" : "Créer l'offre"}</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -269,10 +237,43 @@ export default function OrganizedTripsManagement() {
                     <ImageIcon className="w-12 h-12 text-slate-300" />
                   </div>
                 )}
-                <div className="absolute top-3 left-3 flex gap-2">
+                                <div className="absolute top-3 left-3 flex gap-2">
                   <Badge className={trip.status === 'active' ? 'bg-green-500' : trip.status === 'draft' ? 'bg-slate-500' : 'bg-blue-500'}>
                     {trip.status === 'active' ? 'Publié' : trip.status === 'draft' ? 'Brouillon' : 'Terminé'}
                   </Badge>
+                  {trip.featured && (
+                    <Badge className="bg-amber-500 text-white border-none shadow-md shadow-amber-500/20 px-2 py-0.5 flex items-center gap-1">
+                      <Star className="w-3 h-3 fill-current" /> À la une
+                    </Badge>
+                  )}
+                </div>
+                <div className="absolute top-3 right-3 flex gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className={`h-8 w-8 rounded-full shadow-sm backdrop-blur-sm ${trip.featured ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-white/80 text-slate-400 hover:bg-amber-50 hover:text-amber-500'}`}
+                    onClick={() => updateOrganizedTrip(trip.id, { featured: !trip.featured })}
+                  >
+                    <Star className={`w-4 h-4 ${trip.featured ? 'fill-current' : ''}`} />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm text-slate-600 hover:bg-blue-50 hover:text-blue-600 shadow-sm"
+                    onClick={() => handleEditClick(trip)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm text-slate-600 hover:bg-red-50 hover:text-red-600 shadow-sm"
+                    onClick={(e) => {
+                      if(window.confirm('Voulez-vous vraiment supprimer ce voyage ?')) deleteOrganizedTrip(trip.id);
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-slate-900/80 to-transparent p-4">
                   <h3 className="text-white font-bold text-lg leading-tight">{trip.title}</h3>
@@ -332,12 +333,12 @@ export default function OrganizedTripsManagement() {
 
       {/* Reservations Modal */}
       <Dialog open={isReservationsOpen} onOpenChange={setIsReservationsOpen}>
-        <DialogContent className="max-w-4xl bg-white max-h-[90vh]">
+        <DialogContent className="w-[95vw] sm:max-w-4xl md:max-w-5xl bg-white max-h-[95vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Réservations - {selectedTrip?.title}</DialogTitle>
           </DialogHeader>
           
-          <ScrollArea className="h-[70vh]">
+          <div className="flex-1 overflow-y-auto min-h-0 p-1">
             <div className="space-y-6 pr-4">
               {selectedTrip && (
                 <>
@@ -494,7 +495,7 @@ export default function OrganizedTripsManagement() {
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
 
         </DialogContent>
       </Dialog>

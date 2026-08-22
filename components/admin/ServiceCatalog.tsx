@@ -147,7 +147,7 @@ export function ServiceCatalog() {
               </DialogDescription>
            </div>
            
-           <ScrollArea className="flex-1 overflow-y-auto">
+           <div className="flex-1 overflow-y-auto min-h-0">
              <div className="p-8 space-y-10">
                {/* Informations Générales */}
                <section>
@@ -278,7 +278,7 @@ export function ServiceCatalog() {
                   />
                </section>
              </div>
-           </ScrollArea>
+           </div>
            
            <div className="p-6 bg-white border-t border-slate-100 rounded-b-[2rem]">
               <div className="flex flex-col sm:flex-row justify-end gap-3 w-full">

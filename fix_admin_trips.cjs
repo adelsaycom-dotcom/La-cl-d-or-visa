@@ -2,170 +2,147 @@ const fs = require('fs');
 
 let content = fs.readFileSync('components/admin/OrganizedTripsManagement.tsx', 'utf8');
 
-const replacement = `
-          <ScrollArea className="h-[70vh]">
-            <div className="space-y-6 pr-4">
-              {selectedTrip && (
-                <>
-                  {(() => {
-                    const reservations = getTripReservations(selectedTrip.id).filter(r => r.status !== 'cancelled');
-                    const expectedTotal = reservations.reduce((acc, r) => acc + r.totalPrice, 0);
-                    const paidTotal = reservations.reduce((acc, r) => acc + (r.paidAmount || 0), 0);
-                    const balance = expectedTotal - paidTotal;
-                    
-                    return (
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                          <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">Total Attendu</p>
-                          <p className="text-2xl font-black text-blue-900 mt-1">{expectedTotal.toLocaleString()} DZD</p>
-                        </div>
-                        <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-                          <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Total Encaissé</p>
-                          <p className="text-2xl font-black text-emerald-900 mt-1">{paidTotal.toLocaleString()} DZD</p>
-                        </div>
-                        <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
-                          <p className="text-xs font-bold text-amber-600 uppercase tracking-wider">Reste à percevoir</p>
-                          <p className="text-2xl font-black text-amber-900 mt-1">{balance.toLocaleString()} DZD</p>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </>
-              )}
+// 1. Add editingTripId state
+content = content.replace(
+  "const [isReservationsOpen, setIsReservationsOpen] = useState(false);",
+  "const [isReservationsOpen, setIsReservationsOpen] = useState(false);\n  const [editingTripId, setEditingTripId] = useState<string | null>(null);"
+);
 
-              {selectedTrip && getTripReservations(selectedTrip.id).length > 0 ? (
-                getTripReservations(selectedTrip.id).map(res => (
-                  <div key={res.id} className="bg-slate-50 p-5 rounded-xl border border-slate-200 flex flex-col md:flex-row md:items-start justify-between gap-6">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-bold text-slate-800 text-lg">{res.clientName}</span>
-                        <span className="text-sm font-medium text-slate-500">({res.agencyName || 'Agence'})</span>
-                        <Badge className={
-                          res.status === 'confirmed' ? 'bg-green-500' : 
-                          res.status === 'cancelled' ? 'bg-red-500' : 'bg-amber-500'
-                        }>
-                          {res.status === 'confirmed' ? 'Confirmée' : res.status === 'cancelled' ? 'Annulée' : 'En attente'}
-                        </Badge>
-                      </div>
-                      
-                      <div className="text-sm text-slate-600 space-y-2">
-                        <p><span className="font-medium text-slate-700">Contact:</span> {res.clientEmail} | {res.clientPhone}</p>
-                        <p><span className="font-medium text-slate-700">Personnes:</span> {res.numberOfPeople}</p>
-                        {res.notes && <p><span className="font-medium text-amber-600">Notes:</span> {res.notes}</p>}
-                        
-                        {/* Custom Form Data (e.g. passengers info) */}
-                        {res.customFormData && Object.keys(res.customFormData).length > 0 && (
-                          <div className="mt-4 bg-white p-4 rounded border border-slate-100 text-xs shadow-sm">
-                            <p className="font-bold text-slate-700 mb-3">Informations supplémentaires (Passagers) :</p>
-                            <div className="grid grid-cols-1 gap-3">
-                              {Object.entries(res.customFormData).map(([fieldId, val]) => {
-                                const fieldDef = selectedTrip?.customFormFields?.find(f => f.id === fieldId);
-                                const label = fieldDef ? fieldDef.label : fieldId;
-                                const isFile = val && val.toString().startsWith('data:');
-                                
-                                if (Array.isArray(val)) {
-                                  // Handling passenger arrays if any
-                                  return (
-                                    <div key={fieldId} className="flex flex-col gap-1 col-span-1">
-                                      <span className="font-medium text-slate-500">{label} :</span>
-                                      <div className="space-y-1">
-                                        {val.map((p, i) => (
-                                          <div key={i} className="bg-slate-50 p-2 rounded border border-slate-100 flex items-center gap-2">
-                                            <span className="font-semibold text-slate-800">{p.lastName} {p.firstName}</span>
-                                            {p.passportNumber && <span className="text-slate-500 ml-2">Pass: {p.passportNumber}</span>}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  );
-                                }
-                                
-                                return (
-                                  <div key={fieldId} className="flex flex-col gap-1">
-                                    <span className="font-medium text-slate-500">{label} :</span>
-                                    {isFile ? (
-                                      <a href={val as string} download={label + "_document"} className="text-blue-500 hover:underline flex items-center gap-1"><ImageIcon className="w-3 h-3" /> Télécharger / Voir</a>
-                                    ) : (
-                                      <span className="text-slate-800 font-semibold">{val as string}</span>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                        <p className="text-xs text-slate-400 mt-2">Effectuée le {new Date(res.createdAt).toLocaleString('fr-FR')}</p>
-                      </div>
+// 2. Add Star to lucide-react imports
+content = content.replace(
+  "import { Plus, Edit, Trash2, Users, MapPin, Calendar, DollarSign, Search, Image as ImageIcon, ChevronRight } from 'lucide-react';",
+  "import { Plus, Edit, Trash2, Users, MapPin, Calendar, DollarSign, Search, Image as ImageIcon, ChevronRight, Star } from 'lucide-react';"
+);
 
-                    </div>
-                    
-                    <div className="w-full md:w-64 flex flex-col gap-4 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                      <div>
-                        <p className="text-xs text-slate-500 font-medium mb-1">Total à payer</p>
-                        <p className="text-xl font-bold text-slate-900">{res.totalPrice.toLocaleString()} DZD</p>
-                      </div>
-                      
-                      <div className="pt-3 border-t border-slate-100">
-                        <p className="text-xs text-slate-500 font-medium mb-1">Déjà payé</p>
-                        <p className="text-lg font-bold text-emerald-600">{(res.paidAmount || 0).toLocaleString()} DZD</p>
-                      </div>
-                      
-                      {res.status !== 'cancelled' && res.totalPrice > (res.paidAmount || 0) && (
-                        <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
-                           <p className="text-xs text-slate-500 font-medium mb-1">Ajouter un paiement</p>
-                           <div className="flex gap-2">
-                             <Input 
-                               type="number" 
-                               placeholder="Montant" 
-                               className="h-8 text-sm"
-                               id={\`pay-\${res.id}\`}
-                             />
-                             <Button 
-                               size="sm" 
-                               className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white"
-                               onClick={(e) => {
-                                 const input = document.getElementById(\`pay-\${res.id}\`) as HTMLInputElement;
-                                 const amount = Number(input.value);
-                                 if (amount > 0) {
-                                   updateTripReservationPayment(res.id, amount);
-                                   input.value = '';
-                                 }
-                               }}
-                             >
-                               Ajouter
-                             </Button>
-                           </div>
-                        </div>
-                      )}
-                      
-                      <div className="pt-3 border-t border-slate-100">
-                        <p className="text-xs text-slate-500 font-medium mb-1">Statut Réservation</p>
-                        <Select value={res.status} onValueChange={(val: any) => updateTripReservationStatus(res.id, val)}>
-                          <SelectTrigger className="w-full h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">En attente</SelectItem>
-                            <SelectItem value="confirmed">Confirmée</SelectItem>
-                            <SelectItem value="cancelled">Annulée</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-slate-500">
-                  Aucune réservation pour ce voyage pour le moment.
+// 3. Replace handleAddTrip with handleSaveTrip
+const handleAddCode = `const handleAddTrip = () => {
+    if (newTrip.title && newTrip.destination && newTrip.totalSeats && newTrip.price && newTrip.startDate && newTrip.endDate) {
+      addOrganizedTrip({
+        title: newTrip.title,
+        destination: newTrip.destination,
+        description: newTrip.description || '',
+        photoUrl: newTrip.photoUrl || 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&q=80',
+        totalSeats: Number(newTrip.totalSeats),
+        price: Number(newTrip.price),
+        startDate: newTrip.startDate,
+        endDate: newTrip.endDate,
+        status: newTrip.status as OrganizedTrip['status'],
+        customFormFields: newTrip.customFormFields
+      });
+      setIsAddOpen(false);
+      setNewTrip({ title: '', destination: '', description: '', photoUrl: '', totalSeats: 0, price: 0, startDate: '', endDate: '', status: 'active', customFormFields: [] });
+    }
+  };`;
+
+const handleSaveCode = `const handleSaveTrip = () => {
+    if (newTrip.title && newTrip.destination && newTrip.totalSeats && newTrip.price && newTrip.startDate && newTrip.endDate) {
+      const tripData = {
+        title: newTrip.title,
+        destination: newTrip.destination,
+        description: newTrip.description || '',
+        photoUrl: newTrip.photoUrl || 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&q=80',
+        totalSeats: Number(newTrip.totalSeats),
+        price: Number(newTrip.price),
+        startDate: newTrip.startDate,
+        endDate: newTrip.endDate,
+        status: newTrip.status as OrganizedTrip['status'],
+        customFormFields: newTrip.customFormFields
+      };
+      
+      if (editingTripId) {
+        updateOrganizedTrip(editingTripId, tripData);
+      } else {
+        addOrganizedTrip({ ...tripData, createdAt: new Date().toISOString() });
+      }
+      
+      setIsAddOpen(false);
+      setEditingTripId(null);
+      setNewTrip({ title: '', destination: '', description: '', photoUrl: '', totalSeats: 0, price: 0, startDate: '', endDate: '', status: 'active', customFormFields: [] });
+    }
+  };
+  
+  const handleEditClick = (trip: OrganizedTrip) => {
+    setEditingTripId(trip.id);
+    setNewTrip({
+      title: trip.title,
+      destination: trip.destination,
+      description: trip.description,
+      photoUrl: trip.photoUrl,
+      totalSeats: trip.totalSeats,
+      price: trip.price,
+      startDate: trip.startDate,
+      endDate: trip.endDate,
+      status: trip.status,
+      customFormFields: trip.customFormFields
+    });
+    setIsAddOpen(true);
+  };`;
+
+content = content.replace(handleAddCode, handleSaveCode);
+
+// 4. Update the Dialog creation
+content = content.replace(
+  '<div onClick={() => setIsAddOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium"><Plus className="w-4 h-4 mr-2" /> Nouveau Voyage</div>',
+  '<div onClick={() => { setEditingTripId(null); setNewTrip({ title: \'\', destination: \'\', description: \'\', photoUrl: \'\', totalSeats: 0, price: 0, startDate: \'\', endDate: \'\', status: \'active\', customFormFields: [] }); setIsAddOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium"><Plus className="w-4 h-4 mr-2" /> Nouveau Voyage</div>'
+);
+
+content = content.replace(
+  '<DialogTitle>Publier un Voyage Organisé</DialogTitle>',
+  '<DialogTitle>{editingTripId ? "Modifier le Voyage Organisé" : "Publier un Voyage Organisé"}</DialogTitle>'
+);
+
+content = content.replace(
+  '<Button className="bg-blue-600 hover:bg-blue-700" onClick={handleAddTrip}>Créer l\'offre</Button>',
+  '<Button className="bg-blue-600 hover:bg-blue-700" onClick={handleSaveTrip}>{editingTripId ? "Enregistrer" : "Créer l\'offre"}</Button>'
+);
+
+// 5. Add action buttons (Star, Edit, Trash) to the trip card
+const actionButtonsHTML = `                <div className="absolute top-3 left-3 flex gap-2">
+                  <Badge className={trip.status === 'active' ? 'bg-green-500' : trip.status === 'draft' ? 'bg-slate-500' : 'bg-blue-500'}>
+                    {trip.status === 'active' ? 'Publié' : trip.status === 'draft' ? 'Brouillon' : 'Terminé'}
+                  </Badge>
+                  {trip.featured && (
+                    <Badge className="bg-amber-500 text-white border-none shadow-md shadow-amber-500/20 px-2 py-0.5 flex items-center gap-1">
+                      <Star className="w-3 h-3 fill-current" /> À la une
+                    </Badge>
+                  )}
                 </div>
-              )}
-            </div>
-          </ScrollArea>
-`;
+                <div className="absolute top-3 right-3 flex gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className={\`h-8 w-8 rounded-full shadow-sm backdrop-blur-sm \${trip.featured ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-white/80 text-slate-400 hover:bg-amber-50 hover:text-amber-500'}\`}
+                    onClick={() => updateOrganizedTrip(trip.id, { featured: !trip.featured })}
+                  >
+                    <Star className={\`w-4 h-4 \${trip.featured ? 'fill-current' : ''}\`} />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm text-slate-600 hover:bg-blue-50 hover:text-blue-600 shadow-sm"
+                    onClick={() => handleEditClick(trip)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm text-slate-600 hover:bg-red-50 hover:text-red-600 shadow-sm"
+                    onClick={(e) => {
+                      if(window.confirm('Voulez-vous vraiment supprimer ce voyage ?')) deleteOrganizedTrip(trip.id);
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>`;
 
-const startIndex = content.indexOf('<ScrollArea className="h-[60vh]">');
-const endIndex = content.indexOf('</ScrollArea>', startIndex) + '</ScrollArea>'.length;
-
-content = content.slice(0, startIndex) + replacement + content.slice(endIndex);
+content = content.replace(
+  `<div className="absolute top-3 left-3 flex gap-2">
+                  <Badge className={trip.status === 'active' ? 'bg-green-500' : trip.status === 'draft' ? 'bg-slate-500' : 'bg-blue-500'}>
+                    {trip.status === 'active' ? 'Publié' : trip.status === 'draft' ? 'Brouillon' : 'Terminé'}
+                  </Badge>
+                </div>`,
+  actionButtonsHTML
+);
 
 fs.writeFileSync('components/admin/OrganizedTripsManagement.tsx', content);

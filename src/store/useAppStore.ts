@@ -60,6 +60,8 @@ export interface OrganizedTrip {
   availableSeats: number;
   image?: string;
   photoUrl?: string;
+  featured?: boolean;
+  createdAt?: string;
   status?: string;
   customFormFields?: any[];
   createdAt: string;

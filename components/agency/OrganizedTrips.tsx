@@ -132,7 +132,7 @@ export default function OrganizedTrips() {
                   >
                     {trip.availableSeats > 0 ? 'Voir & Réserver' : 'Complet'}
                   </Button>
-                <DialogContent className="sm:max-w-[700px] bg-white p-0 overflow-hidden rounded-2xl">
+                <DialogContent className="w-[95vw] sm:max-w-3xl md:max-w-4xl bg-white p-0 max-h-[95vh] overflow-hidden rounded-2xl flex flex-col">
                   <div className="h-48 relative">
                      <img src={trip.photoUrl} className="w-full h-full object-cover" alt="Cover" />
                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-6">
@@ -145,8 +145,8 @@ export default function OrganizedTrips() {
                        {trip.price.toLocaleString()} DZD <span className="text-sm font-normal text-slate-500">/ pers</span>
                      </div>
                   </div>
-                  <ScrollArea className="max-h-[60vh]">
-                    <div className="p-6">
+                  <div className="flex-1 overflow-y-auto min-h-0">
+                    <div className="p-4 sm:p-6 md:p-8">
                       
                       <div className="mb-8">
                         <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2"><Info className="w-5 h-5 text-blue-500"/> Détails du Programme</h3>
@@ -155,157 +155,149 @@ export default function OrganizedTrips() {
                         </div>
                       </div>
 
-                      <div className="border-t border-slate-100 pt-6">
-                        <h3 className="font-bold text-slate-800 mb-4 text-lg">Formulaire de réservation</h3>
-                        <div className="space-y-4">
+                      
+                      <div className="border-t border-slate-100 pt-8 mt-8">
+                        <h3 className="font-black text-slate-800 mb-6 text-xl tracking-tight">Vos Coordonnées</h3>
+                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-5">
+                          <div className="md:col-span-2">
+                            <label className="text-sm font-bold text-slate-700 block mb-2">Nom du client principal (ou Agence)</label>
+                            <Input className="h-12 bg-white border-slate-200" value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Nom et Prénom" />
+                          </div>
                           <div>
-                            <label className="text-sm font-semibold text-slate-700 block mb-1">Nom du client principal</label>
-                            <Input value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Nom et Prénom" />
+                            <label className="text-sm font-bold text-slate-700 block mb-2">Email de contact</label>
+                            <Input className="h-12 bg-white border-slate-200" value={clientEmail} onChange={e => setClientEmail(e.target.value)} placeholder="email@exemple.com" />
                           </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-semibold text-slate-700 block mb-1">Email</label>
-                              <Input value={clientEmail} onChange={e => setClientEmail(e.target.value)} placeholder="email@exemple.com" />
-                            </div>
-                            <div>
-                              <label className="text-sm font-semibold text-slate-700 block mb-1">Téléphone</label>
-                              <Input value={clientPhone} onChange={e => setClientPhone(e.target.value)} placeholder="Numéro de téléphone" />
-                            </div>
+                          <div>
+                            <label className="text-sm font-bold text-slate-700 block mb-2">Téléphone</label>
+                            <Input className="h-12 bg-white border-slate-200" value={clientPhone} onChange={e => setClientPhone(e.target.value)} placeholder="Numéro de téléphone" />
                           </div>
-                          
-                          {selectedTrip?.customFormFields && selectedTrip.customFormFields.length > 0 && (
-                            <div className="border border-blue-100 bg-blue-50/50 p-4 rounded-xl space-y-4 my-4">
-                              <h4 className="font-bold text-slate-800 flex items-center gap-2">
-                                Informations requises par l'organisateur
-                              </h4>
-                              {selectedTrip.customFormFields.map(field => (
-                                <div key={field.id}>
-                                  <label className="text-sm font-semibold text-slate-700 block mb-1">
-                                    {field.label} {field.required && <span className="text-red-500">*</span>}
-                                  </label>
-                                  {field.type === 'file' ? (
-                                    <Input 
-                                      type="file"
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                          const reader = new FileReader();
-                                          reader.onload = (event) => setCustomFormData({...customFormData, [field.id]: (event.target?.result as string) || ""});
-                                          reader.readAsDataURL(file);
-                                        }
-                                      }}
-                                      className="bg-white"
-                                    />
-                                  ) : (
-                                    <Input 
-                                      type={field.type} 
-                                      value={customFormData[field.id] || ''} 
-                                      onChange={e => setCustomFormData({...customFormData, [field.id]: e.target.value})} 
-                                      placeholder={field.label} 
-                                      className="bg-white"
-                                    />
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                        </div>
+                      </div>
 
-                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div>
-                              <label className="text-sm font-bold text-slate-800 block">Nombre de personnes</label>
-                              <p className="text-xs text-slate-500">Places restantes: {trip.availableSeats}</p>
-                            </div>
-                            <div className="flex items-center gap-3 bg-white p-1 rounded-lg border border-slate-200">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-8 w-8 rounded-md hover:bg-slate-100"
-                                onClick={() => {
-                                const newCount = Math.max(1, numberOfPeople - 1);
-                                setNumberOfPeople(newCount);
-                                setPassengers(prev => prev.slice(0, newCount));
-                              }}
-                              >-</Button>
-                              <span className="font-bold text-lg w-8 text-center">{numberOfPeople}</span>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-8 w-8 rounded-md hover:bg-slate-100"
-                                onClick={() => {
-                                const newCount = Math.min(trip.availableSeats, numberOfPeople + 1);
-                                setNumberOfPeople(newCount);
-                                setPassengers(prev => {
-                                  const newArr = [...prev];
-                                  if (newCount > newArr.length) {
-                                    newArr.push({ firstName: '', lastName: '', passportNumber: '' });
-                                  }
-                                  return newArr;
-                                });
-                              }}
-                              >+</Button>
-                            </div>
+                          
                           </div>
                           
-                          <div className="border-t border-slate-100 pt-6">
-                            <h3 className="font-bold text-slate-800 mb-4 text-lg">Informations des Voyageurs</h3>
+                          
+                          <div className="border-t border-slate-100 pt-8 mt-8">
+                            <h3 className="font-black text-slate-800 mb-6 text-xl tracking-tight flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                              Informations des Voyageurs
+                              <div className="flex items-center gap-3 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 rounded-lg hover:bg-white hover:shadow-sm transition-all"
+                                  onClick={() => {
+                                    const newCount = Math.max(1, numberOfPeople - 1);
+                                    setNumberOfPeople(newCount);
+                                    setPassengers(prev => prev.slice(0, newCount));
+                                  }}
+                                >-</Button>
+                                <span className="font-black text-lg w-8 text-center text-slate-800">{numberOfPeople}</span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 rounded-lg hover:bg-white hover:shadow-sm transition-all"
+                                  onClick={() => {
+                                    const newCount = Math.min(trip.availableSeats, numberOfPeople + 1);
+                                    setNumberOfPeople(newCount);
+                                    setPassengers(prev => {
+                                      const newArr = [...prev];
+                                      if (newCount > newArr.length) {
+                                        newArr.push({ firstName: '', lastName: '', passportNumber: '' });
+                                      }
+                                      return newArr;
+                                    });
+                                  }}
+                                >+</Button>
+                              </div>
+                            </h3>
+                            
                             <div className="space-y-4">
                               {passengers.map((p, idx) => (
-                                <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                  <h4 className="font-bold text-slate-800 mb-3 text-sm">Passager {idx + 1}</h4>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <Input 
-                                      placeholder="Nom" 
-                                      value={p.lastName} 
-                                      onChange={e => {
-                                        const newP = [...passengers];
-                                        newP[idx].lastName = e.target.value;
-                                        setPassengers(newP);
-                                      }}
-                                    />
-                                    <Input 
-                                      placeholder="Prénom" 
-                                      value={p.firstName} 
-                                      onChange={e => {
-                                        const newP = [...passengers];
-                                        newP[idx].firstName = e.target.value;
-                                        setPassengers(newP);
-                                      }}
-                                    />
-                                    <Input 
-                                      className="sm:col-span-2"
-                                      placeholder="N° de Passeport" 
-                                      value={p.passportNumber} 
-                                      onChange={e => {
-                                        const newP = [...passengers];
-                                        newP[idx].passportNumber = e.target.value;
-                                        setPassengers(newP);
-                                      }}
-                                    />
+                                <div key={idx} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                                  <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                                  <h4 className="font-bold text-slate-400 mb-4 text-xs uppercase tracking-wider">Voyageur {idx + 1}</h4>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div>
+                                      <label className="text-xs font-bold text-slate-700 block mb-1.5">Nom</label>
+                                      <Input 
+                                        placeholder="Nom de famille" 
+                                        className="h-11 bg-slate-50 border-slate-200 focus:bg-white"
+                                        value={p.lastName} 
+                                        onChange={e => {
+                                          const newP = [...passengers];
+                                          newP[idx].lastName = e.target.value;
+                                          setPassengers(newP);
+                                        }}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs font-bold text-slate-700 block mb-1.5">Prénom</label>
+                                      <Input 
+                                        placeholder="Prénom" 
+                                        className="h-11 bg-slate-50 border-slate-200 focus:bg-white"
+                                        value={p.firstName} 
+                                        onChange={e => {
+                                          const newP = [...passengers];
+                                          newP[idx].firstName = e.target.value;
+                                          setPassengers(newP);
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="md:col-span-2 lg:col-span-1">
+                                      <label className="text-xs font-bold text-slate-700 block mb-1.5">N° de Passeport</label>
+                                      <Input 
+                                        placeholder="Optionnel" 
+                                        className="h-11 bg-slate-50 border-slate-200 focus:bg-white"
+                                        value={p.passportNumber} 
+                                        onChange={e => {
+                                          const newP = [...passengers];
+                                          newP[idx].passportNumber = e.target.value;
+                                          setPassengers(newP);
+                                        }}
+                                      />
+                                    </div>
                                   </div>
                                 </div>
                               ))}
                             </div>
                           </div>
 
-                          <div className="mt-4">
-                            <label className="text-sm font-semibold text-slate-700 block mb-1">Notes / Demandes spéciales</label>
-                            <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Régime alimentaire, etc..." />
+                          <div className="mt-8">
+                            <label className="text-sm font-bold text-slate-700 block mb-2">Notes / Demandes spéciales (Optionnel)</label>
+                            <Textarea className="min-h-[100px] bg-slate-50 border-slate-200 focus:bg-white leading-relaxed" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Régime alimentaire, type de lit, allergies..." />
                           </div>
-                        </div>
 
-                        <div className="mt-6 pt-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4">
-                          <div className="text-center sm:text-left">
-                            <p className="text-sm text-slate-500">Montant total estimé</p>
-                            <p className="text-2xl font-bold text-blue-600">{(trip.price * numberOfPeople).toLocaleString()} DZD</p>
+                        
+                        <div className="mt-8 pt-8 border-t border-slate-100">
+                          <div className="bg-blue-900 p-6 rounded-2xl mb-6 shadow-lg relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-8 opacity-10">
+                              <DollarSign className="w-32 h-32 text-white" />
+                            </div>
+                            <div className="relative z-10">
+                              <div className="flex justify-between items-center text-blue-100 mb-2">
+                                <span className="font-medium">Prix unitaire B2B</span>
+                                <span className="font-bold">{trip.price.toLocaleString()} DZD</span>
+                              </div>
+                              <div className="flex justify-between items-center text-blue-100 mb-4">
+                                <span className="font-medium">Nombre de voyageurs</span>
+                                <span className="font-bold">x {numberOfPeople}</span>
+                              </div>
+                              <div className="border-t border-blue-700/50 pt-4 flex justify-between items-end">
+                                <div>
+                                  <span className="text-blue-200 text-sm font-bold uppercase tracking-wider block mb-1">Total B2B (à payer)</span>
+                                  <span className="text-xs text-blue-300">Aucun débit immédiat</span>
+                                </div>
+                                <span className="font-black text-3xl text-white">{(trip.price * numberOfPeople).toLocaleString()} DZD</span>
+                              </div>
+                            </div>
                           </div>
-                          <Button className="bg-blue-600 hover:bg-blue-700 h-12 px-8 rounded-xl font-bold w-full sm:w-auto" onClick={handleBook} disabled={!clientName}>
+                          <Button onClick={handleBook} disabled={!clientName} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black h-14 rounded-xl text-lg shadow-emerald-500/20 shadow-lg transition-all hover:-translate-y-0.5 whitespace-normal leading-tight">
                             Confirmer la réservation
                           </Button>
+                          <p className="text-xs text-slate-400 mt-4 text-center font-medium">Votre réservation sera étudiée par l'administrateur. Vous serez notifié du statut.</p>
                         </div>
-                      </div>
-
-                    </div>
-                  </ScrollArea>
+                  </div>
                 </DialogContent>
               </Dialog>
 

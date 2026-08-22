@@ -1,4 +1,6 @@
-import { useState } from "react";
+const fs = require('fs');
+
+const registerContent = `import { useState } from "react";
 import { auth, db } from "../../src/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
@@ -38,7 +40,7 @@ export function Register() {
         nifNumber: formData.nifNumber,
         managerLastName: formData.managerLastName,
         managerFirstName: formData.managerFirstName,
-        contactName: `${formData.managerFirstName} ${formData.managerLastName}`, // Legacy support
+        contactName: \`\${formData.managerFirstName} \${formData.managerLastName}\`, // Legacy support
         email: formData.email,
         phone: formData.phone,
         createdAt: new Date().toISOString()
@@ -157,3 +159,6 @@ export function Register() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync('components/auth/Register.tsx', registerContent);
