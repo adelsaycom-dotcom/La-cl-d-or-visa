@@ -30,22 +30,34 @@ export function Register() {
     setError("");
     try {
       const userCred = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      await setDoc(doc(db, 'users', userCred.user.uid), {
-        role: 'agency',
-        status: 'PENDING',
-        agencyName: formData.agencyName,
-        rcNumber: formData.rcNumber,
-        nifNumber: formData.nifNumber,
-        managerLastName: formData.managerLastName,
-        managerFirstName: formData.managerFirstName,
-        contactName: `${formData.managerFirstName} ${formData.managerLastName}`, // Legacy support
-        email: formData.email,
-        phone: formData.phone,
-        balance: 0,
-        createdAt: new Date().toISOString()
-      });
-      alert("Demande envoyée avec succès. Vous serez recontacté(e) sous peu.");
-      navigate("/login");
+      
+      try {
+        await setDoc(doc(db, 'users', userCred.user.uid), {
+          role: 'agency',
+          status: 'PENDING',
+          agencyName: formData.agencyName,
+          rcNumber: formData.rcNumber,
+          nifNumber: formData.nifNumber,
+          managerLastName: formData.managerLastName,
+          managerFirstName: formData.managerFirstName,
+          contactName: `${formData.managerFirstName} ${formData.managerLastName}`, // Legacy support
+          email: formData.email,
+          phone: formData.phone,
+          balance: 0,
+          createdAt: new Date().toISOString()
+        });
+        alert("Demande envoyée avec succès. Vous serez recontacté(e) sous peu.");
+        navigate("/login");
+      } catch (firestoreErr: any) {
+        // If Firestore write fails, delete the orphaned Auth user so they can retry
+        console.error("Erreur Firestore:", firestoreErr);
+        try {
+          await userCred.user.delete();
+        } catch(deleteErr) {
+          console.error("Impossible de supprimer l'utilisateur orphelin:", deleteErr);
+        }
+        setError("Erreur de base de données. Veuillez réessayer. (" + firestoreErr.message + ")");
+      }
     } catch(err: any) {
       console.error("Erreur d'inscription complète:", err);
       if (err.code === 'auth/email-already-in-use') {
