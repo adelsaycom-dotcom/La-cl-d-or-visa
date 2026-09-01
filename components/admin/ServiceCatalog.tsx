@@ -1,295 +1,404 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAppStore, PrestationService } from "../../src/store/useAppStore";
-import { Plus, Edit, Trash2, Globe2, FileText, CheckCircle2, Search, ArrowUpRight, Clock, AlertCircle } from "lucide-react";
+import { 
+  Plus, Edit, Trash2, Globe2, FileText, CheckCircle2, 
+  Search, AlertCircle, MapPin, List, Settings, Save, X, CreditCard, Clock
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 
+const PREDEFINED_CATEGORIES = [
+  "Visa",
+  "E-Visa",
+  "Dossier Résidence",
+  "Prise de Rendez-vous",
+  "Traitement de Dossier",
+  "Permis internationnal"
+];
+
+// Document checklist options
+const DOCUMENT_OPTIONS = [
+  "Scan du Passeport",
+  "Photo d'identité",
+  "Billet d'avion / Réservation",
+  "Réservation d'hôtel",
+  "Fiche familiale",
+  "Justificatif de revenus",
+  "Nom de la mère (Texte)",
+  "Profession (Texte)",
+  "Adresse de résidence (Texte)"
+];
+
 export function ServiceCatalog() {
-  const { services, addService, updateService, deleteService } = useAppStore();
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const { services, addService, updateService, deleteService, countries } = useAppStore();
   
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("Toutes");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Form State
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<PrestationService>>({
-    title: "", type: "Evisa", destination: "", flag: "🌍", price: 0, processingTime: "", description: "", requiredDocuments: [""], conditions: [""], active: true
+    title: "", 
+    type: "E-Visa", 
+    destination: "", 
+    price: 0, 
+    processingTime: "", 
+    conditions: [""], 
+    requiredDocuments: [], 
+    active: true 
   });
 
+  // Derived Data
+  const filteredServices = useMemo(() => {
+    return services.filter(s => {
+      const matchesSearch = s.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            s.destination?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory === "Toutes" || s.type === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [services, searchQuery, selectedCategory]);
+
   const handleEdit = (s: PrestationService) => {
-    setFormData(s);
+    setFormData({
+      ...s,
+      conditions: s.conditions && s.conditions.length > 0 ? s.conditions : [""],
+      requiredDocuments: s.requiredDocuments || []
+    });
     setEditingId(s.id);
     setIsEditorOpen(true);
   };
 
   const handleAddNew = () => {
-    setFormData({ title: "", type: "Evisa", destination: "", flag: "🌍", price: 0, processingTime: "3-5 jours", description: "", requiredDocuments: ["Passeport scan couleur"], conditions: [""], active: true });
+    setFormData({ 
+      title: "", 
+      type: "E-Visa", 
+      destination: "", 
+      price: 0, 
+      processingTime: "24h à 48h", 
+      conditions: [""], 
+      requiredDocuments: ["Scan du Passeport", "Photo d'identité"], 
+      active: true 
+    });
     setEditingId(null);
     setIsEditorOpen(true);
   };
 
-  const handleSave = () => {
-    if (!formData.title || !formData.destination) return;
-    
-    const cleanDocs = (formData.requiredDocuments || []).filter(d => d.trim() !== "");
+  const handleSave = async () => {
+    if (!formData.title || !formData.destination || !formData.type) {
+      alert("Veuillez remplir le nom, le type et le pays.");
+      return;
+    }
+        
     const cleanConds = (formData.conditions || []).filter(c => c.trim() !== "");
     
-    if (editingId) {
-      updateService(editingId, { ...formData, requiredDocuments: cleanDocs, conditions: cleanConds });
-    } else {
-      addService({ ...formData, id: Date.now().toString(), requiredDocuments: cleanDocs, conditions: cleanConds } as PrestationService);
+    setIsSubmitting(true);
+    try {
+      if (editingId) {
+        await updateService(editingId, { ...formData, conditions: cleanConds });
+      } else {
+        await addService({ 
+          ...formData as PrestationService, 
+          id: Date.now().toString(),
+          conditions: cleanConds
+        });
+      }
+      setIsEditorOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de la sauvegarde.");
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsEditorOpen(false);
   };
 
-  const filteredServices = services.filter(s => 
-    s.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    s.destination.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleDelete = async (id: string) => {
+    if (confirm("Êtes-vous sûr de vouloir supprimer cette option de service ?")) {
+      await deleteService(id);
+    }
+  };
+
+  const toggleDoc = (docName: string) => {
+    const current = formData.requiredDocuments || [];
+    if (current.includes(docName)) {
+      setFormData({ ...formData, requiredDocuments: current.filter(d => d !== docName) });
+    } else {
+      setFormData({ ...formData, requiredDocuments: [...current, docName] });
+    }
+  };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-indigo-50 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/3"></div>
-        <div className="relative z-10">
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Catalogue des Prestations</h2>
-          <p className="text-slate-500 font-medium mt-2 max-w-xl">Configurez les visas, dossiers de résidence, assurances et autres services. Définissez les tarifs B2B, les documents requis et les conditions.</p>
+    <div className="space-y-6 pb-20 max-w-7xl mx-auto">
+      
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Catalogue B2B</h2>
+          <p className="text-slate-500 mt-1">Configurez vos services, options et prérequis documentaires par pays.</p>
         </div>
-        <div className="relative z-10 w-full md:w-auto">
-          <Button onClick={handleAddNew} className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-12 px-6 rounded-xl shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5">
-            <Plus className="w-5 h-5 mr-2" /> Créer un service
-          </Button>
-        </div>
+        <Button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 px-6 rounded-xl shadow-lg shadow-blue-500/20">
+          <Plus className="w-5 h-5 mr-2" /> Nouvelle Option
+        </Button>
       </div>
 
-      <div className="flex items-center gap-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm max-w-md">
-        <div className="bg-slate-50 p-2 rounded-lg text-slate-400">
-          <Search className="w-5 h-5" />
+      {/* Filters */}
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <Input 
+            placeholder="Rechercher une option ou un pays..." 
+            className="pl-10 h-12 bg-slate-50 border-slate-200"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
-        <Input 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Rechercher une destination ou un service..."
-          className="border-0 bg-transparent focus-visible:ring-0 px-0 shadow-none text-base"
-        />
+        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <SelectTrigger className="w-full md:w-64 h-12 bg-slate-50 border-slate-200 font-medium">
+            <SelectValue placeholder="Catégorie" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Toutes">Toutes les catégories</SelectItem>
+            {PREDEFINED_CATEGORIES.map(cat => (
+              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredServices.map(s => (
-          <div key={s.id} className={`bg-white rounded-2xl border ${s.active ? 'border-slate-200 hover:border-indigo-300' : 'border-slate-200/50 opacity-75'} shadow-sm overflow-hidden flex flex-col transition-all hover:shadow-lg hover:-translate-y-1 group`}>
-             <div className="p-6 border-b border-slate-100 flex items-start gap-4">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shadow-sm border ${s.active ? 'bg-white border-slate-100' : 'bg-slate-50 border-slate-200/50 grayscale'}`}>
-                  {s.flag}
+      {/* List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredServices.map(srv => (
+          <div key={srv.id} className={`bg-white rounded-2xl border transition-all duration-300 ${srv.active ? 'border-slate-200 shadow-sm hover:shadow-md' : 'border-slate-200 opacity-60 grayscale'}`}>
+            
+            {/* Card Header */}
+            <div className="p-5 border-b border-slate-100 flex justify-between items-start">
+              <div>
+                <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 mb-2 font-bold">
+                  {srv.type}
+                </Badge>
+                <h3 className="font-black text-lg text-slate-900 leading-tight">{srv.title}</h3>
+                <div className="flex items-center gap-1.5 text-slate-500 mt-2 text-sm font-medium">
+                  <MapPin className="w-4 h-4" /> {srv.destination}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start gap-2 mb-1">
-                    <h3 className="font-bold text-slate-900 text-lg truncate leading-tight">{s.title}</h3>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-                    <Globe2 className="w-4 h-4 text-slate-400" />
-                    <span className="truncate">{s.destination}</span>
-                  </div>
-                </div>
-             </div>
-             
-             <div className="p-6 flex-1 flex flex-col gap-4">
-               <div className="grid grid-cols-2 gap-4">
-                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Type</p>
-                   <p className="font-bold text-slate-800">{s.type}</p>
-                 </div>
-                 <div className="bg-indigo-50/50 rounded-xl p-3 border border-indigo-100/50">
-                   <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">Tarif B2B</p>
-                   <p className="font-black text-indigo-700">{s.price?.toLocaleString()} DA</p>
-                 </div>
-               </div>
+              </div>
+              <Switch 
+                checked={srv.active}
+                onCheckedChange={async (val) => await updateService(srv.id, { active: val })}
+              />
+            </div>
 
-               <div className="flex items-center gap-2 text-sm text-slate-600 bg-white border border-slate-100 rounded-lg p-2.5">
-                 <Clock className="w-4 h-4 text-orange-500 shrink-0" />
-                 <span className="truncate"><strong>Délai:</strong> {s.processingTime || "Non spécifié"}</span>
-               </div>
-               
-               <div className="flex items-center gap-2 text-sm text-slate-600 bg-white border border-slate-100 rounded-lg p-2.5">
-                 <FileText className="w-4 h-4 text-blue-500 shrink-0" />
-                 <span><strong>{s.requiredDocuments?.length || 0}</strong> document(s) requis</span>
-               </div>
-             </div>
-             
-             <div className="p-4 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2.5 h-2.5 rounded-full ${s.active ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
-                  <span className="text-sm font-bold text-slate-600">{s.active ? 'Actif' : 'Inactif'}</span>
+            {/* Card Body */}
+            <div className="p-5 space-y-4">
+              <div className="flex justify-between items-end">
+                <div>
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Tarif B2B</span>
+                  <div className="text-2xl font-black text-slate-900 font-mono">
+                    {srv.price.toLocaleString()} <span className="text-sm font-bold text-slate-500">DZD</span>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(s)} className="text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 h-9 w-9">
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => deleteService(s.id)} className="text-slate-400 hover:text-red-600 hover:bg-red-50 h-9 w-9">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                <div className="text-right">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Délai</span>
+                  <div className="flex items-center gap-1 text-sm font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded-md">
+                    <Clock className="w-3.5 h-3.5" /> {srv.processingTime || "-"}
+                  </div>
                 </div>
-             </div>
+              </div>
+
+              <div className="bg-amber-50 p-3 rounded-xl border border-amber-100">
+                 <div className="flex gap-2 items-start">
+                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                   <p className="text-xs font-medium text-amber-800 line-clamp-2">
+                     {srv.conditions && srv.conditions[0] ? srv.conditions[0] : "Aucune condition particulière."}
+                   </p>
+                 </div>
+              </div>
+            </div>
+
+            {/* Card Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-2 rounded-b-2xl">
+              <Button size="sm" variant="ghost" className="text-slate-500 hover:text-blue-600 hover:bg-blue-50" onClick={() => handleEdit(srv)}>
+                <Edit className="w-4 h-4 mr-1.5" /> Configurer
+              </Button>
+              <Button size="sm" variant="ghost" className="text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(srv.id)}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         ))}
+        
+        {filteredServices.length === 0 && (
+          <div className="col-span-full py-20 text-center text-slate-500 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+            <Globe2 className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+            <h3 className="text-lg font-bold text-slate-700 mb-1">Aucune option trouvée</h3>
+            <p>Créez votre première offre B2B pour remplir le catalogue.</p>
+          </div>
+        )}
       </div>
 
-      <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
-        <DialogContent className="sm:max-w-4xl p-0 overflow-hidden sm:rounded-[2rem] border-0 shadow-2xl bg-slate-50 flex flex-col max-h-[90vh] !top-1/2 !-translate-y-1/2">
-           <div className="bg-indigo-600 p-8 text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-              <DialogTitle className="text-2xl font-black text-white">{editingId ? 'Modifier le service' : 'Créer un nouveau service'}</DialogTitle>
-              <DialogDescription className="text-indigo-100 mt-2 text-base max-w-xl">
-                Définissez les caractéristiques du service, les documents que l'agence devra fournir, et les conditions spécifiques.
-              </DialogDescription>
-           </div>
-           
-           <div className="flex-1 overflow-y-auto min-h-0">
-             <div className="p-8 space-y-10">
-               {/* Informations Générales */}
-               <section>
-                 <div className="flex items-center gap-3 mb-6">
-                   <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">1</div>
-                   <h3 className="text-xl font-bold text-slate-900">Informations Générales</h3>
-                 </div>
-                 
-                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <div className="md:col-span-8 space-y-2">
-                      <Label className="text-sm font-bold text-slate-700">Titre du Service</Label>
-                      <Input value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} placeholder="Ex: E-Visa Touristique 30 jours, Assurance Schengen..." className="bg-slate-50 border-slate-200 h-11" />
-                    </div>
-                    
-                    <div className="md:col-span-4 space-y-2">
-                      <Label className="text-sm font-bold text-slate-700">Drapeau / Icône</Label>
-                      <Input value={formData.flag} onChange={e=>setFormData({...formData, flag: e.target.value})} className="bg-slate-50 border-slate-200 text-center text-xl h-11" placeholder="🌍" />
-                    </div>
+      {/* Editor Modal */}
+      <Dialog open={isEditorOpen} onOpenChange={(o) => !o && setIsEditorOpen(false)}>
+        <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden bg-slate-50">
+          <div className="bg-white border-b border-slate-200 p-6 flex justify-between items-center sticky top-0 z-10 shadow-sm">
+            <div>
+              <h3 className="text-xl font-black text-slate-900">{editingId ? "Modifier l'option" : "Créer une nouvelle option"}</h3>
+              <p className="text-sm text-slate-500 mt-1">Définissez l'offre, le tarif et les documents requis.</p>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => setIsEditorOpen(false)} className="rounded-full hover:bg-slate-100">
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
 
-                    <div className="md:col-span-6 space-y-2">
-                      <Label className="text-sm font-bold text-slate-700">Destination</Label>
-                      <Input value={formData.destination} onChange={e=>setFormData({...formData, destination: e.target.value})} placeholder="Ex: Dubaï, Espace Schengen, Turquie..." className="bg-slate-50 border-slate-200 h-11" />
-                    </div>
+          <div className="p-6 overflow-y-auto max-h-[70vh] space-y-8">
+            
+            {/* Bloc 1: Base */}
+            <section>
+              <h4 className="flex items-center gap-2 text-sm font-black text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2">
+                <Settings className="w-4 h-4 text-blue-600" /> 1. Informations de base
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-700">Famille de Service</Label>
+                  <Select value={formData.type} onValueChange={(v: any) => setFormData({...formData, type: v})}>
+                    <SelectTrigger className="h-12 bg-white border-slate-200">
+                      <SelectValue placeholder="Catégorie..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PREDEFINED_CATEGORIES.map(cat => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                    <div className="md:col-span-6 space-y-2">
-                      <Label className="text-sm font-bold text-slate-700">Catégorie (Type de formulaire lié)</Label>
-                      <Select value={formData.type} onValueChange={(v:any)=>setFormData({...formData, type: v})}>
-                        <SelectTrigger className="bg-slate-50 border-slate-200 h-11">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Evisa">E-Visa / Visa Standard</SelectItem>
-                          <SelectItem value="Residence">Dossier Résidence</SelectItem>
-                          <SelectItem value="Assurance">Assurance Voyage</SelectItem>
-                          <SelectItem value="Etude">Visa Étude</SelectItem>
-                          <SelectItem value="Rendez-vous">Prise de Rendez-vous</SelectItem>
-                          <SelectItem value="Dossier">Traitement de Dossier</SelectItem>
-                          <SelectItem value="Permis">Permis International / Traduction</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-slate-500">Définit les champs demandés à l'agence.</p>
-                    </div>
-                 </div>
-               </section>
-
-               {/* Tarification & Délais */}
-               <section>
-                 <div className="flex items-center gap-3 mb-6">
-                   <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">2</div>
-                   <h3 className="text-xl font-bold text-slate-900">Tarification & Traitement</h3>
-                 </div>
-
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-bold text-slate-700">Tarif B2B (DZD)</Label>
-                      <div className="relative">
-                        <Input type="number" value={formData.price} onChange={e=>setFormData({...formData, price: Number(e.target.value)})} className="bg-slate-50 border-slate-200 h-11 pl-4 pr-12 font-bold text-lg" />
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                          <span className="text-slate-500 font-medium">DA</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-bold text-slate-700">Délai de traitement estimé</Label>
-                      <Input value={formData.processingTime || ""} onChange={e=>setFormData({...formData, processingTime: e.target.value})} placeholder="Ex: 3 à 5 jours ouvrables" className="bg-slate-50 border-slate-200 h-11" />
-                    </div>
-                 </div>
-               </section>
-
-               {/* Description et Exigences */}
-               <section>
-                 <div className="flex items-center gap-3 mb-6">
-                   <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center font-bold">3</div>
-                   <h3 className="text-xl font-bold text-slate-900">Exigences & Conditions</h3>
-                 </div>
-
-                 <div className="space-y-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-bold text-slate-700">Description et Conditions Générales</Label>
-                      <Textarea 
-                        value={formData.description || ""} 
-                        onChange={e => setFormData({...formData, description: e.target.value})} 
-                        placeholder="Détaillez ici les conditions d'éligibilité, la durée de validité du visa, ou toute note importante pour l'agence..."
-                        className="bg-slate-50 border-slate-200 min-h-[120px] text-base"
-                      />
-                      <div className="flex items-start gap-2 mt-2 text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-100">
-                        <AlertCircle className="w-5 h-5 shrink-0" />
-                        <p>Cette description sera directement visible par l'agence avant qu'elle ne confirme sa demande.</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4 pt-4 border-t border-slate-100">
-                      <Label className="text-sm font-bold text-slate-700">Documents Requis (Scans à fournir)</Label>
-                      <p className="text-sm text-slate-500">L'agence devra obligatoirement uploader ces documents pour soumettre la demande.</p>
-                      
-                      <div className="space-y-3">
-                        {(formData.requiredDocuments || []).map((doc, idx) => (
-                           <div key={idx} className="flex gap-2">
-                              <Input value={doc} onChange={e => {
-                                 const newDocs = [...(formData.requiredDocuments || [])];
-                                 newDocs[idx] = e.target.value;
-                                 setFormData({...formData, requiredDocuments: newDocs});
-                              }} placeholder="Ex: Scan du passeport (Page bio)" className="bg-slate-50 border-slate-200 h-11" />
-                              <Button variant="outline" className="shrink-0 h-11 w-11 p-0 border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200" onClick={() => {
-                                 const newDocs = [...(formData.requiredDocuments || [])];
-                                 newDocs.splice(idx, 1);
-                                 setFormData({...formData, requiredDocuments: newDocs});
-                              }}><Trash2 className="w-5 h-5" /></Button>
-                           </div>
-                        ))}
-                      </div>
-                      <Button variant="outline" onClick={() => setFormData({...formData, requiredDocuments: [...(formData.requiredDocuments || []), ""]})} className="text-indigo-600 font-bold border-indigo-200 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-700 mt-2">
-                        <Plus className="w-4 h-4 mr-2" /> Ajouter un document
-                      </Button>
-                    </div>
-                 </div>
-               </section>
-
-               {/* Statut */}
-               <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                  <div>
-                    <Label className="text-base font-bold text-slate-900">Activer ce service</Label>
-                    <p className="text-sm text-slate-500 mt-1">S'il est désactivé, le service sera caché du catalogue des agences.</p>
-                  </div>
-                  <Switch 
-                    checked={formData.active} 
-                    onCheckedChange={(checked) => setFormData({...formData, active: checked})} 
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-700">Pays (Destination)</Label>
+                  <Input 
+                    placeholder="Ex: Turquie, Espagne, Emirats..." 
+                    value={formData.destination} 
+                    onChange={e => setFormData({...formData, destination: e.target.value})}
+                    className="h-12 bg-white border-slate-200 font-bold"
                   />
-               </section>
-             </div>
-           </div>
-           
-           <div className="p-6 bg-white border-t border-slate-100 rounded-b-[2rem]">
-              <div className="flex flex-col sm:flex-row justify-end gap-3 w-full">
-                <Button variant="outline" className="rounded-xl px-6 h-12 font-bold border-slate-200 w-full sm:w-auto" onClick={() => setIsEditorOpen(false)}>Annuler</Button>
-                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-10 h-12 font-bold shadow-lg shadow-indigo-200 w-full sm:w-auto" onClick={handleSave}>
-                  <CheckCircle2 className="w-5 h-5 mr-2" /> Enregistrer le service
-                </Button>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="font-bold text-slate-700">Nom de l'Option (affiché au client)</Label>
+                  <Input 
+                    placeholder="Ex: E-Visa 30 Jours - Entrée Multiple" 
+                    value={formData.title} 
+                    onChange={e => setFormData({...formData, title: e.target.value})}
+                    className="h-12 bg-white border-slate-200 font-black text-lg text-blue-700 placeholder:font-normal placeholder:text-slate-400"
+                  />
+                </div>
               </div>
-           </div>
+            </section>
+
+            {/* Bloc 2: Pricing */}
+            <section>
+              <h4 className="flex items-center gap-2 text-sm font-black text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2">
+                <CreditCard className="w-4 h-4 text-emerald-600" /> 2. Tarification & Délais
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-700">Prix B2B (DZD)</Label>
+                  <div className="relative">
+                    <Input 
+                      type="number" 
+                      value={formData.price} 
+                      onChange={e => setFormData({...formData, price: Number(e.target.value)})}
+                      className="h-14 bg-white border-slate-200 pl-4 pr-16 text-2xl font-black font-mono focus:border-emerald-500 focus:ring-emerald-500"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                      <span className="font-bold text-slate-400">DZD</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-700">Délai estimé</Label>
+                  <Input 
+                    placeholder="Ex: 24h à 48h" 
+                    value={formData.processingTime} 
+                    onChange={e => setFormData({...formData, processingTime: e.target.value})}
+                    className="h-14 bg-white border-slate-200 text-lg font-medium"
+                  />
+                </div>
+                
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="font-bold text-slate-700">Conditions (Affichées en gros au client)</Label>
+                  <Textarea 
+                    placeholder="Ex: Le passeport doit être valide 6 mois. Réponse sous réserve des autorités." 
+                    value={formData.conditions?.[0] || ""}
+                    onChange={e => setFormData({...formData, conditions: [e.target.value]})}
+                    className="bg-white border-slate-200 min-h-[80px]"
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Bloc 3: Checklist (The Core Engine) */}
+            <section>
+              <div className="flex justify-between items-end mb-4 border-b border-slate-200 pb-2">
+                <h4 className="flex items-center gap-2 text-sm font-black text-slate-900 uppercase tracking-wider">
+                  <List className="w-4 h-4 text-purple-600" /> 3. Documents & Prérequis
+                </h4>
+                <span className="text-xs font-bold text-slate-500 bg-slate-200 px-2 py-1 rounded-md">
+                  {(formData.requiredDocuments || []).length} Requis
+                </span>
+              </div>
+              
+              <p className="text-sm text-slate-600 mb-4 font-medium">
+                Cochez les éléments que l'agence <strong className="text-red-600">doit obligatoirement fournir</strong> pour commander cette option.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-inner">
+                {DOCUMENT_OPTIONS.map(docOpt => {
+                  const isChecked = (formData.requiredDocuments || []).includes(docOpt);
+                  return (
+                    <div 
+                      key={docOpt} 
+                      onClick={() => toggleDoc(docOpt)}
+                      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2 ${
+                        isChecked ? 'bg-purple-50 border-purple-500 text-purple-900' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 shrink-0 rounded flex items-center justify-center ${isChecked ? 'bg-purple-600 text-white' : 'bg-white border border-slate-300'}`}>
+                        {isChecked && <CheckCircle2 className="w-4 h-4" />}
+                      </div>
+                      <span className={`text-sm font-bold ${isChecked ? '' : 'font-medium'}`}>{docOpt}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+
+          <div className="bg-white p-6 border-t border-slate-200 flex justify-between items-center rounded-b-lg">
+            <div className="flex items-center gap-2">
+              <Switch checked={formData.active} onCheckedChange={v => setFormData({...formData, active: v})} />
+              <Label className="font-bold text-slate-600 cursor-pointer">Option Active (Visible par les agences)</Label>
+            </div>
+            
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setIsEditorOpen(false)} className="font-bold border-slate-200 h-12 px-6">
+                Annuler
+              </Button>
+              <Button onClick={handleSave} disabled={isSubmitting} className="font-black h-12 px-8 bg-blue-600 hover:bg-blue-700 text-white">
+                <Save className="w-4 h-4 mr-2" /> {isSubmitting ? "..." : "Enregistrer l'Option"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
+
+// Just an icon import fix at the top (missing CreditCard)
+// I will patch it immediately
