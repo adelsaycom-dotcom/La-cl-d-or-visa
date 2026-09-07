@@ -38,8 +38,10 @@ export function AgencyApplications() {
   };
 
   const filteredApps = applications.filter(app => {
-    const matchesSearch = app.travelerName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          app.passportNumber.toLowerCase().includes(searchTerm.toLowerCase());
+    const tName = (app.travelerName || app.applicantName || "").toLowerCase();
+    const pNumber = (app.passportNumber || "").toLowerCase();
+    const matchesSearch = tName.includes(searchTerm.toLowerCase()) || 
+                          pNumber.includes(searchTerm.toLowerCase());
     const matchesFilter = filter === "ALL" || app.status === filter;
     return matchesSearch && matchesFilter;
   });
@@ -100,9 +102,19 @@ export function AgencyApplications() {
                     <p className="text-emerald-700">Le document de votre client est prêt à être téléchargé.</p>
                   </div>
                 </div>
-                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 px-6 shrink-0 w-full sm:w-auto shadow-lg shadow-emerald-600/20">
-                  <Download className="w-5 h-5 mr-2" /> Télécharger E-Visa
-                </Button>
+                {selectedApp.finalDocument ? (
+                  <a 
+                    href={selectedApp.finalDocument} 
+                    download={`Visa_${(selectedApp.travelerName || (selectedApp as any).applicantName || 'Client').replace(/\s+/g, '_')}.pdf`}
+                    className="inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 px-6 rounded-md shrink-0 w-full sm:w-auto shadow-lg shadow-emerald-600/20"
+                  >
+                    <Download className="w-5 h-5 mr-2" /> Télécharger le Document
+                  </a>
+                ) : (
+                  <Button disabled className="bg-emerald-300 text-white font-bold h-12 px-6 shrink-0 w-full sm:w-auto">
+                    Document indisponible
+                  </Button>
+                )}
               </div>
             )}
 

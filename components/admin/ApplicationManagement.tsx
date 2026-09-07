@@ -16,6 +16,7 @@ export function ApplicationManagement() {
   
   const [replyMessage, setReplyMessage] = useState("");
   const [finalDocUrl, setFinalDocUrl] = useState("");
+  const [finalDocFile, setFinalDocFile] = useState<File | null>(null);
 
   const selectedApp = applications.find((a) => a.id === selectedAppId);
 
@@ -36,10 +37,16 @@ export function ApplicationManagement() {
 
   const filteredApps = applications.filter(app => {
     const matchesStatus = statusFilter === "ALL" || app.status === statusFilter;
+    
+    const tName = (app.travelerName || app.applicantName || "").toLowerCase();
+    const pNumber = (app.passportNumber || "").toLowerCase();
+    const aName = (app.agencyName || "").toLowerCase();
+    
     const matchesSearch = 
-      app.travelerName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      app.passportNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.agencyName.toLowerCase().includes(searchTerm.toLowerCase());
+      tName.includes(searchTerm.toLowerCase()) || 
+      pNumber.includes(searchTerm.toLowerCase()) ||
+      aName.includes(searchTerm.toLowerCase());
+      
     return matchesStatus && matchesSearch;
   });
 
@@ -66,6 +73,18 @@ export function ApplicationManagement() {
     setReplyMessage("");
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFinalDocFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFinalDocUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleApproveWithDoc = async () => {
     if (!selectedApp) return;
     
@@ -77,10 +96,11 @@ export function ApplicationManagement() {
     await updateApplication(selectedApp.id, updates);
     await addApplicationTimelineEntry(selectedApp.id, {
       title: "Dossier Approuvé",
-      message: finalDocUrl.trim() ? "Le document final est disponible au téléchargement." : "Le dossier a été approuvé avec succès.",
+      message: finalDocUrl.trim() ? "Le document final (visa) est disponible au téléchargement." : "Le dossier a été approuvé avec succès.",
       sender: "System"
     });
     setFinalDocUrl("");
+    setFinalDocFile(null);
   };
 
   const isImageBase64 = (str: any) => typeof str === 'string' && str.startsWith('data:image/');
@@ -202,15 +222,30 @@ export function ApplicationManagement() {
                       <h4 className="text-sm font-bold uppercase tracking-wider text-emerald-800 mb-3 flex items-center gap-1.5">
                         <CheckCircle className="w-4 h-4" /> Finaliser & Approuver
                       </h4>
-                      <div className="flex gap-2">
-                        <Input 
-                          placeholder="Lien du E-Visa ou document final..." 
-                          value={finalDocUrl}
-                          onChange={(e) => setFinalDocUrl(e.target.value)}
-                          className="bg-white border-emerald-200"
-                        />
-                        <Button onClick={handleApproveWithDoc} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shrink-0">
-                          Approuver
+                      <div className="space-y-3">
+                        <div className="relative">
+                          <Input 
+                            type="file" 
+                            onChange={handleFileUpload}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                          />
+                          <div className={`flex items-center justify-between p-3 border-2 border-dashed rounded-xl transition-colors ${finalDocFile ? 'border-emerald-500 bg-emerald-100/50' : 'border-emerald-200 hover:border-emerald-400 bg-white'}`}>
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${finalDocFile ? 'bg-emerald-200 text-emerald-700' : 'bg-emerald-100 text-emerald-600'}`}>
+                                <UploadCloud className="w-5 h-5" />
+                              </div>
+                              <div className="text-sm">
+                                {finalDocFile ? (
+                                  <p className="font-bold text-emerald-800">{finalDocFile.name}</p>
+                                ) : (
+                                  <p className="font-medium text-emerald-700">Téléverser le visa (PDF, Image...)</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <Button onClick={handleApproveWithDoc} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11">
+                          Approuver et envoyer le document
                         </Button>
                       </div>
                     </div>

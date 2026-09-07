@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useFirebaseSync } from "./hooks/useFirebaseSync";
 import { BrowserRouter as Router, Routes, Route, Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { Globe2, LayoutDashboard, Earth, FileText, Users, DollarSign, HelpCircle, Bell, Menu, LogOut, Settings, MapPin } from "lucide-react";
+import { Globe2, LayoutDashboard, Earth, FileText, Users, DollarSign, HelpCircle, Bell, Menu, LogOut, Settings, MapPin, GraduationCap } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -22,6 +22,7 @@ const AdminDashboard = lazy(() => import("@/components/admin/AdminDashboard").th
 const AdminSettings = lazy(() => import("@/components/admin/AdminSettings").then(m => ({ default: m.AdminSettings })));
 const ServiceCatalog = lazy(() => import("@/components/admin/ServiceCatalog").then(m => ({ default: m.ServiceCatalog })));
 const OrganizedTripsManagement = lazy(() => import("@/components/admin/OrganizedTripsManagement"));
+const StudyProgramsManagement = lazy(() => import("@/components/admin/StudyProgramsManagement"));
 
 const AgencyLayout = lazy(() => import("@/components/agency/AgencyLayout").then(m => ({ default: m.AgencyLayout })));
 const VisaWizard = lazy(() => import("@/components/agency/VisaWizard").then(m => ({ default: m.VisaWizard })));
@@ -32,6 +33,7 @@ const AgencySupport = lazy(() => import("@/components/agency/AgencySupport").the
 const AgencySettings = lazy(() => import("@/components/agency/AgencySettings").then(m => ({ default: m.AgencySettings })));
 const PassportIndex = lazy(() => import("@/components/agency/PassportIndex").then(m => ({ default: m.PassportIndex })));
 const OrganizedTrips = lazy(() => import("@/components/agency/OrganizedTrips"));
+const StudyPrograms = lazy(() => import("@/components/agency/StudyPrograms"));
 
 const Login = lazy(() => import("@/components/auth/Login").then(m => ({ default: m.Login })));
 const Register = lazy(() => import("@/components/auth/Register").then(m => ({ default: m.Register })));
@@ -61,6 +63,7 @@ function AdminLayout() {
     { name: "Catalogue Services", path: "/admin/countries", icon: Globe2 },
     { name: "Dossiers", path: "/admin/applications", icon: FileText, highlight: true },
     { name: "Voyages Organisés", path: "/admin/trips", icon: MapPin },
+    { name: "Visa Études", path: "/admin/study", icon: GraduationCap },
     { name: "Agences", path: "/admin/agencies", icon: Users },
     { name: "Finances", path: "/admin/finances", icon: DollarSign },
     { name: "Support", path: "/admin/support", icon: HelpCircle },
@@ -236,6 +239,7 @@ export default function App() {
             <Route path="agencies" element={<AgencyManagement />} />
             <Route path="applications" element={<ApplicationManagement />} />
             <Route path="trips" element={<OrganizedTripsManagement />} />
+            <Route path="study" element={<StudyProgramsManagement />} />
             <Route path="finances" element={<FinancesManagement />} />
             <Route path="support" element={<SupportManagement />} />
             <Route path="settings" element={<AdminSettings />} />
@@ -247,6 +251,7 @@ export default function App() {
             <Route path="apply" element={<VisaWizard />} />
             <Route path="applications" element={<AgencyApplications />} />
             <Route path="trips" element={<OrganizedTrips />} />
+            <Route path="study" element={<StudyPrograms />} />
             <Route path="wallet" element={<AgencyWallet />} />
             <Route path="support" element={<AgencySupport />} />
             <Route path="settings" element={<AgencySettings />} />

@@ -66,6 +66,18 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /studyPrograms/{programId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /studyApplications/{applicationId} {
+      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow create: if isAdmin() || (isAgency() && incoming().agencyId == request.auth.uid && incoming().status.lower() == 'pending');
+      allow update: if isAdmin() || (isAgency() && existing().agencyId == request.auth.uid && incoming().status == existing().status);
+      allow delete: if isAdmin();
+    }
+
     match /transactions/{transactionId} {
       allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
       allow create: if isAdmin() || (isAgency() && incoming().agencyId == request.auth.uid && incoming().type == 'debit');

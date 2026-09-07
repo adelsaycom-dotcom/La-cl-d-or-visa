@@ -34,6 +34,7 @@ export function AgencyLayout() {
     { name: "Nouvelle Demande", path: "/agency/apply", icon: FileText, highlight: true },
     { name: "Mes Dossiers", path: "/agency/applications", icon: Plane },
     { name: "Voyages Organisés", path: "/agency/trips", icon: MapPin },
+    { name: "Visa Études", path: "/agency/study", icon: FileText },
     { name: "Mon Portefeuille", path: "/agency/wallet", icon: WalletCards },
     { name: "Assistance", path: "/agency/support", icon: HelpCircle },
     { name: "Paramètres", path: "/agency/settings", icon: Settings },

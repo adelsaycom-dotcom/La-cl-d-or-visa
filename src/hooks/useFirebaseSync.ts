@@ -84,6 +84,16 @@ export function useFirebaseSync() {
           const res = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           setStore({ tripReservations: res as any });
         }));
+
+        unsubsRef.current.push(onSnapshot(collection(db, 'studyPrograms'), snapshot => {
+          const programs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setStore({ studyPrograms: programs as any });
+        }));
+
+        unsubsRef.current.push(onSnapshot(getQuery('studyApplications'), snapshot => {
+          const apps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setStore({ studyApplications: apps as any });
+        }));
         
         unsubsRef.current.push(onSnapshot(doc(db, 'users', user.uid), docSnap => {
           if (docSnap.exists()) {

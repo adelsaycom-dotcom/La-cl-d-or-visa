@@ -84,6 +84,45 @@ export interface TripReservation {
   passengerNames?: string[];
 }
 
+export interface StudyProgram {
+  id: string;
+  title: string;
+  country: string;
+  university: string;
+  type: string; // e.g., 'Bachelor', 'Master', 'Language', 'PhD'
+  description: string;
+  price: number; // Agency price / Service fee
+  requiredDocuments: string[];
+  image?: string;
+  status: 'active' | 'draft';
+  createdAt: string;
+}
+
+export interface StudyApplication {
+  id: string;
+  programId: string;
+  programTitle?: string;
+  agencyId: string;
+  agencyName: string;
+  studentName: string;
+  passportNumber: string;
+  email: string;
+  phone: string;
+  status: "Pending" | "Processing" | "ActionRequired" | "Approved" | "Rejected";
+  documents: Record<string, string>; // Maps document name to base64 or URL
+  timeline?: {
+    id: string;
+    date: string;
+    title: string;
+    message: string;
+    sender: "Admin" | "Agency" | "System";
+  }[];
+  submissionDate: string;
+  price: number;
+  finalDocument?: string;
+  adminNotes?: string;
+}
+
 export type ServiceType = "Evisa" | "Invitation" | "Rendez-vous" | "Dossier" | "Residence" | "Permis" | "Assurance" | "Etude";
 
 export interface Application {
@@ -137,6 +176,8 @@ export interface AppState {
   applications: Application[];
   organizedTrips: OrganizedTrip[];
   tripReservations: TripReservation[];
+  studyPrograms: StudyProgram[];
+  studyApplications: StudyApplication[];
 
   addOrganizedTrip: (trip: Omit<OrganizedTrip, 'id' | 'createdAt' | 'availableSeats'>) => void;
   updateOrganizedTrip: (id: string, trip: Partial<OrganizedTrip>) => void;
@@ -145,6 +186,15 @@ export interface AppState {
   addTripReservation: (reservation: Omit<TripReservation, 'id' | 'createdAt' | 'status' | 'totalPrice'>) => void;
   updateTripReservationStatus: (id: string, status: TripReservation['status']) => void;
   updateTripReservationPayment: (id: string, amount: number) => void;
+
+  addStudyProgram: (program: Omit<StudyProgram, 'id' | 'createdAt'>) => void;
+  updateStudyProgram: (id: string, program: Partial<StudyProgram>) => void;
+  deleteStudyProgram: (id: string) => void;
+
+  addStudyApplication: (application: Omit<StudyApplication, 'id' | 'submissionDate'>) => Promise<void>;
+  updateStudyApplicationStatus: (id: string, status: StudyApplication['status']) => void;
+  updateStudyApplication: (id: string, updates: Partial<StudyApplication>) => void;
+  addStudyTimelineEntry: (id: string, entry: Omit<NonNullable<StudyApplication["timeline"]>[0], "id" | "date">) => Promise<void>;
 
   addCountry: (country: Country) => void;
   updateCountry: (id: string, data: Partial<Country>) => void;
@@ -265,6 +315,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
   applications: [],
   organizedTrips: [],
   tripReservations: [],
+  studyPrograms: [],
+  studyApplications: [],
 
   addService: async (s) => {
     const sId = s.id || doc(collection(db, 'services')).id;
@@ -340,6 +392,109 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   addCountry: async (country) => {
     await setDoc(doc(db, 'countries', country.id), country);
+  },
+
+  addStudyProgram: async (programData) => {
+    const progId = doc(collection(db, 'studyPrograms')).id;
+    await setDoc(doc(db, 'studyPrograms', progId), {
+      ...programData,
+      id: progId,
+      createdAt: new Date().toISOString()
+    });
+  },
+
+  updateStudyProgram: async (id, programData) => {
+    await updateDoc(doc(db, 'studyPrograms', id), programData);
+  },
+
+  deleteStudyProgram: async (id) => {
+    await deleteDoc(doc(db, 'studyPrograms', id));
+  },
+
+  addStudyApplication: async (application) => {
+    const appId = doc(collection(db, 'studyApplications')).id;
+    const userRef = doc(db, 'users', application.agencyId);
+    
+    await runTransaction(db, async (transaction) => {
+      const userDoc = await transaction.get(userRef);
+      if (!userDoc.exists()) {
+        throw new Error("Agence introuvable");
+      }
+      
+      const currentBalance = userDoc.data().balance || 0;
+      const price = application.price || 0;
+      
+      if (currentBalance < price) {
+        throw new Error("Solde insuffisant pour cette opération.");
+      }
+      
+      transaction.update(userRef, { balance: currentBalance - price });
+      transaction.set(doc(db, 'studyApplications', appId), {
+        ...application,
+        id: appId,
+        submissionDate: new Date().toISOString()
+      });
+      
+      const txRef = doc(collection(db, 'transactions'));
+      transaction.set(txRef, {
+        id: txRef.id,
+        agencyId: application.agencyId,
+        agencyName: application.agencyName || '',
+        amount: price,
+        type: 'debit',
+        status: 'completed',
+        date: new Date().toISOString().split('T')[0],
+        description: `Paiement pour programme d'études (${application.studentName || ''})`
+      });
+      
+      const notifRef = doc(collection(db, 'notifications'));
+      transaction.set(notifRef, {
+        id: notifRef.id,
+        agencyId: 'admin',
+        title: 'Nouveau dossier Études',
+        message: `${application.agencyName} a soumis un dossier d'études pour ${application.studentName}.`,
+        type: 'info',
+        read: false,
+        createdAt: new Date().toISOString(),
+        link: '/admin/study'
+      });
+    });
+  },
+
+  updateStudyApplicationStatus: async (id, status) => {
+    await updateDoc(doc(db, 'studyApplications', id), { status });
+    const app = get().studyApplications.find(a => a.id === id);
+    if (app) {
+      const notifId = doc(collection(db, 'notifications')).id;
+      await setDoc(doc(db, 'notifications', notifId), {
+        id: notifId,
+        agencyId: app.agencyId,
+        title: `Dossier Études ${status}`,
+        message: `Le statut de la demande d'études pour ${app.studentName} est maintenant: ${status}.`,
+        type: status === 'Approved' ? 'success' : (status === 'Rejected' ? 'error' : 'info'),
+        read: false,
+        createdAt: new Date().toISOString(),
+        link: '/agency/study'
+      });
+    }
+  },
+
+  updateStudyApplication: async (id, updates) => {
+    await updateDoc(doc(db, 'studyApplications', id), updates);
+  },
+
+  addStudyTimelineEntry: async (id, entry) => {
+    const appRef = doc(db, 'studyApplications', id);
+    const newEntry = {
+      ...entry,
+      id: Math.random().toString(36).substring(2, 9),
+      date: new Date().toISOString()
+    };
+    const currentApp = get().studyApplications.find(a => a.id === id);
+    if (currentApp) {
+      const newTimeline = [...(currentApp.timeline || []), newEntry];
+      await updateDoc(appRef, { timeline: newTimeline });
+    }
   },
 
   updateCountry: async (id, data) => {
@@ -470,7 +625,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     { id: '1', title: 'Visa Touristique (E-Visa)', type: 'Evisa', destination: 'Turquie', flag: '🇹🇷', price: 15000, processingTime: '3-5 jours', requiredDocuments: ['Passeport', 'Photo'], conditions: ['Passeport valide 6 mois'], active: true },
     { id: '2', title: 'Dossier Résidence (Non Lucrative)', type: 'Residence', destination: 'Espagne', flag: '🇪🇸', price: 25000, processingTime: '10 jours', requiredDocuments: ['Passeport', 'Fiche Familiale', 'Justificatif de revenus'], conditions: ['Revenus réguliers'], active: true },
     { id: '3', title: 'Assurance Voyage 30 Jours', type: 'Assurance', destination: 'Monde Entier', flag: '🌍', price: 5000, processingTime: 'Immédiat', requiredDocuments: ['Passeport'], conditions: ['Age < 75 ans'], active: true }
-  ], applications: [], organizedTrips: [], tripReservations: [] });
+  ], applications: [], organizedTrips: [], tripReservations: [], studyPrograms: [], studyApplications: [] });
   }
 }));
 

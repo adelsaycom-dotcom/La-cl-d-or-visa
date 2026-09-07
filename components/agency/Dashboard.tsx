@@ -56,14 +56,16 @@ export function AgencyDashboard() {
   const rejectedApps = applications.filter(a => a.status === "Rejected").length;
 
   const services = [
-    { name: "Visa", icon: FileText, path: "/agency/apply?service=Visa", color: "bg-blue-50 text-blue-600 border-blue-100" },
+    { name: "Visa B2B", icon: FileText, path: "/agency/apply?service=Visa", color: "bg-blue-50 text-blue-600 border-blue-100" },
     { name: "E-Visa", icon: Globe, path: "/agency/apply?service=E-Visa", color: "bg-cyan-50 text-cyan-600 border-cyan-100" },
+    { name: "Voyages Organisés", icon: Plane, path: "/agency/trips", color: "bg-pink-50 text-pink-600 border-pink-100" },
     { name: "Dossier Résidence", icon: Building2, path: "/agency/apply?service=Dossier Résidence", color: "bg-indigo-50 text-indigo-600 border-indigo-100" },
     { name: "Rendez-vous", icon: CalendarDays, path: "/agency/apply?service=Prise de Rendez-vous", color: "bg-orange-50 text-orange-600 border-orange-100" },
     { name: "Traitement de Dossier", icon: FolderOpen, path: "/agency/apply?service=Traitement de Dossier", color: "bg-teal-50 text-teal-600 border-teal-100" },
     { name: "Permis Intl.", icon: Car, path: "/agency/apply?service=Permis internationnal", color: "bg-amber-50 text-amber-600 border-amber-100" },
     { name: "Visa Études", icon: GraduationCap, path: "/agency/study", color: "bg-purple-50 text-purple-600 border-purple-100" },
     { name: "Assurance Voyage", icon: ShieldCheck, path: "/agency/assurance", color: "bg-emerald-50 text-emerald-600 border-emerald-100" },
+    { name: "Index Passeport", icon: Map, path: "/agency/passport-index", color: "bg-rose-50 text-rose-600 border-rose-100" },
   ];
 
   return (

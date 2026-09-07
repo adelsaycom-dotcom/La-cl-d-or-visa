@@ -78,17 +78,19 @@ export function VisaWizard() {
       const newApp = {
         id: Math.random().toString(36).substring(7),
         agencyId: auth.currentUser?.uid || "unknown",
-        agencyName: "Mon Agence", // Should come from context, simplified here
-        type: selectedOption.type,
-        destination: selectedOption.destination,
-        serviceName: selectedOption.title,
-        applicantName: `${applicant.lastName} ${applicant.firstName}`,
+        agencyName: "Mon Agence", 
+        serviceType: selectedOption.type,
+        country: selectedOption.destination,
+        visaType: selectedOption.title,
+        travelerName: `${applicant.lastName} ${applicant.firstName}`,
         passportNumber: applicant.passportNumber,
         status: "Pending",
         price: selectedOption.price,
-        documents: Object.keys(uploadedFiles), // In a real app, upload to storage and store URLs
-        customFields: textFields,
-        date: new Date().toISOString().split("T")[0],
+        customFormData: {
+          documents: Object.keys(uploadedFiles),
+          fields: textFields
+        },
+        submissionDate: new Date().toISOString(),
       };
 
       await addApplication(newApp as any);

@@ -35,6 +35,13 @@ const DOCUMENT_OPTIONS = [
   "Adresse de résidence (Texte)"
 ];
 
+const BASE_COUNTRIES = [
+  "Turquie", "France", "Espagne", "Émirats Arabes Unis", "Chine",
+  "États-Unis", "Royaume-Uni", "Canada", "Arabie Saoudite", "Égypte",
+  "Maroc", "Tunisie", "Oman", "Qatar", "Thaïlande", "Malaisie",
+  "Italie", "Allemagne", "Belgique", "Suisse", "Russie", "Japon"
+].sort();
+
 export function ServiceCatalog() {
   const { services, addService, updateService, deleteService, countries } = useAppStore();
   
@@ -42,6 +49,7 @@ export function ServiceCatalog() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("Toutes");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAddingNewCountry, setIsAddingNewCountry] = useState(false);
 
   // Form State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -57,6 +65,11 @@ export function ServiceCatalog() {
   });
 
   // Derived Data
+  const allDestinations = useMemo(() => {
+    const set = new Set([...BASE_COUNTRIES, ...services.map(s => s.destination).filter(Boolean)]);
+    return Array.from(set).sort();
+  }, [services]);
+
   const filteredServices = useMemo(() => {
     return services.filter(s => {
       const matchesSearch = s.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -278,13 +291,39 @@ export function ServiceCatalog() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="font-bold text-slate-700">Pays (Destination)</Label>
-                  <Input 
-                    placeholder="Ex: Turquie, Espagne, Emirats..." 
-                    value={formData.destination} 
-                    onChange={e => setFormData({...formData, destination: e.target.value})}
-                    className="h-12 bg-white border-slate-200 font-bold"
-                  />
+                  <div className="flex justify-between items-center">
+                    <Label className="font-bold text-slate-700">Pays (Destination)</Label>
+                    <button 
+                      type="button"
+                      onClick={() => setIsAddingNewCountry(!isAddingNewCountry)}
+                      className="text-xs text-blue-600 hover:underline font-bold"
+                    >
+                      {isAddingNewCountry ? "Choisir dans la liste" : "+ Nouveau pays"}
+                    </button>
+                  </div>
+                  {isAddingNewCountry ? (
+                    <Input 
+                      placeholder="Saisissez le nom du pays..." 
+                      value={formData.destination} 
+                      onChange={e => setFormData({...formData, destination: e.target.value})}
+                      className="h-12 bg-white border-slate-200 font-bold"
+                      autoFocus
+                    />
+                  ) : (
+                    <Select 
+                      value={formData.destination} 
+                      onValueChange={(v) => setFormData({...formData, destination: v})}
+                    >
+                      <SelectTrigger className="h-12 bg-white border-slate-200 font-bold">
+                        <SelectValue placeholder="Choisir un pays..." />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {allDestinations.map(c => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
