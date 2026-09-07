@@ -296,7 +296,7 @@ export function ApplicationManagement() {
                               </div>
                             ) : (
                               <div className="text-sm text-slate-900 bg-slate-50 p-3 rounded-xl border border-slate-100 whitespace-pre-wrap">
-                                {val || '-'}
+                                {typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val || '-')}
                               </div>
                             )}
                           </div>

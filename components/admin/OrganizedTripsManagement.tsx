@@ -421,7 +421,7 @@ export default function OrganizedTripsManagement() {
                                     {isFile ? (
                                       <a href={val as string} download={label + "_document"} className="text-blue-500 hover:underline flex items-center gap-1"><ImageIcon className="w-3 h-3" /> Télécharger / Voir</a>
                                     ) : (
-                                      <span className="text-slate-800 font-semibold">{val as string}</span>
+                                      <span className="text-slate-800 font-semibold">{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
                                     )}
                                   </div>
                                 );
