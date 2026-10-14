@@ -307,11 +307,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   notifications: [],
   updateAgencyStatus: async (id, status) => { await updateDoc(doc(db, "users", id), { status }); },
   countries: [],
-  services: [
-    { id: '1', title: 'Visa Touristique (E-Visa)', type: 'Evisa', destination: 'Turquie', flag: '🇹🇷', price: 15000, processingTime: '3-5 jours', requiredDocuments: ['Passeport', 'Photo'], conditions: ['Passeport valide 6 mois'], active: true },
-    { id: '2', title: 'Dossier Résidence (Non Lucrative)', type: 'Residence', destination: 'Espagne', flag: '🇪🇸', price: 25000, processingTime: '10 jours', requiredDocuments: ['Passeport', 'Fiche Familiale', 'Justificatif de revenus'], conditions: ['Revenus réguliers'], active: true },
-    { id: '3', title: 'Assurance Voyage 30 Jours', type: 'Assurance', destination: 'Monde Entier', flag: '🌍', price: 5000, processingTime: 'Immédiat', requiredDocuments: ['Passeport'], conditions: ['Age < 75 ans'], active: true }
-  ],
+  services: [],
   applications: [],
   organizedTrips: [],
   tripReservations: [],
@@ -619,13 +615,20 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }
   },
   clearData: () => {
-    set({ agencies: [],
-  notifications: [], supportTickets: [], transactions: [], rechargeRequests: [], countries: [],
-  services: [
-    { id: '1', title: 'Visa Touristique (E-Visa)', type: 'Evisa', destination: 'Turquie', flag: '🇹🇷', price: 15000, processingTime: '3-5 jours', requiredDocuments: ['Passeport', 'Photo'], conditions: ['Passeport valide 6 mois'], active: true },
-    { id: '2', title: 'Dossier Résidence (Non Lucrative)', type: 'Residence', destination: 'Espagne', flag: '🇪🇸', price: 25000, processingTime: '10 jours', requiredDocuments: ['Passeport', 'Fiche Familiale', 'Justificatif de revenus'], conditions: ['Revenus réguliers'], active: true },
-    { id: '3', title: 'Assurance Voyage 30 Jours', type: 'Assurance', destination: 'Monde Entier', flag: '🌍', price: 5000, processingTime: 'Immédiat', requiredDocuments: ['Passeport'], conditions: ['Age < 75 ans'], active: true }
-  ], applications: [], organizedTrips: [], tripReservations: [], studyPrograms: [], studyApplications: [] });
+    set({
+      agencies: [],
+      notifications: [],
+      supportTickets: [],
+      transactions: [],
+      rechargeRequests: [],
+      countries: [],
+      services: [],
+      applications: [],
+      organizedTrips: [],
+      tripReservations: [],
+      studyPrograms: [],
+      studyApplications: []
+    });
   }
 }));
 

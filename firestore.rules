@@ -5,8 +5,11 @@ service cloud.firestore {
     // Global Helper Functions
     function isSignedIn() { return request.auth != null; }
     function isAdmin() { 
-       return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; 
+       return isSignedIn() && (
+         request.auth.token.email in ['adel.saycom@gmail.com', 'admin@cle-dor.com', 'admin@lacle-dor.com'] ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+       ); 
      }
     function isAgency() { 
        return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
@@ -22,7 +25,7 @@ service cloud.firestore {
       allow create: if isAdmin() || (
         isSignedIn() && 
         request.auth.uid == userId && 
-        (incoming().role == 'agency' || (incoming().role == 'admin' && request.auth.token.email == 'adel.saycom@gmail.com')) && 
+        (incoming().role == 'agency' || (incoming().role == 'admin' && (request.auth.token.email in ['adel.saycom@gmail.com', 'admin@cle-dor.com', 'admin@lacle-dor.com']))) && 
         incoming().balance == 0
       );
       allow update: if isAdmin() || (

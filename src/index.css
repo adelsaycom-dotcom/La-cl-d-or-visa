@@ -8,6 +8,7 @@
 @theme inline {
     --color-primary-gold: #A8894A;
     --color-light-gold: #D4AF37;
+    --color-primary-burgundy: #7B1B38;
     --color-bg-white: #F9F9F9;
     --color-text-dark: #2C2C2C;
     --color-accent-bronze: #735D30;
@@ -166,4 +167,28 @@
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+@keyframes pulseFlow {
+  0% {
+    stroke-dashoffset: 400;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease-out forwards;
 }

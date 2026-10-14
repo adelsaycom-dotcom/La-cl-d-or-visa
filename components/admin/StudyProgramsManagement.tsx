@@ -395,7 +395,7 @@ export default function StudyProgramsManagement() {
 
                 <div className="bg-white p-6 border-t border-slate-200 flex justify-between items-center rounded-b-lg">
                   <div className="flex items-center gap-2">
-                    <Switch checked={newProgram.status === 'active'} onCheckedChange={v => setNewProgram({...newProgram, status: v ? 'active' : 'inactive'})} />
+                    <Switch checked={newProgram.status === 'active'} onCheckedChange={v => setNewProgram({...newProgram, status: v ? 'active' : 'draft'})} />
                     <Label className="font-bold text-slate-600 cursor-pointer">Programme Actif (Visible par les agences)</Label>
                   </div>
                   <div className="flex gap-3">

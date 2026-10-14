@@ -38,7 +38,7 @@ export function ApplicationManagement() {
   const filteredApps = applications.filter(app => {
     const matchesStatus = statusFilter === "ALL" || app.status === statusFilter;
     
-    const tName = (app.travelerName || app.applicantName || "").toLowerCase();
+    const tName = (app.travelerName || (app as any).applicantName || "").toLowerCase();
     const pNumber = (app.passportNumber || "").toLowerCase();
     const aName = (app.agencyName || "").toLowerCase();
     
@@ -271,7 +271,7 @@ export function ApplicationManagement() {
                       </div>
                       <div>
                         <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Montant</div>
-                        <div className="font-medium text-slate-900">{selectedApp.price.toLocaleString()} DZD</div>
+                        <div className="font-medium text-slate-900">{typeof selectedApp.price === "number" ? selectedApp.price.toLocaleString() : "0"} DZD</div>
                       </div>
                     </div>
                   </div>

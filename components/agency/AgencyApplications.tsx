@@ -38,7 +38,7 @@ export function AgencyApplications() {
   };
 
   const filteredApps = applications.filter(app => {
-    const tName = (app.travelerName || app.applicantName || "").toLowerCase();
+    const tName = (app.travelerName || (app as any).applicantName || "").toLowerCase();
     const pNumber = (app.passportNumber || "").toLowerCase();
     const matchesSearch = tName.includes(searchTerm.toLowerCase()) || 
                           pNumber.includes(searchTerm.toLowerCase());
@@ -189,7 +189,7 @@ export function AgencyApplications() {
                 </div>
                 <div className="pt-4 border-t border-slate-100">
                   <div className="text-xs font-bold text-slate-500 uppercase">Coût du service</div>
-                  <div className="text-xl font-black text-slate-900">{selectedApp.price.toLocaleString()} DZD</div>
+                  <div className="text-xl font-black text-slate-900">{typeof selectedApp.price === "number" ? selectedApp.price.toLocaleString() : "0"} DZD</div>
                 </div>
               </div>
             </div>

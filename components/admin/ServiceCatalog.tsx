@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 
 const PREDEFINED_CATEGORIES = [
   "Visa",
-  "E-Visa",
+  "Evisa",
   "Dossier Résidence",
   "Prise de Rendez-vous",
   "Traitement de Dossier",
@@ -55,7 +55,7 @@ export function ServiceCatalog() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<PrestationService>>({
     title: "", 
-    type: "E-Visa", 
+    type: "Evisa", 
     destination: "", 
     price: 0, 
     processingTime: "", 
@@ -92,7 +92,7 @@ export function ServiceCatalog() {
   const handleAddNew = () => {
     setFormData({ 
       title: "", 
-      type: "E-Visa", 
+      type: "Evisa", 
       destination: "", 
       price: 0, 
       processingTime: "24h à 48h", 
