@@ -124,7 +124,7 @@ export function AgencyWallet() {
       <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
         {/* Decorational shapes */}
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white opacity-5 blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 rounded-full bg-blue-500 opacity-10 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 rounded-full bg-[#7B1B38] opacity-20 blur-3xl"></div>
         
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
@@ -139,7 +139,7 @@ export function AgencyWallet() {
           </div>
           
           <Dialog open={rechargeOpen} onOpenChange={setRechargeOpen}>
-            <Button onClick={() => setRechargeOpen(true)} className="bg-white text-slate-900 hover:bg-slate-100 h-14 px-8 font-black text-lg shadow-lg rounded-xl transition-transform active:scale-95">
+            <Button onClick={() => setRechargeOpen(true)} className="bg-[#7B1B38] text-white hover:bg-[#63142c] h-14 px-8 font-black text-lg shadow-lg shadow-[#7B1B38]/25 rounded-xl transition-transform active:scale-95">
                 <ArrowUpRight className="w-5 h-5 mr-2" />
                 Recharger le compte
               </Button>
@@ -230,7 +230,7 @@ export function AgencyWallet() {
                   <Button 
                     onClick={handleSubmitRecharge}
                     disabled={isSubmitting || !amount}
-                    className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white font-black text-lg rounded-xl shadow-lg shadow-slate-900/20 transition-all active:scale-[0.98]"
+                    className="w-full h-14 bg-[#7B1B38] hover:bg-[#63142c] text-white font-black text-lg rounded-xl shadow-lg shadow-[#7B1B38]/25 transition-all active:scale-[0.98]"
                   >
                     {isSubmitting ? 'Envoi en cours...' : 'Envoyer la demande'}
                   </Button>
@@ -246,20 +246,20 @@ export function AgencyWallet() {
         <button 
           onClick={() => setActiveTab('recharges')}
           className={`flex items-center gap-2 px-6 py-4 font-bold text-sm transition-colors relative whitespace-nowrap ${
-            activeTab === 'recharges' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
+            activeTab === 'recharges' ? 'text-[#7B1B38]' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <Wallet className="w-4 h-4" /> Suivi des Recharges
-          {activeTab === 'recharges' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600" />}
+          {activeTab === 'recharges' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#7B1B38]" />}
         </button>
         <button 
           onClick={() => setActiveTab('transactions')}
           className={`flex items-center gap-2 px-6 py-4 font-bold text-sm transition-colors relative whitespace-nowrap ${
-            activeTab === 'transactions' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
+            activeTab === 'transactions' ? 'text-[#7B1B38]' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <History className="w-4 h-4" /> Historique des Dépenses
-          {activeTab === 'transactions' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600" />}
+          {activeTab === 'transactions' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#7B1B38]" />}
         </button>
       </div>
 

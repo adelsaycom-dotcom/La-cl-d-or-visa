@@ -8,9 +8,11 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { MapPin, Info, DollarSign, Star } from "lucide-react";
 import { useAppStore } from "../../src/store/useAppStore";
+import { auth } from "../../src/firebase";
 
 export function AgencyDashboard() {
-  const { agencyBalance, applications, organizedTrips } = useAppStore();
+  const { agencyBalance, applications, organizedTrips, currentAgency, b2cMode, b2cMarginPercent } = useAppStore();
+  const agencyDisplayName = currentAgency?.agencyName || currentAgency?.companyName || currentAgency?.name || auth.currentUser?.displayName || "Mon Agence";
   const navigate = useNavigate();
   const [newTripPopupOpen, setNewTripPopupOpen] = useState(false);
   const [popupTrip, setPopupTrip] = useState<any>(null);
@@ -57,7 +59,7 @@ export function AgencyDashboard() {
 
   const services = [
     { name: "Visa B2B", icon: FileText, path: "/agency/apply?service=Visa", color: "bg-blue-50 text-blue-600 border-blue-100" },
-    { name: "E-Visa", icon: Globe, path: "/agency/apply?service=E-Visa", color: "bg-cyan-50 text-cyan-600 border-cyan-100" },
+    { name: "Invitation", icon: Mail, path: "/agency/apply?service=Invitation", color: "bg-cyan-50 text-cyan-600 border-cyan-100" },
     { name: "Voyages Organisés", icon: Plane, path: "/agency/trips", color: "bg-pink-50 text-pink-600 border-pink-100" },
     { name: "Dossier Résidence", icon: Building2, path: "/agency/apply?service=Dossier Résidence", color: "bg-indigo-50 text-indigo-600 border-indigo-100" },
     { name: "Rendez-vous", icon: CalendarDays, path: "/agency/apply?service=Prise de Rendez-vous", color: "bg-orange-50 text-orange-600 border-orange-100" },
@@ -73,13 +75,22 @@ export function AgencyDashboard() {
       
       {/* Header / Welcome */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-50 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/3"></div>
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#7B1B38]/5 rounded-full blur-3xl opacity-70 -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
         <div className="relative z-10">
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Bonjour, Mon Agence 👋</h1>
-          <p className="text-slate-500 font-medium">Voici un aperçu de vos activités aujourd'hui.</p>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B1B38]/10 border border-[#7B1B38]/20 text-[#7B1B38] text-xs font-bold mb-3">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B1B38] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#7B1B38]"></span>
+            </span>
+            <span>Portail Agence B2B • La Clé d'Or</span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-2">
+            Bonjour, {agencyDisplayName} 👋
+          </h1>
+          <p className="text-slate-500 font-medium">Voici un aperçu de vos activités aujourd'hui sur votre espace partenaire.</p>
         </div>
         <div className="relative z-10 flex gap-4 w-full md:w-auto">
-          <Link to="/agency/wallet" className="flex-1 md:flex-none bg-slate-900 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-md shadow-slate-900/10 hover:shadow-lg hover:-translate-y-0.5">
+          <Link to="/agency/wallet" className="flex-1 md:flex-none bg-[#7B1B38] text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#63142c] transition-all shadow-md shadow-[#7B1B38]/25 hover:shadow-lg hover:-translate-y-0.5">
             <WalletCards className="w-5 h-5" /> Recharger le solde
           </Link>
         </div>
@@ -95,14 +106,14 @@ export function AgencyDashboard() {
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <div className="w-1.5 h-6 bg-amber-500 rounded-full"></div>
+                  <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
                   Voyages à la une
                 </h2>
-                <Link to="/agency/trips" className="text-sm text-blue-600 font-bold hover:underline">Voir tout</Link>
+                <Link to="/agency/trips" className="text-sm text-[#7B1B38] font-bold hover:underline">Voir tout</Link>
               </div>
               <div className="flex gap-4 overflow-x-auto pb-4 snap-x hide-scrollbar">
                 {featuredTrips.map(trip => (
-                  <div key={trip.id} className="min-w-[280px] sm:min-w-[320px] bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden snap-start group relative">
+                  <div key={trip.id} className="min-w-[280px] sm:min-w-[320px] bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden snap-start group relative hover:border-[#7B1B38]/30 transition-colors">
                     <div className="h-32 relative overflow-hidden">
                       <img src={trip.photoUrl} alt={trip.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent"></div>
@@ -122,9 +133,9 @@ export function AgencyDashboard() {
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="block text-[10px] uppercase font-bold text-slate-400">Prix B2B</span>
-                          <span className="font-black text-slate-800 text-lg leading-none">{trip.price.toLocaleString()} DZD</span>
+                          <span className="font-black text-slate-900 text-lg leading-none">{trip.price.toLocaleString()} DZD</span>
                         </div>
-                        <Link to="/agency/trips" className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                        <Link to="/agency/trips" className="bg-[#7B1B38]/10 text-[#7B1B38] hover:bg-[#7B1B38]/15 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
                           Voir détails
                         </Link>
                       </div>
@@ -139,7 +150,7 @@ export function AgencyDashboard() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <div className="w-1.5 h-6 bg-blue-600 rounded-full"></div>
+                <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
                 Démarrer une demande
               </h2>
             </div>
@@ -148,7 +159,7 @@ export function AgencyDashboard() {
                 <Link 
                   key={idx} 
                   to={srv.path}
-                  className="group flex flex-col items-center justify-center gap-3 p-5 bg-white rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300 hover:-translate-y-1 text-center"
+                  className="group flex flex-col items-center justify-center gap-3 p-5 bg-white rounded-2xl border border-slate-200 hover:border-[#7B1B38]/30 hover:shadow-lg hover:shadow-[#7B1B38]/5 transition-all duration-300 hover:-translate-y-1 text-center"
                 >
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${srv.color} group-hover:scale-110 transition-transform duration-300`}>
                     <srv.icon className="w-6 h-6" />
@@ -163,7 +174,7 @@ export function AgencyDashboard() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <div className="w-1.5 h-6 bg-blue-600 rounded-full"></div>
+                <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
                 Performances & Statistiques
               </h2>
             </div>
@@ -198,9 +209,12 @@ export function AgencyDashboard() {
           
           {/* Wallet Widget */}
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="bg-slate-900 p-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3"></div>
-              <h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-2 relative z-10">Solde Disponible</h3>
+            <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 p-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-[#7B1B38]/25 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+              <div className="flex items-center justify-between mb-2 relative z-10">
+                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Solde Disponible</h3>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#7B1B38]/30 text-rose-200 border border-[#7B1B38]/40">B2B Actif</span>
+              </div>
               <div className="text-3xl font-black text-white relative z-10 flex items-end gap-2">
                 {agencyBalance.toLocaleString()} <span className="text-lg text-slate-400 mb-1">DZD</span>
               </div>
@@ -214,7 +228,7 @@ export function AgencyDashboard() {
                 <span className="text-slate-500 font-medium">Services & Visas</span>
                 <span className="font-bold text-slate-900">{agencyBalance.toLocaleString()} DZD</span>
               </div>
-              <Link to="/agency/wallet" className="mt-6 w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100 px-4 py-2.5 rounded-xl font-bold transition-colors">
+              <Link to="/agency/wallet" className="mt-6 w-full flex items-center justify-center gap-2 bg-[#7B1B38]/10 text-[#7B1B38] hover:bg-[#7B1B38]/15 px-4 py-2.5 rounded-xl font-bold transition-colors">
                 Gérer le portefeuille <ArrowUpRight className="w-4 h-4" />
               </Link>
             </div>
@@ -224,7 +238,7 @@ export function AgencyDashboard() {
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-bold text-slate-900">Dossiers Récents</h3>
-              <Link to="/agency/applications" className="text-sm text-blue-600 font-bold hover:underline">Voir tout</Link>
+              <Link to="/agency/applications" className="text-sm text-[#7B1B38] font-bold hover:underline">Voir tout</Link>
             </div>
             
             <div className="space-y-4">
@@ -235,7 +249,7 @@ export function AgencyDashboard() {
                       <FileText className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">{app.travelerName}</div>
+                      <div className="font-bold text-slate-900 text-sm group-hover:text-[#7B1B38] transition-colors">{app.travelerName}</div>
                       <div className="text-xs text-slate-500 font-medium">{app.serviceType} • {app.country}</div>
                     </div>
                   </div>
@@ -261,7 +275,7 @@ export function AgencyDashboard() {
               <div className="h-48 relative">
                 <img src={popupTrip.photoUrl} alt={popupTrip.title} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent flex flex-col justify-end p-6">
-                  <div className="inline-flex items-center gap-1.5 bg-blue-500/20 text-blue-200 border border-blue-400/30 backdrop-blur-md px-2.5 py-1 rounded-full text-xs font-bold w-fit mb-3">
+                  <div className="inline-flex items-center gap-1.5 bg-[#7B1B38]/20 text-rose-100 border border-[#7B1B38]/40 backdrop-blur-md px-2.5 py-1 rounded-full text-xs font-bold w-fit mb-3">
                     <Star className="w-3.5 h-3.5 fill-current" /> Nouvelle offre disponible
                   </div>
                   <h2 className="text-white font-black text-2xl leading-tight mb-1">{popupTrip.title}</h2>
@@ -290,7 +304,7 @@ export function AgencyDashboard() {
                   <Button variant="outline" className="flex-1 h-12 rounded-xl font-bold border-slate-200" onClick={handleDismissPopup}>
                     Retirer
                   </Button>
-                  <Button className="flex-1 h-12 rounded-xl font-bold bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20" onClick={handleAccessPopup}>
+                  <Button className="flex-1 h-12 rounded-xl font-bold bg-[#7B1B38] hover:bg-[#63142c] text-white shadow-md shadow-[#7B1B38]/20" onClick={handleAccessPopup}>
                     Y accéder
                   </Button>
                 </div>

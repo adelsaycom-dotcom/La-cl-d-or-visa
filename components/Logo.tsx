@@ -9,15 +9,18 @@ export function Logo({ className = "", imageClassName = "" }: LogoProps) {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       {/* 
-        Pour changer le logo, vous pouvez remplacer l'image "IMG_2481.PNG"
-        dans le dossier "public", ou modifier le chemin "src" ci-dessous.
+        Logo officiel La Clé d'Or Visa ("IMG_0787.PNG" dans le dossier "public")
       */}
       <img 
-        src="/IMG_2481.PNG" 
+        src="/IMG_0787-1.PNG" 
         alt="La Clé d'Or Visa" 
         className={`h-10 sm:h-12 w-auto object-contain ${imageClassName}`}
         onError={(e) => {
-          // Fallback if image is not uploaded yet or name is wrong
+          // Fallback to /IMG_0787.PNG if needed
+          if (e.currentTarget.src.includes('IMG_0787-1.PNG')) {
+            e.currentTarget.src = '/IMG_0787.PNG';
+            return;
+          }
           e.currentTarget.style.display = 'none';
           if (e.currentTarget.nextElementSibling) {
             (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';

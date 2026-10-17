@@ -2,5 +2,7 @@
   "name": "Visa B2B Platform",
   "description": "B2B SaaS platform for managing visa applications targeting travel agencies. Includes a public site, agency dashboard, and admin back-office.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

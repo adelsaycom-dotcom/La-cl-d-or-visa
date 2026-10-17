@@ -1,5 +1,5 @@
 import { Logo } from "@/components/Logo";
-import { Phone, Mail, MapPin, Facebook, Instagram, Youtube, MessageCircle, ArrowRight } from "lucide-react";
+import { Phone, Mail, Facebook, Instagram, Youtube, MessageCircle, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export function LandingFooter() {
@@ -50,26 +50,69 @@ export function LandingFooter() {
             </div>
           </div>
 
-          {/* Col 3: Coordonnées & Siège */}
+          {/* Col 3: Courriels Professionnels */}
           <div className="space-y-4">
-            <h4 className="text-slate-900 font-bold text-base uppercase tracking-wider">Siège & Courriel</h4>
-            <div className="space-y-3 text-sm">
-              <a href="mailto:la.cle.dor.visa.b2b@gmail.com" className="flex items-start gap-3 text-slate-700 hover:text-[#7B1B38] transition-colors">
-                <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-[#7B1B38] shrink-0 mt-0.5 shadow-sm">
-                  <Mail className="w-4 h-4" />
+            <h4 className="text-slate-900 font-bold text-base uppercase tracking-wider">Courriels Professionnels</h4>
+            <div className="space-y-2 text-xs">
+              <a 
+                href="mailto:manager@lacledortravel.com" 
+                className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-[#7B1B38] hover:border-[#7B1B38]/40 transition-all shadow-xs group"
+                title="Direction Générale"
+              >
+                <div className="w-6 h-6 rounded-lg bg-[#7B1B38]/10 text-[#7B1B38] flex items-center justify-center shrink-0">
+                  <Mail className="w-3.5 h-3.5" />
                 </div>
-                <span className="break-all font-semibold">la.cle.dor.visa.b2b@gmail.com</span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase leading-none">Direction</span>
+                  <span className="font-bold text-slate-900 group-hover:text-[#7B1B38] truncate mt-0.5">manager@lacledortravel.com</span>
+                </div>
               </a>
-              <div className="flex items-start gap-3 text-slate-600">
-                <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-[#7B1B38] shrink-0 mt-0.5 shadow-sm">
-                  <MapPin className="w-4 h-4" />
+
+              <a 
+                href="mailto:contact@lacledortravel.com" 
+                className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-[#7B1B38] hover:border-[#7B1B38]/40 transition-all shadow-xs group"
+                title="Contact Général & Partenariats"
+              >
+                <div className="w-6 h-6 rounded-lg bg-[#7B1B38]/10 text-[#7B1B38] flex items-center justify-center shrink-0">
+                  <Mail className="w-3.5 h-3.5" />
                 </div>
-                <span className="leading-relaxed">Rue Ali Khodja, Bordj El Kiffan, Alger, Algérie</span>
-              </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase leading-none">Contact & Agences</span>
+                  <span className="font-bold text-slate-900 group-hover:text-[#7B1B38] truncate mt-0.5">contact@lacledortravel.com</span>
+                </div>
+              </a>
+
+              <a 
+                href="mailto:finance@lacledortravel.com" 
+                className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-[#7B1B38] hover:border-[#7B1B38]/40 transition-all shadow-xs group"
+                title="Comptabilité & Facturation"
+              >
+                <div className="w-6 h-6 rounded-lg bg-[#7B1B38]/10 text-[#7B1B38] flex items-center justify-center shrink-0">
+                  <Mail className="w-3.5 h-3.5" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase leading-none">Facturation & Finance</span>
+                  <span className="font-bold text-slate-900 group-hover:text-[#7B1B38] truncate mt-0.5">finance@lacledortravel.com</span>
+                </div>
+              </a>
+
+              <a 
+                href="mailto:support@lacledortravel.com" 
+                className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-[#7B1B38] hover:border-[#7B1B38]/40 transition-all shadow-xs group"
+                title="Support Technique & Visas"
+              >
+                <div className="w-6 h-6 rounded-lg bg-[#7B1B38]/10 text-[#7B1B38] flex items-center justify-center shrink-0">
+                  <Mail className="w-3.5 h-3.5" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase leading-none">Support Plateforme</span>
+                  <span className="font-bold text-slate-900 group-hover:text-[#7B1B38] truncate mt-0.5">support@lacledortravel.com</span>
+                </div>
+              </a>
             </div>
           </div>
 
-          {/* Col 4: Canaux & Inscription */}
+          {/* Col 4: Canaux Officiels & Inscription */}
           <div className="space-y-4">
             <h4 className="text-slate-900 font-bold text-base uppercase tracking-wider">Canaux Officiels</h4>
             <div className="flex flex-wrap gap-2">
@@ -78,9 +121,20 @@ export function LandingFooter() {
                 target="_blank" 
                 rel="noreferrer"
                 className="w-10 h-10 rounded-xl bg-white border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 flex items-center justify-center transition-colors shadow-sm"
-                title="WhatsApp Channel"
+                title="Canal WhatsApp"
               >
                 <MessageCircle className="w-5 h-5" />
+              </a>
+              <a 
+                href="https://www.tiktok.com/@la.cle.dor.travel?_r=1&_t=ZN-9AaEuk5XTL4" 
+                target="_blank" 
+                rel="noreferrer"
+                className="w-10 h-10 rounded-xl bg-white border border-slate-200 hover:border-slate-900 hover:bg-slate-900 text-slate-700 hover:text-white flex items-center justify-center transition-all shadow-sm"
+                title="TikTok Officiel"
+              >
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298-.002.595.042.88.13V9.4a6.33 6.33 0 0 0-1-.08A6.34 6.34 0 0 0 3 15.66a6.34 6.34 0 0 0 10.81 4.47 6.27 6.27 0 0 0 1.86-4.47V8.91a8.18 8.18 0 0 0 4.79 1.52V7c-.29 0-.58-.1-.87-.31z" />
+                </svg>
               </a>
               <a 
                 href="https://www.facebook.com/share/18iGHDJaCt/?mibextid=wwXIfr" 

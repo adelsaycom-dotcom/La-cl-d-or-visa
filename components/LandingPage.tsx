@@ -2,6 +2,7 @@ import { LandingNav } from "./landing/LandingNav";
 import { HeroSection } from "./landing/HeroSection";
 import { ProcessSection } from "./landing/ProcessSection";
 import { FeaturesSection } from "./landing/FeaturesSection";
+import { LocationSection } from "./landing/LocationSection";
 import { FaqSection } from "./landing/FaqSection";
 import { LandingFooter } from "./landing/LandingFooter";
 import { AirplaneCursor } from "./landing/AirplaneCursor";
@@ -26,7 +27,10 @@ export function LandingPage() {
         {/* 3. Fonctionnalités de la plateforme & Avantages B2B */}
         <FeaturesSection />
 
-        {/* 4. Questions Fréquentes & Support Agences */}
+        {/* 4. Localisation du siège & Carte interactive Google Maps */}
+        <LocationSection />
+
+        {/* 5. Questions Fréquentes & Support Agences */}
         <FaqSection />
       </main>
 

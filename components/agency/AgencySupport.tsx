@@ -97,7 +97,7 @@ export function AgencySupport() {
               </div>
               <Button 
                 onClick={() => setIsNewTicketOpen(true)} 
-                className="bg-black hover:bg-gray-800 text-white rounded-xl h-10 w-10 p-0 shrink-0"
+                className="bg-[#7B1B38] hover:bg-[#63142c] text-white rounded-xl h-10 w-10 p-0 shrink-0 shadow-sm shadow-[#7B1B38]/20"
               >
                 <Plus className="w-5 h-5" />
               </Button>
@@ -149,7 +149,7 @@ export function AgencySupport() {
                   <button 
                     key={t.id} 
                     onClick={() => setSelectedTicketId(t.id)}
-                    className={`w-full text-left p-4 sm:p-5 transition-all hover:bg-white focus:outline-none ${selectedTicketId === t.id ? 'bg-white border-l-4 border-l-primary-gold' : 'border-l-4 border-l-transparent'}`}
+                    className={`w-full text-left p-4 sm:p-5 transition-all hover:bg-white focus:outline-none ${selectedTicketId === t.id ? 'bg-white border-l-4 border-l-[#7B1B38]' : 'border-l-4 border-l-transparent'}`}
                   >
                     <div className="flex justify-between items-start mb-2 gap-2">
                       <span className="font-bold text-sm text-gray-900 line-clamp-1">{t.subject}</span>
@@ -213,7 +213,7 @@ export function AgencySupport() {
                 {/* Initial Request */}
                 <div className="flex flex-col items-end max-w-[85%] lg:max-w-[75%] ml-auto">
                   <div className="flex items-center gap-2 mb-1.5 mr-1 flex-row-reverse">
-                    <div className="w-6 h-6 rounded-full bg-primary-gold text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                    <div className="w-6 h-6 rounded-full bg-[#7B1B38] text-white flex items-center justify-center text-[10px] font-bold shrink-0">
                       VO
                     </div>
                     <span className="text-xs font-bold text-gray-600">Vous</span>
@@ -230,7 +230,7 @@ export function AgencySupport() {
                   return (
                     <div key={idx} className={`flex flex-col ${isAdmin ? 'items-start' : 'items-end'}`}>
                       <div className={`flex items-center gap-2 mb-1.5 ${isAdmin ? 'ml-1' : 'mr-1 flex-row-reverse'}`}>
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 uppercase ${isAdmin ? 'bg-black text-white' : 'bg-primary-gold text-white'}`}>
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 uppercase ${isAdmin ? 'bg-slate-900 text-white' : 'bg-[#7B1B38] text-white'}`}>
                           {isAdmin ? 'AD' : 'VO'}
                         </div>
                         <span className="text-xs font-bold text-gray-600">{isAdmin ? 'Support B2B' : 'Vous'}</span>
@@ -248,7 +248,7 @@ export function AgencySupport() {
               {/* Chat Input */}
               {selectedTicket.status !== "RESOLVED" ? (
                 <div className="p-4 sm:p-5 bg-white border-t border-gray-200 shrink-0">
-                  <div className="max-w-4xl mx-auto flex items-end gap-3 bg-gray-50 rounded-2xl border border-gray-200 p-2 focus-within:ring-2 focus-within:ring-primary-gold focus-within:border-primary-gold transition-all shadow-sm">
+                  <div className="max-w-4xl mx-auto flex items-end gap-3 bg-gray-50 rounded-2xl border border-gray-200 p-2 focus-within:ring-2 focus-within:ring-[#7B1B38] focus-within:border-[#7B1B38] transition-all shadow-sm">
                     <Textarea 
                       value={replyText}
                       onChange={e => setReplyText(e.target.value)}
@@ -265,7 +265,7 @@ export function AgencySupport() {
                     <button 
                       onClick={handleReply}
                       disabled={!replyText.trim()}
-                      className="w-11 h-11 rounded-xl bg-[var(--color-text-dark)] hover:bg-[var(--color-accent-bronze)] text-white flex items-center justify-center shrink-0 mb-0.5 mr-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="w-11 h-11 rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white flex items-center justify-center shrink-0 mb-0.5 mr-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm shadow-[#7B1B38]/20"
                     >
                       <Send className="w-5 h-5 ml-1" />
                     </button>

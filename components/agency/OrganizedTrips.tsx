@@ -126,7 +126,7 @@ export default function OrganizedTrips() {
                 setIsBookingOpen(open);
               }}>
                 <Button 
-                    className="w-full bg-blue-600 hover:bg-blue-700 h-12 rounded-xl text-md font-bold shadow-md shadow-blue-500/20"
+                    className="w-full bg-[#7B1B38] hover:bg-[#63142c] h-12 rounded-xl text-md font-bold shadow-md shadow-[#7B1B38]/20"
                     disabled={trip.availableSeats <= 0}
                     onClick={() => { setSelectedTrip(trip); setIsBookingOpen(true); }}
                   >

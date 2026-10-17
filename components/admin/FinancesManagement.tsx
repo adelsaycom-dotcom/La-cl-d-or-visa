@@ -205,10 +205,13 @@ export function FinancesManagement() {
       
       {/* HEADER & KPIs */}
       <div>
-        <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-6">Trésorerie & Portefeuilles</h2>
+        <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-6 flex items-center gap-2">
+          <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
+          Trésorerie & Portefeuilles
+        </h2>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl p-6 text-white shadow-lg shadow-emerald-500/20">
+          <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-2xl p-6 text-white shadow-lg shadow-emerald-500/10">
             <div className="flex justify-between items-start mb-4">
               <div className="bg-white/20 p-3 rounded-xl"><Wallet className="w-6 h-6 text-white" /></div>
             </div>
@@ -217,16 +220,16 @@ export function FinancesManagement() {
             <div className="text-emerald-100/80 text-sm mt-2">Recharges approuvées sur la plateforme</div>
           </div>
           
-          <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-6 text-white shadow-lg shadow-blue-500/20">
+          <div className="bg-gradient-to-br from-[#7B1B38] to-[#581227] rounded-2xl p-6 text-white shadow-lg shadow-[#7B1B38]/20">
             <div className="flex justify-between items-start mb-4">
               <div className="bg-white/20 p-3 rounded-xl"><Building className="w-6 h-6 text-white" /></div>
             </div>
-            <h3 className="text-blue-100 font-bold mb-1">Encours Global (Agences)</h3>
+            <h3 className="text-rose-100 font-bold mb-1">Encours Global (Agences)</h3>
             <div className="text-3xl font-black">{encoursGlobal.toLocaleString()} DZD</div>
-            <div className="text-blue-100/80 text-sm mt-2">Argent actuellement dispo sur les wallets</div>
+            <div className="text-rose-100/80 text-sm mt-2">Fonds actuellement disponibles sur les wallets</div>
           </div>
 
-          <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl p-6 text-white shadow-lg shadow-amber-500/20">
+          <div className="bg-gradient-to-br from-amber-500 to-amber-700 rounded-2xl p-6 text-white shadow-lg shadow-amber-500/10">
             <div className="flex justify-between items-start mb-4">
               <div className="bg-white/20 p-3 rounded-xl"><AlertCircle className="w-6 h-6 text-white" /></div>
             </div>
@@ -244,36 +247,36 @@ export function FinancesManagement() {
           <button 
             onClick={() => setActiveTab('pending')}
             className={`flex items-center gap-2 px-6 py-4 font-bold text-sm transition-colors relative whitespace-nowrap ${
-              activeTab === 'pending' ? 'text-blue-600 bg-white' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+              activeTab === 'pending' ? 'text-[#7B1B38] bg-white' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
             }`}
           >
             <Wallet className="w-4 h-4" /> Demandes de Recharge
             {pendingRecharges.length > 0 && (
-              <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1">
+              <span className="bg-[#7B1B38] text-white text-[10px] px-2 py-0.5 rounded-full ml-1">
                 {pendingRecharges.length}
               </span>
             )}
-            {activeTab === 'pending' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600" />}
+            {activeTab === 'pending' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#7B1B38]" />}
           </button>
           
           <button 
             onClick={() => setActiveTab('manual')}
             className={`flex items-center gap-2 px-6 py-4 font-bold text-sm transition-colors relative whitespace-nowrap ${
-              activeTab === 'manual' ? 'text-blue-600 bg-white' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+              activeTab === 'manual' ? 'text-[#7B1B38] bg-white' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
             }`}
           >
             <PlusSquare className="w-4 h-4" /> Ajustement Manuel
-            {activeTab === 'manual' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600" />}
+            {activeTab === 'manual' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#7B1B38]" />}
           </button>
 
           <button 
             onClick={() => setActiveTab('history')}
             className={`flex items-center gap-2 px-6 py-4 font-bold text-sm transition-colors relative whitespace-nowrap ${
-              activeTab === 'history' ? 'text-blue-600 bg-white' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+              activeTab === 'history' ? 'text-[#7B1B38] bg-white' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
             }`}
           >
             <History className="w-4 h-4" /> Grand Livre (Historique)
-            {activeTab === 'history' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600" />}
+            {activeTab === 'history' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#7B1B38]" />}
           </button>
         </div>
 

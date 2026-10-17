@@ -111,14 +111,14 @@ function AdminLayout() {
                 to={item.path}
                 className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${
                   isActive 
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-900/20' 
+                    ? 'bg-[#7B1B38] text-white shadow-md shadow-[#7B1B38]/25' 
                     : item.highlight
-                      ? 'bg-blue-950/30 text-blue-400 hover:bg-slate-900 hover:text-blue-300'
+                      ? 'bg-[#7B1B38]/20 text-[#f59e0b] hover:bg-slate-900 hover:text-white'
                       : 'text-slate-400 hover:bg-slate-900 hover:text-white'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : item.highlight ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
+                  <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : item.highlight ? 'text-[#f59e0b]' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
                   <span className="font-semibold text-sm">{item.name}</span>
                 </div>
               </Link>
@@ -156,8 +156,8 @@ function AdminLayout() {
                 <Bell className="w-5 h-5" />
                 {adminNotifsCount > 0 && (
                   <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border-2 border-white"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B1B38] opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#7B1B38] border-2 border-white"></span>
                   </span>
                 )}
               </DropdownMenuTrigger>
@@ -165,7 +165,7 @@ function AdminLayout() {
                 <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
                   <span className="font-bold text-slate-800">Alertes Admin</span>
                   {adminNotifsCount > 0 && (
-                    <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-bold">{adminNotifsCount}</span>
+                    <span className="bg-[#7B1B38]/10 text-[#7B1B38] px-2 py-0.5 rounded-full text-xs font-bold">{adminNotifsCount}</span>
                   )}
                 </div>
                 <div className="max-h-[300px] overflow-y-auto">
@@ -187,7 +187,7 @@ function AdminLayout() {
                 </div>
                 {adminNotifsCount > 0 && (
                   <div className="p-2 border-t border-slate-100 bg-white">
-                    <button className="w-full py-2 text-xs font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" onClick={() => markAllNotificationsAsRead('admin')}>
+                    <button className="w-full py-2 text-xs font-bold text-[#7B1B38] hover:bg-[#7B1B38]/10 rounded-lg transition-colors" onClick={() => markAllNotificationsAsRead('admin')}>
                       Tout marquer comme lu
                     </button>
                   </div>
@@ -195,7 +195,7 @@ function AdminLayout() {
               </DropdownMenuContent>
             </DropdownMenu>
             
-            <div className="w-9 h-9 rounded-full bg-slate-900 flex items-center justify-center text-white shadow-md">
+            <div className="w-9 h-9 rounded-full bg-[#7B1B38] flex items-center justify-center text-white shadow-md shadow-[#7B1B38]/20">
               <span className="font-bold text-sm">AD</span>
             </div>
           </div>

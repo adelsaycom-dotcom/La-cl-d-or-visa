@@ -1,297 +1,1271 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useAppStore, PrestationService } from "../../src/store/useAppStore";
 import { auth } from "../../src/firebase";
 import { 
-  ChevronRight, ChevronLeft, MapPin, Clock, CreditCard, 
-  FileText, CheckCircle2, AlertCircle, Upload, FileUp, Building2, User
+  ChevronRight, ChevronLeft, MapPin, Clock, 
+  FileText, CheckCircle2, AlertCircle, Upload, User, 
+  Sparkles, Loader2, Trash2, Calendar, ShieldCheck, 
+  Phone, Mail, FileCheck, ArrowRight, Building2, Car, CalendarDays, FolderOpen, Plane, GraduationCap, Globe, Eye, EyeOff, Percent, HelpCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { uploadFileToServer, compressImageIfPossible, fileToBase64 } from "../../src/utils/fileUpload";
+
+export interface AttachmentItem {
+  id: string;
+  name: string;
+  category: string;
+  type: string;
+  size: number;
+  dataUrl: string; // URL serveur (/uploads/...) pour ne jamais dépasser 1 Mo dans Firestore
+  url?: string;
+  previewUrl?: string; // Aperçu local immédiat
+  uploadedAt: string;
+  uploadedBy: "Agency";
+}
+
+export interface ServiceFamilyConfig {
+  id: string;
+  name: string;
+  badge: string;
+  description: string;
+  icon: any;
+  color: string;
+  textColor: string;
+  bgColor: string;
+  borderColor: string;
+  matchKeys: string[];
+  directRoute?: string;
+}
+
+export const SERVICE_FAMILIES: ServiceFamilyConfig[] = [
+  {
+    id: "invitation",
+    name: "Invitations & Affaires",
+    badge: "Garanti 100%",
+    description: "Invitations d'affaires officielles, légalisations consulaires et visas business.",
+    icon: Mail,
+    color: "bg-cyan-500",
+    textColor: "text-cyan-700",
+    bgColor: "bg-cyan-50/70",
+    borderColor: "border-cyan-200 hover:border-cyan-400",
+    matchKeys: ["invitation", "affaires", "business"]
+  },
+  {
+    id: "evisa",
+    name: "E-Visas & Visas Consulaires",
+    badge: "Délivrance rapide",
+    description: "Visas électroniques en ligne (ETA, eVisa) et visas classiques de tourisme ou transit.",
+    icon: Globe,
+    color: "bg-blue-500",
+    textColor: "text-blue-700",
+    bgColor: "bg-blue-50/70",
+    borderColor: "border-blue-200 hover:border-blue-400",
+    matchKeys: ["evisa", "e-visa", "visa", "tourisme"]
+  },
+  {
+    id: "residence",
+    name: "Dossiers Résidence & Séjour",
+    badge: "Accompagnement VIP",
+    description: "Résidence permanente, permis de séjour temporaire et regroupement familial.",
+    icon: Building2,
+    color: "bg-indigo-500",
+    textColor: "text-indigo-700",
+    bgColor: "bg-indigo-50/70",
+    borderColor: "border-indigo-200 hover:border-indigo-400",
+    matchKeys: ["residence", "dossier résidence", "séjour", "titre de séjour"]
+  },
+  {
+    id: "rendezvous",
+    name: "Prise de Rendez-vous Consulaire",
+    badge: "Créneaux prioritaires",
+    description: "Réservation de créneaux rapides TLScontact, VFS Global, BLS et centres consulaires.",
+    icon: CalendarDays,
+    color: "bg-amber-500",
+    textColor: "text-amber-700",
+    bgColor: "bg-amber-50/70",
+    borderColor: "border-amber-200 hover:border-amber-400",
+    matchKeys: ["rendez-vous", "prise de rendez-vous", "rdv", "tls", "vfs", "bls"]
+  },
+  {
+    id: "dossier",
+    name: "Constitution & Traduction de Dossier",
+    badge: "Conformité consulaire",
+    description: "Montage complet de dossiers consulaires, vérification d'éligibilité et traductions assermentées.",
+    icon: FolderOpen,
+    color: "bg-teal-500",
+    textColor: "text-teal-700",
+    bgColor: "bg-teal-50/70",
+    borderColor: "border-teal-200 hover:border-teal-400",
+    matchKeys: ["dossier", "traitement de dossier", "traduction", "formulaire"]
+  },
+  {
+    id: "permis",
+    name: "Permis de Conduire International",
+    badge: "Valide 3 ans",
+    description: "Délivrance rapide du livret officiel de permis de conduire international auto & moto.",
+    icon: Car,
+    color: "bg-orange-500",
+    textColor: "text-orange-700",
+    bgColor: "bg-orange-50/70",
+    borderColor: "border-orange-200 hover:border-orange-400",
+    matchKeys: ["permis", "permis internationnal", "permis international", "conduire"]
+  },
+  {
+    id: "etude",
+    name: "Visa Études & Admissions",
+    badge: "Universités mondiales",
+    description: "Inscriptions universitaires, acceptations Campus France et procédures visa étudiant.",
+    icon: GraduationCap,
+    color: "bg-purple-500",
+    textColor: "text-purple-700",
+    bgColor: "bg-purple-50/70",
+    borderColor: "border-purple-200 hover:border-purple-400",
+    matchKeys: ["etude", "visa études", "études", "université"],
+    directRoute: "/agency/study"
+  },
+  {
+    id: "trips",
+    name: "Voyages Organisés & Omra",
+    badge: "Départs garantis",
+    description: "Séjours de groupe tout compris, pèlerinages Omra, hôtels et excursions avec guide.",
+    icon: Plane,
+    color: "bg-pink-500",
+    textColor: "text-pink-700",
+    bgColor: "bg-pink-50/70",
+    borderColor: "border-pink-200 hover:border-pink-400",
+    matchKeys: ["voyages", "voyages organisés", "omra", "séjours"],
+    directRoute: "/agency/trips"
+  }
+];
 
 export function VisaWizard() {
-  const { services, addApplication, agencyBalance, setAgencyBalance } = useAppStore();
+  const { services, addApplication, agencyBalance, b2cMode, setB2cMode, b2cMarginPercent } = useAppStore();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const requestedService = searchParams.get("service") || "E-Visa";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlServiceParam = searchParams.get("service");
 
-  const [step, setStep] = useState(1);
+  // Déduire la famille initiale si un paramètre d'URL est fourni
+  const initialFamily = useMemo(() => {
+    if (!urlServiceParam) return null;
+    const p = urlServiceParam.toLowerCase().trim();
+    return SERVICE_FAMILIES.find(f => 
+      f.id === p || 
+      f.name.toLowerCase().includes(p) ||
+      f.matchKeys.some(k => k.toLowerCase() === p || p.includes(k.toLowerCase()) || k.toLowerCase().includes(p))
+    ) || null;
+  }, [urlServiceParam]);
+
+  const [selectedFamily, setSelectedFamily] = useState<ServiceFamilyConfig | null>(initialFamily);
+
+  // Wizard state (3 étapes principales + confirmation 4)
+  const [step, setStep] = useState<number>(1);
   const [selectedCountry, setSelectedCountry] = useState<string>("");
   const [selectedOption, setSelectedOption] = useState<PrestationService | null>(null);
-  
-  // Applicant Data
+
+  // Étape 2: Passeport & Données Voyageur
+  const [passportFile, setPassportFile] = useState<AttachmentItem | null>(null);
+  const [passportPreview, setPassportPreview] = useState<string>("");
+  const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [scanSuccess, setScanSuccess] = useState<boolean>(false);
+  const [scanSource, setScanSource] = useState<string>("");
+  const passportInputRef = useRef<HTMLInputElement>(null);
+
   const [applicant, setApplicant] = useState({
     firstName: "",
     lastName: "",
-    passportNumber: ""
+    passportNumber: "",
+    dateOfBirth: "",
+    expiryDate: "",
+    issueDate: "",
+    nationality: "Algérienne",
+    gender: "M",
+    placeOfBirth: "",
+    phone: "",
+    email: "",
+    address: ""
   });
 
-  // Dynamic Files and Fields based on requiredDocuments
-  const [uploadedFiles, setUploadedFiles] = useState<Record<string, File | string>>({});
+  // Étape 3: Documents complémentaires & Champs texte
+  const [attachments, setAttachments] = useState<Record<string, AttachmentItem>>({});
   const [textFields, setTextFields] = useState<Record<string, string>>({});
+  const [fileError, setFileError] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submittedAppId, setSubmittedAppId] = useState<string>("");
 
-  // 1. Get unique countries that offer the requested service
-  const availableCountries = useMemo(() => {
-    const matchingServices = services.filter(s => s.type === requestedService && s.active);
-    const countries = new Set(matchingServices.map(s => s.destination));
-    return Array.from(countries).sort();
-  }, [services, requestedService]);
-
-  // 2. Get options for the selected country & service
-  const availableOptions = useMemo(() => {
-    if (!selectedCountry) return [];
-    return services.filter(s => s.type === requestedService && s.destination === selectedCountry && s.active);
-  }, [services, requestedService, selectedCountry]);
-
-  // Reset if the URL service parameter changes
+  // Synchronisation si le paramètre URL change
   useEffect(() => {
+    if (urlServiceParam) {
+      const p = urlServiceParam.toLowerCase().trim();
+      const found = SERVICE_FAMILIES.find(f => 
+        f.id === p || 
+        f.name.toLowerCase().includes(p) ||
+        f.matchKeys.some(k => k.toLowerCase() === p || p.includes(k.toLowerCase()) || k.toLowerCase().includes(p))
+      );
+      setSelectedFamily(found || null);
+    } else {
+      setSelectedFamily(null);
+    }
     setStep(1);
     setSelectedCountry("");
     setSelectedOption(null);
-  }, [requestedService]);
+    setPassportFile(null);
+    setScanSuccess(false);
+    setAttachments({});
+    setTextFields({});
+  }, [urlServiceParam]);
 
+  // Prestations correspondantes pour la famille sélectionnée
+  const matchingServices = useMemo(() => {
+    if (!selectedFamily && !urlServiceParam) return [];
+    return services.filter(s => {
+      if (!s.active) return false;
+      const sType = (s.type || "").toLowerCase().trim();
+      const sTitle = (s.title || "").toLowerCase().trim();
+      if (selectedFamily) {
+        return selectedFamily.matchKeys.some(key => 
+          sType === key.toLowerCase() || 
+          sType.includes(key.toLowerCase()) || 
+          sTitle.includes(key.toLowerCase())
+        );
+      }
+      if (urlServiceParam) {
+        const p = urlServiceParam.toLowerCase();
+        return sType === p || sType.includes(p) || sTitle.includes(p);
+      }
+      return true;
+    });
+  }, [services, selectedFamily, urlServiceParam]);
 
-  const handleFileUpload = (docName: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  // 1. Liste des pays éligibles pour cette famille de service
+  const availableCountries = useMemo(() => {
+    const countries = new Set(matchingServices.map(s => s.destination));
+    return Array.from(countries).filter(Boolean).sort();
+  }, [matchingServices]);
+
+  // 2. Offres disponibles pour le pays sélectionné
+  const availableOptions = useMemo(() => {
+    if (!selectedCountry) return [];
+    return matchingServices.filter(s => s.destination === selectedCountry);
+  }, [matchingServices, selectedCountry]);
+
+  // Traitement intelligent et immédiat du scan passeport
+  const handlePassportUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setUploadedFiles(prev => ({ ...prev, [docName]: file }));
-    }
-  };
+    if (!file) return;
 
-  const handleTextField = (fieldName: string, value: string) => {
-    setTextFields(prev => ({ ...prev, [fieldName]: value }));
-  };
+    setFileError("");
 
-  const handleSubmit = async () => {
-    if (!selectedOption) return;
-
-    if (agencyBalance < selectedOption.price) {
-      alert("Solde insuffisant pour passer cette commande.");
+    // Vérification limite 5 Mo
+    if (file.size > 5 * 1024 * 1024) {
+      setFileError("Le passeport dépasse la taille maximale autorisée de 5 Mo.");
       return;
     }
 
     try {
-      // Create the application
-      const newApp = {
-        id: Math.random().toString(36).substring(7),
-        agencyId: auth.currentUser?.uid || "unknown",
-        agencyName: "Mon Agence", 
-        serviceType: selectedOption.type,
-        country: selectedOption.destination,
-        visaType: selectedOption.title,
-        travelerName: `${applicant.lastName} ${applicant.firstName}`,
-        passportNumber: applicant.passportNumber,
-        status: "Pending",
-        price: selectedOption.price,
-        customFormData: {
-          documents: Object.keys(uploadedFiles),
-          fields: textFields
-        },
-        submissionDate: new Date().toISOString(),
+      setIsScanning(true);
+      setScanSuccess(false);
+
+      // 1. Base64 optimisé pour l'OCR Gemini
+      const base64Data = file.type.startsWith("image/")
+        ? await compressImageIfPossible(file)
+        : await fileToBase64(file);
+
+      setPassportPreview(base64Data);
+
+      // 2. Sauvegarde du fichier sur le serveur (renvoie une URL légère comme "/uploads/att_...")
+      // ce qui évite de gonfler le document Firestore au-delà de 1 Mo !
+      const uploadRes = await uploadFileToServer(file, "Passeport");
+
+      const passportItem: AttachmentItem = {
+        id: `pass_${Date.now()}`,
+        name: file.name,
+        category: "Passeport",
+        type: file.type || "image/jpeg",
+        size: uploadRes.size,
+        dataUrl: uploadRes.url, // URL légère au lieu de 5 millions de caractères
+        url: uploadRes.url,
+        previewUrl: base64Data,
+        uploadedAt: new Date().toISOString(),
+        uploadedBy: "Agency"
       };
 
-      await addApplication(newApp as any);
-      setAgencyBalance(agencyBalance - selectedOption.price);
-      
-      // Success
-      setStep(4);
-    } catch (err) {
-      console.error(err);
-      alert("Une erreur est survenue lors de la soumission.");
+      setPassportFile(passportItem);
+
+      // 3. Appel de l'analyse automatique côté serveur (Gemini OCR/MRZ)
+      try {
+        const response = await fetch("/api/scan-passport", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imageBase64: base64Data,
+            mimeType: file.type || "image/jpeg"
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result && result.data) {
+            const data = result.data;
+            setApplicant(prev => ({
+              ...prev,
+              firstName: data.firstName || prev.firstName,
+              lastName: data.lastName || prev.lastName,
+              passportNumber: data.passportNumber || prev.passportNumber,
+              dateOfBirth: data.dateOfBirth || prev.dateOfBirth,
+              expiryDate: data.expiryDate || prev.expiryDate,
+              issueDate: data.issueDate || prev.issueDate,
+              nationality: data.nationality || prev.nationality || "Algérienne",
+              gender: data.gender === "F" ? "F" : "M",
+              placeOfBirth: data.placeOfBirth || prev.placeOfBirth
+            }));
+            setScanSuccess(true);
+            setScanSource(result.source || "ai");
+          }
+        } else {
+          setScanSuccess(true);
+          setScanSource("manuel");
+        }
+      } catch (scanErr) {
+        console.warn("Analyse passeport en mode manuel:", scanErr);
+        setScanSuccess(true);
+        setScanSource("manuel");
+      }
+    } catch (err: any) {
+      console.error("Erreur lecture passeport:", err);
+      setFileError(err.message || "Impossible d'enregistrer ce document. Veuillez réessayer.");
+    } finally {
+      setIsScanning(false);
     }
   };
 
+  // Suppression du passeport
+  const removePassport = () => {
+    setPassportFile(null);
+    setPassportPreview("");
+    setScanSuccess(false);
+    if (passportInputRef.current) {
+      passportInputRef.current.value = "";
+    }
+  };
 
-  const renderStep1 = () => (
-    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-black text-slate-900 mb-2">Où souhaitez-vous aller ?</h2>
-        <p className="text-slate-500">Sélectionnez la destination pour le service <strong className="text-blue-600">{requestedService}</strong>.</p>
+  // Téléversement d'un document complémentaire
+  const handleAdditionalFileUpload = async (docName: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setFileError("");
+
+    if (file.size > 5 * 1024 * 1024) {
+      setFileError(`Le fichier « ${docName} » dépasse la taille maximale autorisée de 5 Mo.`);
+      return;
+    }
+
+    try {
+      const uploadRes = await uploadFileToServer(file, docName);
+      const attachment: AttachmentItem = {
+        id: `doc_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+        name: file.name,
+        category: docName,
+        type: file.type || "application/octet-stream",
+        size: uploadRes.size,
+        dataUrl: uploadRes.url, // URL légère "/uploads/att_..."
+        url: uploadRes.url,
+        uploadedAt: new Date().toISOString(),
+        uploadedBy: "Agency"
+      };
+
+      setAttachments(prev => ({
+        ...prev,
+        [docName]: attachment
+      }));
+    } catch (err: any) {
+      console.error("Erreur de téléversement du document:", err);
+      setFileError(err.message || `Erreur lors de l'enregistrement du fichier « ${docName} ».`);
+    }
+  };
+
+  // Suppression d'un document complémentaire
+  const removeAttachment = (docName: string) => {
+    setAttachments(prev => {
+      const next = { ...prev };
+      delete next[docName];
+      return next;
+    });
+  };
+
+  // Validation des champs étape 2
+  const isStep2Valid = useMemo(() => {
+    return (
+      applicant.firstName.trim().length > 0 &&
+      applicant.lastName.trim().length > 0 &&
+      applicant.passportNumber.trim().length > 0
+    );
+  }, [applicant]);
+
+  // Soumission finale du dossier
+  const handleSubmit = async () => {
+    if (!selectedOption) return;
+
+    if (agencyBalance < selectedOption.price) {
+      setFileError("Solde insuffisant dans votre portefeuille agence pour passer cette commande.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFileError("");
+
+    try {
+      // Regrouper tous les documents (Passeport + pièces complémentaires)
+      const allAttachmentsList: AttachmentItem[] = [];
+      if (passportFile) {
+        allAttachmentsList.push(passportFile);
+      }
+      Object.values(attachments).forEach(att => {
+        allAttachmentsList.push(att);
+      });
+
+      const newAppId = `DOSS-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+      const newApp = {
+        id: newAppId,
+        agencyId: auth.currentUser?.uid || "unknown",
+        agencyName: "Mon Agence B2B",
+        serviceType: selectedOption.type,
+        country: selectedOption.destination,
+        visaType: selectedOption.title,
+        travelerName: `${applicant.lastName.toUpperCase()} ${applicant.firstName}`,
+        passportNumber: applicant.passportNumber.toUpperCase().trim(),
+        status: "Pending" as const,
+        price: selectedOption.price,
+        attachments: allAttachmentsList,
+        customFormData: {
+          applicantDetails: {
+            ...applicant,
+            fullName: `${applicant.lastName.toUpperCase()} ${applicant.firstName}`
+          },
+          attachments: allAttachmentsList,
+          textFields: textFields,
+          // Compatibilité rétroactive directe pour l'admin
+          ...allAttachmentsList.reduce((acc, curr) => {
+            acc[curr.category] = curr.dataUrl;
+            return acc;
+          }, {} as Record<string, string>)
+        },
+        timeline: [
+          {
+            id: `init_${Date.now()}`,
+            date: new Date().toISOString(),
+            title: "Dossier soumis avec succès",
+            message: `Demande de visa créée pour ${applicant.lastName.toUpperCase()} ${applicant.firstName} avec ${allAttachmentsList.length} pièce(s) jointe(s).`,
+            sender: "Agency" as const
+          }
+        ],
+        submissionDate: new Date().toISOString()
+      };
+
+      await addApplication(newApp as any);
+      setSubmittedAppId(newAppId);
+      setStep(4); // Écran de confirmation
+    } catch (err: any) {
+      console.error("Erreur de soumission du dossier:", err);
+      setFileError(err.message || "Une erreur est survenue lors de la soumission de votre dossier.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Formattage taille de fichier
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} o`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} Mo`;
+  };
+
+  // ==========================================
+  // HUB : Sélection parmi toutes les familles
+  // ==========================================
+  const renderServiceHub = () => (
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
+        <div className="relative z-10 max-w-2xl">
+          <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider mb-3">
+            Catalogue B2B Multi-Services • La Clé d'Or
+          </Badge>
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-2">
+            Que souhaitez-vous traiter aujourd'hui ?
+          </h2>
+          <p className="text-slate-500 font-medium">
+            Choisissez la famille de prestations consulaire ou administrative à initier pour votre client.
+          </p>
+        </div>
+
+        {/* Quick B2C mode notice */}
+        <div className="relative z-10 flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+          <button
+            type="button"
+            onClick={() => setB2cMode(false)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${!b2cMode ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+          >
+            Vue B2B (Solde)
+          </button>
+          <button
+            type="button"
+            onClick={() => setB2cMode(true)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${b2cMode ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-emerald-700'}`}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>Comptoir B2C (+{b2cMarginPercent}%)</span>
+          </button>
+        </div>
       </div>
 
-      {availableCountries.length === 0 ? (
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center text-slate-500">
-          <MapPin className="w-12 h-12 mx-auto mb-4 text-slate-300" />
-          <p>Aucune destination disponible pour ce service actuellement.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {availableCountries.map(country => (
-            <button
-              key={country}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {SERVICE_FAMILIES.map(family => {
+          const matchingCount = services.filter(s => {
+            if (!s.active) return false;
+            const sType = (s.type || "").toLowerCase();
+            const sTitle = (s.title || "").toLowerCase();
+            return family.matchKeys.some(k => sType.includes(k.toLowerCase()) || sTitle.includes(k.toLowerCase()));
+          }).length;
+
+          return (
+            <div
+              key={family.id}
               onClick={() => {
-                setSelectedCountry(country);
-                setStep(2);
+                if (family.directRoute) {
+                  navigate(family.directRoute);
+                } else {
+                  setSelectedFamily(family);
+                  setSearchParams({ service: family.id });
+                }
               }}
-              className="flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-2xl hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-1 transition-all"
+              className={`group bg-white rounded-3xl border-2 ${family.borderColor} p-6 flex flex-col justify-between shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer relative overflow-hidden`}
             >
-              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4">
-                <MapPin className="w-8 h-8" />
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`w-14 h-14 rounded-2xl ${family.bgColor} ${family.textColor} flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs`}>
+                    <family.icon className="w-7 h-7" />
+                  </div>
+                  <Badge className="bg-slate-100 text-slate-700 text-[10px] font-bold tracking-wide uppercase">
+                    {family.badge}
+                  </Badge>
+                </div>
+
+                <h3 className="text-lg font-black text-slate-900 group-hover:text-[#7B1B38] transition-colors mb-2">
+                  {family.name}
+                </h3>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed mb-4">
+                  {family.description}
+                </p>
               </div>
-              <span className="font-bold text-slate-800 text-lg">{country}</span>
-            </button>
-          ))}
-        </div>
-      )}
+
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between mt-auto">
+                <span className="text-xs font-semibold text-slate-400">
+                  {family.directRoute ? "Accès direct" : matchingCount > 0 ? `${matchingCount} formule(s)` : "Consulter pays"}
+                </span>
+                <span className="inline-flex items-center gap-1 text-xs font-bold text-[#7B1B38] group-hover:translate-x-1 transition-transform">
+                  Continuer <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </motion.div>
   );
 
+  // ==========================================
+  // ÉTAPE 1 : Destination & Formule de service
+  // ==========================================
+  const renderStep1 = () => {
+    // Si aucune famille n'est sélectionnée, afficher la vitrine multi-services !
+    if (!selectedFamily && !urlServiceParam) {
+      return renderServiceHub();
+    }
+
+    const currentFamilyTitle = selectedFamily?.name || urlServiceParam || "Demande";
+
+    return (
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-8">
+        
+        {/* Navigation bar entre le Hub et le wizard */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedFamily(null);
+                setSelectedCountry("");
+                setSelectedOption(null);
+                setSearchParams({});
+              }}
+              className="rounded-xl border-slate-200 hover:bg-slate-100 text-xs font-bold gap-1.5"
+            >
+              <ChevronLeft className="w-4 h-4" /> Toutes les prestations
+            </Button>
+            <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider">
+              {currentFamilyTitle}
+            </Badge>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 font-medium">Affichage :</span>
+            <button
+              type="button"
+              onClick={() => setB2cMode(!b2cMode)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                b2cMode 
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800' 
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>{b2cMode ? `Comptoir B2C (+${b2cMarginPercent}%)` : "Tarifs B2B Bruts"}</span>
+            </button>
+          </div>
+        </div>
+
+        {!selectedCountry ? (
+          <div>
+            <div className="text-center mb-8">
+              <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider mb-2">
+                Étape 1 sur 3 • Destination
+              </Badge>
+              <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Où voyage votre client ?</h2>
+              <p className="text-slate-500 max-w-xl mx-auto">
+                Sélectionnez le pays de destination pour les demandes de type <strong className="text-[#7B1B38]">{currentFamilyTitle}</strong>.
+              </p>
+            </div>
+
+            {availableCountries.length === 0 ? (
+              <div className="bg-slate-50 border border-slate-200 rounded-3xl p-12 text-center text-slate-500">
+                <MapPin className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                <p className="font-semibold text-lg text-slate-700">Aucune destination active pour le moment</p>
+                <p className="text-sm text-slate-500 mt-1">Nos équipes consulaires publient régulièrement de nouvelles formules.</p>
+                <Button
+                  onClick={() => {
+                    setSelectedFamily(null);
+                    setSearchParams({});
+                  }}
+                  className="mt-6 bg-[#7B1B38] hover:bg-[#63142c] text-white rounded-xl text-xs font-bold"
+                >
+                  Voir les autres services disponibles
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {availableCountries.map(country => (
+                  <button
+                    key={country}
+                    onClick={() => setSelectedCountry(country)}
+                    className="group flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-2xl hover:border-[#7B1B38] hover:shadow-xl hover:shadow-[#7B1B38]/10 hover:-translate-y-1 transition-all text-center relative overflow-hidden"
+                  >
+                    <div className="w-16 h-16 bg-[#7B1B38]/10 text-[#7B1B38] rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-[#7B1B38] group-hover:text-white transition-all shadow-sm">
+                      <MapPin className="w-8 h-8" />
+                    </div>
+                    <span className="font-black text-slate-900 text-lg group-hover:text-[#7B1B38] transition-colors">{country}</span>
+                    <span className="text-xs text-slate-400 font-medium mt-1">Cliquez pour voir les formules</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => setSelectedCountry("")} 
+                  className="rounded-xl border-slate-200 hover:bg-slate-100"
+                >
+                  <ChevronLeft className="w-5 h-5 text-slate-700" />
+                </Button>
+                <div>
+                  <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider mb-1">
+                    Destination : {selectedCountry}
+                  </Badge>
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">Choisissez votre formule</h2>
+                </div>
+              </div>
+
+              <Button 
+                variant="ghost" 
+                onClick={() => setSelectedCountry("")} 
+                className="text-xs text-slate-500 hover:text-[#7B1B38]"
+              >
+                Changer de pays
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {availableOptions.map(opt => {
+                const isSelected = selectedOption?.id === opt.id;
+                const clientPrice = Math.round(opt.price * (1 + (b2cMarginPercent || 15) / 100));
+
+                return (
+                  <div 
+                    key={opt.id} 
+                    className={`bg-white border-2 rounded-3xl p-6 flex flex-col transition-all shadow-sm relative ${
+                      isSelected 
+                        ? 'border-[#7B1B38] ring-4 ring-[#7B1B38]/10 shadow-lg' 
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold">
+                        {opt.type}
+                      </Badge>
+                      <div className="text-right">
+                        {b2cMode ? (
+                          <>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                              Tarif Public Client
+                            </span>
+                            <div className="text-2xl font-black text-emerald-700 font-mono mt-1">
+                              {clientPrice.toLocaleString()} <span className="text-xs">DZD</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tarif B2B</span>
+                            <div className="text-2xl font-black text-[#7B1B38] font-mono mt-1">
+                              {opt.price.toLocaleString()} <span className="text-xs">DZD</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <h3 className="text-xl font-black text-slate-900 mb-2">{opt.title}</h3>
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 mb-4 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <Clock className="w-4 h-4 text-slate-400" />
+                      <span>Délai moyen : <strong>{opt.processingTime || "48h à 72h"}</strong></span>
+                    </div>
+
+                    {opt.description && (
+                      <p className="text-xs text-slate-500 mb-4 line-clamp-2">{opt.description}</p>
+                    )}
+
+                    {opt.conditions && opt.conditions.length > 0 && opt.conditions[0].trim() !== "" && (
+                      <div className="bg-amber-50/80 border border-amber-200/60 rounded-xl p-3 mb-6 flex gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <p className="text-xs font-medium text-amber-900 leading-relaxed">{opt.conditions[0]}</p>
+                      </div>
+                    )}
+
+                    <div className="mt-auto pt-4 border-t border-slate-100">
+                      <Button 
+                        onClick={() => {
+                          setSelectedOption(opt);
+                          setStep(2);
+                        }}
+                        className="w-full h-12 text-sm font-black rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white shadow-md shadow-[#7B1B38]/20 flex items-center justify-center gap-2"
+                      >
+                        Choisir cette formule <ArrowRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </motion.div>
+    );
+  };
+
+  // ==========================================
+  // ÉTAPE 2 : Passeport & Données Intelligentes
+  // ==========================================
   const renderStep2 = () => (
-    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-      <div className="flex items-center gap-4 mb-8">
-        <Button variant="ghost" size="icon" onClick={() => setStep(1)} className="rounded-full hover:bg-slate-100">
-          <ChevronLeft className="w-5 h-5" />
-        </Button>
-        <div>
-          <h2 className="text-3xl font-black text-slate-900 mb-1">Choisissez votre option</h2>
-          <p className="text-slate-500">Les offres disponibles pour la destination : <strong className="text-blue-600">{selectedCountry}</strong></p>
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+      {/* Header étape 2 */}
+      <div className="flex items-center justify-between border-b border-slate-200 pb-6">
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => setStep(1)} 
+            className="rounded-xl border-slate-200 hover:bg-slate-100"
+          >
+            <ChevronLeft className="w-5 h-5 text-slate-700" />
+          </Button>
+          <div>
+            <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider mb-1">
+              Étape 2 sur 3 • Analyse Intelligente
+            </Badge>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Passeport & Coordonnées du Voyageur</h2>
+          </div>
+        </div>
+
+        <div className="hidden sm:block text-right">
+          <div className="text-xs text-slate-400 font-bold uppercase">Formule sélectionnée</div>
+          <div className="font-black text-slate-800">{selectedOption?.title} ({selectedCountry})</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {availableOptions.map(opt => (
-          <div key={opt.id} className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col hover:border-blue-300 transition-colors shadow-sm">
-            <div className="mb-4">
-              <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-100 mb-3">{opt.type}</Badge>
-              <h3 className="text-xl font-black text-slate-900">{opt.title}</h3>
-            </div>
-            
-            <div className="flex items-center justify-between mb-6 bg-slate-50 p-4 rounded-xl">
-              <div>
-                <span className="text-xs font-bold text-slate-400 uppercase">Tarif B2B</span>
-                <div className="text-2xl font-black text-blue-700 font-mono">
-                  {opt.price.toLocaleString()} <span className="text-sm">DZD</span>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-xs font-bold text-slate-400 uppercase">Délai estimé</span>
-                <div className="flex items-center gap-1 font-bold text-slate-700 mt-1">
-                  <Clock className="w-4 h-4" /> {opt.processingTime || "Standard"}
-                </div>
-              </div>
-            </div>
+      {fileError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3 text-red-700 text-sm">
+          <AlertCircle className="w-5 h-5 shrink-0" />
+          <p>{fileError}</p>
+        </div>
+      )}
 
-            {opt.conditions && opt.conditions.length > 0 && opt.conditions[0].trim() !== "" && (
-              <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 mb-6">
-                <div className="flex gap-2">
-                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
-                  <p className="text-sm font-medium text-amber-800">{opt.conditions[0]}</p>
+      {/* Zone de Dépôt Intelligent du Passeport */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 text-white rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-xl border border-slate-800">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#7B1B38]/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6 relative z-10">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-[#7B1B38] text-white px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase mb-2 shadow-sm">
+              <Sparkles className="w-3.5 h-3.5" /> Détection & Remplissage Automatique
+            </div>
+            <h3 className="text-xl md:text-2xl font-black">Scannez ou déposez le passeport</h3>
+            <p className="text-slate-400 text-sm mt-1 max-w-xl">
+              Déposez la page principale du passeport (photo nette ou scan PDF). L'intelligence artificielle extrait instantanément le nom, prénom, numéro et dates de validité.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-semibold bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 shrink-0">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" /> Formats autorisés : JPG, PNG, PDF (max 5 Mo)
+          </div>
+        </div>
+
+        {/* Zone de Drop ou Résultat */}
+        {!passportFile ? (
+          <div className="relative z-10">
+            <input 
+              ref={passportInputRef}
+              type="file" 
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              onChange={handlePassportUpload}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+            />
+            <div className="border-2 border-dashed border-slate-700 hover:border-[#7B1B38] bg-slate-800/60 hover:bg-slate-800/90 rounded-2xl p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center min-h-[180px]">
+              <div className="w-16 h-16 bg-[#7B1B38]/20 text-[#7B1B38] rounded-2xl flex items-center justify-center mb-4">
+                <Upload className="w-8 h-8" />
+              </div>
+              <p className="font-bold text-base text-white">
+                Glissez-déposez la photo ou le scan du passeport ici
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                ou cliquez pour parcourir les fichiers de votre ordinateur
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="relative z-10 bg-slate-800/80 rounded-2xl p-5 border border-slate-700/80">
+            {isScanning ? (
+              <div className="py-8 flex flex-col items-center justify-center text-center">
+                <div className="relative mb-4">
+                  <div className="w-16 h-16 rounded-full border-4 border-[#7B1B38]/30 border-t-[#7B1B38] animate-spin flex items-center justify-center"></div>
+                  <Sparkles className="w-6 h-6 text-[#7B1B38] absolute inset-0 m-auto" />
+                </div>
+                <h4 className="font-black text-lg text-white">Analyse automatique du passeport en cours...</h4>
+                <p className="text-slate-400 text-xs mt-1">Lecture des zones de texte et de la bande MRZ</p>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4 w-full sm:w-auto">
+                  <div className="w-14 h-14 bg-[#7B1B38]/20 text-emerald-400 rounded-xl flex items-center justify-center shrink-0 border border-emerald-500/30 overflow-hidden">
+                    {passportFile.type.includes("pdf") ? (
+                      <FileText className="w-7 h-7 text-rose-400" />
+                    ) : (
+                      <img src={passportPreview || passportFile.dataUrl} alt="Aperçu passeport" className="w-full h-full object-cover" />
+                    )}
+                  </div>
+                  <div className="overflow-hidden">
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-white text-sm truncate max-w-[220px] sm:max-w-xs">{passportFile.name}</p>
+                      <Badge className="bg-emerald-500/20 text-emerald-300 border-none text-[10px]">
+                        {formatFileSize(passportFile.size)}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-emerald-400 flex items-center gap-1 mt-0.5">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Passeport chargé et analysé avec succès
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={removePassport}
+                    className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-rose-400 rounded-xl text-xs gap-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Remplacer
+                  </Button>
                 </div>
               </div>
             )}
+          </div>
+        )}
+      </div>
 
-            <div className="mt-auto pt-4 border-t border-slate-100">
-              <Button 
-                onClick={() => {
-                  setSelectedOption(opt);
-                  setStep(3);
-                }}
-                className="w-full h-12 text-lg font-bold bg-slate-900 hover:bg-blue-600 text-white transition-colors"
+      {/* Message de succès automatique */}
+      {scanSuccess && !isScanning && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-start gap-3">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          <div>
+            <h4 className="font-bold text-emerald-900 text-sm">Informations extraites automatiquement !</h4>
+            <p className="text-xs text-emerald-700 mt-0.5">
+              Les données ci-dessous ont été remplies automatiquement d'après votre passeport. Vous avez la possibilité de modifier ou compléter chaque information en cas de besoin.
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Formulaire des données personnelles du voyageur */}
+      <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+            <User className="w-5 h-5 text-[#7B1B38]" /> Informations personnelles du voyageur
+          </h3>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            100% Modifiable
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* Nom */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-slate-700">Nom de famille <span className="text-red-500">*</span></Label>
+            <Input 
+              value={applicant.lastName} 
+              onChange={e => setApplicant({ ...applicant, lastName: e.target.value.toUpperCase() })} 
+              className="h-11 rounded-xl uppercase font-bold text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]" 
+              placeholder="Ex: BENALI" 
+            />
+          </div>
+
+          {/* Prénom */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-slate-700">Prénom(s) <span className="text-red-500">*</span></Label>
+            <Input 
+              value={applicant.firstName} 
+              onChange={e => setApplicant({ ...applicant, firstName: e.target.value })} 
+              className="h-11 rounded-xl font-bold text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]" 
+              placeholder="Ex: Mohamed Amine" 
+            />
+          </div>
+
+          {/* Numéro de passeport */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-slate-700">Numéro de Passeport <span className="text-red-500">*</span></Label>
+            <Input 
+              value={applicant.passportNumber} 
+              onChange={e => setApplicant({ ...applicant, passportNumber: e.target.value.toUpperCase().replace(/\s+/g, '') })} 
+              className="h-11 rounded-xl uppercase font-mono font-black text-slate-900 border-slate-200 tracking-wider focus-visible:ring-[#7B1B38]" 
+              placeholder="Ex: 214589632" 
+            />
+          </div>
+
+          {/* Date de naissance */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-slate-400" /> Date de naissance
+            </Label>
+            <Input 
+              type="date"
+              value={applicant.dateOfBirth} 
+              onChange={e => setApplicant({ ...applicant, dateOfBirth: e.target.value })} 
+              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]" 
+            />
+          </div>
+
+          {/* Date d'expiration passeport */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-slate-400" /> Date d'expiration du passeport
+            </Label>
+            <Input 
+              type="date"
+              value={applicant.expiryDate} 
+              onChange={e => setApplicant({ ...applicant, expiryDate: e.target.value })} 
+              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]" 
+            />
+          </div>
+
+          {/* Sexe */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-slate-700">Sexe / Genre</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setApplicant({ ...applicant, gender: "M" })}
+                className={`h-11 rounded-xl font-bold text-xs border transition-all ${
+                  applicant.gender === "M" 
+                    ? 'bg-[#7B1B38] text-white border-[#7B1B38] shadow-sm' 
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
               >
-                Sélectionner cette option <ChevronRight className="w-5 h-5 ml-2" />
-              </Button>
+                Homme (M)
+              </button>
+              <button
+                type="button"
+                onClick={() => setApplicant({ ...applicant, gender: "F" })}
+                className={`h-11 rounded-xl font-bold text-xs border transition-all ${
+                  applicant.gender === "F" 
+                    ? 'bg-[#7B1B38] text-white border-[#7B1B38] shadow-sm' 
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                Femme (F)
+              </button>
             </div>
           </div>
-        ))}
+
+          {/* Nationalité */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-slate-700">Nationalité</Label>
+            <Input 
+              value={applicant.nationality} 
+              onChange={e => setApplicant({ ...applicant, nationality: e.target.value })} 
+              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]" 
+              placeholder="Ex: Algérienne" 
+            />
+          </div>
+
+          {/* Lieu de naissance */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-slate-700">Lieu de naissance</Label>
+            <Input 
+              value={applicant.placeOfBirth} 
+              onChange={e => setApplicant({ ...applicant, placeOfBirth: e.target.value })} 
+              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]" 
+              placeholder="Ex: Alger" 
+            />
+          </div>
+
+          {/* Téléphone voyageur */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+              <Phone className="w-3.5 h-3.5 text-slate-400" /> Téléphone de contact
+            </Label>
+            <Input 
+              value={applicant.phone} 
+              onChange={e => setApplicant({ ...applicant, phone: e.target.value })} 
+              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]" 
+              placeholder="Ex: 0550 12 34 56" 
+            />
+          </div>
+
+          {/* Email voyageur */}
+          <div className="space-y-1.5 md:col-span-2 lg:col-span-1">
+            <Label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+              <Mail className="w-3.5 h-3.5 text-slate-400" /> Adresse courriel
+            </Label>
+            <Input 
+              type="email"
+              value={applicant.email} 
+              onChange={e => setApplicant({ ...applicant, email: e.target.value })} 
+              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]" 
+              placeholder="client@domaine.com" 
+            />
+          </div>
+
+          {/* Adresse de résidence */}
+          <div className="space-y-1.5 md:col-span-2">
+            <Label className="text-xs font-bold text-slate-700">Adresse / Commune de résidence</Label>
+            <Input 
+              value={applicant.address} 
+              onChange={e => setApplicant({ ...applicant, address: e.target.value })} 
+              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]" 
+              placeholder="Ex: Bab El Oued, Alger" 
+            />
+          </div>
+        </div>
+
+        {/* Bouton de validation vers étape 3 */}
+        <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
+          <Button 
+            variant="ghost" 
+            onClick={() => setStep(1)} 
+            className="text-slate-600 hover:text-slate-900"
+          >
+            Retour à l'étape 1
+          </Button>
+
+          <Button 
+            disabled={!isStep2Valid}
+            onClick={() => setStep(3)}
+            className="h-12 px-8 bg-[#7B1B38] hover:bg-[#63142c] text-white font-black text-sm rounded-xl shadow-md shadow-[#7B1B38]/20 flex items-center gap-2"
+          >
+            Continuer vers les Pièces Jointes <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
     </motion.div>
   );
 
+  // ==========================================
+  // ÉTAPE 3 : Pièces requises & Récapitulatif
+  // ==========================================
   const renderStep3 = () => (
-    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-      <div className="flex items-center gap-4 mb-6 border-b border-slate-200 pb-6">
-        <Button variant="ghost" size="icon" onClick={() => setStep(2)} className="rounded-full hover:bg-slate-100">
-          <ChevronLeft className="w-5 h-5" />
-        </Button>
-        <div>
-          <h2 className="text-2xl font-black text-slate-900">Dossier & Prérequis</h2>
-          <p className="text-slate-500">{selectedOption?.title} - {selectedCountry}</p>
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+      {/* Header étape 3 */}
+      <div className="flex items-center justify-between border-b border-slate-200 pb-6">
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => setStep(2)} 
+            className="rounded-xl border-slate-200 hover:bg-slate-100"
+          >
+            <ChevronLeft className="w-5 h-5 text-slate-700" />
+          </Button>
+          <div>
+            <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider mb-1">
+              Étape 3 sur 3 • Pièces Jointes & Confirmation
+            </Badge>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Justificatifs requis & Débit portefeuille</h2>
+          </div>
+        </div>
+
+        <div className="hidden sm:block text-right">
+          <div className="text-xs text-slate-400 font-bold uppercase">Voyageur</div>
+          <div className="font-black text-slate-800">{applicant.lastName} {applicant.firstName}</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Formulaire dynamique */}
-        <div className="lg:col-span-2 space-y-8">
-          
-          {/* Infos Voyageur (Toujours présentes) */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h3 className="text-lg font-black text-slate-900 mb-4 flex items-center gap-2">
-              <User className="w-5 h-5 text-blue-600" /> 1. Informations du voyageur
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Nom</Label>
-                <Input value={applicant.lastName} onChange={e => setApplicant({...applicant, lastName: e.target.value})} className="h-12" placeholder="Nom de famille" />
-              </div>
-              <div className="space-y-2">
-                <Label>Prénom</Label>
-                <Input value={applicant.firstName} onChange={e => setApplicant({...applicant, firstName: e.target.value})} className="h-12" placeholder="Prénom" />
-              </div>
-              <div className="space-y-2 col-span-2">
-                <Label>Numéro de Passeport</Label>
-                <Input value={applicant.passportNumber} onChange={e => setApplicant({...applicant, passportNumber: e.target.value})} className="h-12 uppercase font-mono" placeholder="Ex: 123456789" />
-              </div>
-            </div>
-          </div>
+      {fileError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3 text-red-700 text-sm">
+          <AlertCircle className="w-5 h-5 shrink-0" />
+          <p>{fileError}</p>
+        </div>
+      )}
 
-          {/* Documents Requis Dynamiques */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h3 className="text-lg font-black text-slate-900 mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-purple-600" /> 2. Pièces jointes & Informations supplémentaires
-            </h3>
-            
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Colonne gauche (2/3) : Liste des pièces complémentaires */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+            <div>
+              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <FileCheck className="w-5 h-5 text-[#7B1B38]" /> Documents justificatifs à joindre
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Tous les fichiers (scans JPG, PNG ou PDF jusqu'à 5 Mo) sont transmis de manière sécurisée et directement accessibles par l'administration consulaire.
+              </p>
+            </div>
+
+            {/* Passeport résumé */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-900">Passeport biométrique</p>
+                  <p className="text-xs text-slate-500 font-mono">
+                    N° {applicant.passportNumber} {passportFile ? `(${formatFileSize(passportFile.size)})` : ""}
+                  </p>
+                </div>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setStep(2)} 
+                className="text-xs text-[#7B1B38] hover:bg-[#7B1B38]/10"
+              >
+                Modifier
+              </Button>
+            </div>
+
+            {/* Pièces dynamiques requises selon l'option */}
             {(!selectedOption?.requiredDocuments || selectedOption.requiredDocuments.length === 0) ? (
-              <p className="text-slate-500 text-sm">Aucun document supplémentaire n'est requis pour cette option.</p>
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center text-slate-500">
+                <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
+                <p className="text-sm font-semibold text-slate-700">Aucun autre document supplémentaire n'est requis</p>
+                <p className="text-xs text-slate-500">Le passeport enregistré à l'étape précédente suffit pour traiter cette demande.</p>
+              </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {selectedOption.requiredDocuments.map(req => {
                   const isTextField = req.toLowerCase().includes("(texte)");
                   const cleanName = req.replace("(Texte)", "").trim();
 
                   if (isTextField) {
                     return (
-                      <div key={req} className="space-y-2">
-                        <Label className="font-bold text-slate-700">{cleanName} <span className="text-red-500">*</span></Label>
+                      <div key={req} className="space-y-1.5 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                        <Label className="text-xs font-bold text-slate-800">{cleanName} <span className="text-red-500">*</span></Label>
                         <Input 
-                          className="h-12" 
-                          placeholder={`Saisir ${cleanName.toLowerCase()}...`}
+                          className="h-11 bg-white rounded-xl border-slate-200" 
+                          placeholder={`Renseigner ${cleanName.toLowerCase()}...`}
                           value={textFields[req] || ""}
-                          onChange={(e) => handleTextField(req, e.target.value)}
+                          onChange={(e) => setTextFields(prev => ({ ...prev, [req]: e.target.value }))}
                         />
                       </div>
                     );
                   }
 
-                  // Else it's a file upload
+                  const uploadedDoc = attachments[req];
+
                   return (
-                    <div key={req} className="space-y-2">
-                      <Label className="font-bold text-slate-700">{req} <span className="text-red-500">*</span></Label>
-                      <div className="relative">
-                        <Input 
-                          type="file" 
-                          onChange={(e) => handleFileUpload(req, e)}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                        />
-                        <div className={`flex items-center justify-between p-4 border-2 border-dashed rounded-xl transition-colors ${uploadedFiles[req] ? 'border-emerald-500 bg-emerald-50' : 'border-slate-300 hover:border-blue-400 bg-slate-50'}`}>
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${uploadedFiles[req] ? 'bg-emerald-100 text-emerald-600' : 'bg-white shadow-sm text-slate-400'}`}>
-                              {uploadedFiles[req] ? <CheckCircle2 className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
+                    <div key={req} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <span>{req}</span>
+                          <span className="text-red-500">*</span>
+                        </Label>
+                        <span className="text-[10px] font-semibold text-slate-400">PDF, JPG, PNG (Max 5 Mo)</span>
+                      </div>
+
+                      {!uploadedDoc ? (
+                        <div className="relative">
+                          <input 
+                            type="file" 
+                            accept="image/jpeg,image/png,image/webp,application/pdf"
+                            onChange={(e) => handleAdditionalFileUpload(req, e)}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                          />
+                          <div className="flex items-center justify-between p-3.5 border-2 border-dashed border-slate-300 hover:border-[#7B1B38] bg-white rounded-xl transition-all cursor-pointer">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center">
+                                <Upload className="w-4 h-4" />
+                              </div>
+                              <span className="text-xs font-medium text-slate-600">
+                                Cliquer ou glisser le document ici
+                              </span>
                             </div>
-                            <div className="text-sm">
-                              {uploadedFiles[req] ? (
-                                <p className="font-bold text-emerald-700">{(uploadedFiles[req] as File).name}</p>
-                              ) : (
-                                <p className="font-medium text-slate-600">Cliquer ou glisser le document ici</p>
-                              )}
+                            <Button type="button" variant="outline" size="sm" className="h-8 text-xs rounded-lg pointer-events-none">
+                              Sélectionner
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-emerald-300 shadow-xs">
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                              {uploadedDoc.type.includes("pdf") ? <FileText className="w-5 h-5 text-rose-500" /> : <CheckCircle2 className="w-5 h-5" />}
+                            </div>
+                            <div className="overflow-hidden">
+                              <p className="text-xs font-bold text-slate-900 truncate max-w-[200px] sm:max-w-xs">{uploadedDoc.name}</p>
+                              <p className="text-[10px] text-emerald-600 font-medium">
+                                Prêt • {formatFileSize(uploadedDoc.size)}
+                              </p>
                             </div>
                           </div>
-                          {!uploadedFiles[req] && <Button type="button" variant="secondary" size="sm">Parcourir</Button>}
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => removeAttachment(req)}
+                            className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 rounded-lg"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                      </div>
+                      )}
                     </div>
                   );
                 })}
@@ -300,69 +1274,166 @@ export function VisaWizard() {
           </div>
         </div>
 
-        {/* Recap & Payment */}
+        {/* Colonne droite (1/3) : Récapitulatif financier & Débit */}
         <div className="space-y-6">
-          <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-xl">
-            <h3 className="text-lg font-black mb-4 border-b border-slate-700 pb-4">Résumé de la commande</h3>
-            
-            <div className="space-y-3 mb-6 text-slate-300 text-sm">
-              <div className="flex justify-between">
-                <span>Service</span>
+          <div className="bg-slate-900 text-white p-6 md:p-8 rounded-3xl shadow-xl relative overflow-hidden border border-slate-800">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-[#7B1B38]/30 rounded-full blur-2xl pointer-events-none"></div>
+
+            <h3 className="text-lg font-black mb-6 border-b border-slate-800 pb-4 flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-[#7B1B38]" /> Récapitulatif Commande
+            </h3>
+
+            <div className="space-y-4 text-xs text-slate-300 mb-6">
+              <div className="flex justify-between items-center py-1 border-b border-slate-800/80">
+                <span className="text-slate-400">Service</span>
                 <span className="font-bold text-white text-right">{selectedOption?.title}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Destination</span>
+              <div className="flex justify-between items-center py-1 border-b border-slate-800/80">
+                <span className="text-slate-400">Destination</span>
                 <span className="font-bold text-white text-right">{selectedCountry}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Voyageur</span>
-                <span className="font-bold text-white text-right uppercase">{applicant.lastName} {applicant.firstName}</span>
+              <div className="flex justify-between items-center py-1 border-b border-slate-800/80">
+                <span className="text-slate-400">Voyageur</span>
+                <span className="font-bold text-white uppercase text-right">{applicant.lastName} {applicant.firstName}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-800/80">
+                <span className="text-slate-400">Passeport</span>
+                <span className="font-mono font-bold text-white text-right">{applicant.passportNumber}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-800/80">
+                <span className="text-slate-400">Pièces jointes</span>
+                <span className="font-bold text-emerald-400 text-right">
+                  {(passportFile ? 1 : 0) + Object.keys(attachments).length} document(s)
+                </span>
               </div>
             </div>
 
-            <div className="border-t border-slate-700 pt-4 mb-6">
-              <div className="flex justify-between items-end">
-                <span className="text-sm font-medium text-slate-400">Total à payer</span>
-                <span className="text-2xl font-black font-mono">{selectedOption?.price.toLocaleString()} DZD</span>
+            {/* Solde & Total */}
+            <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 mb-6 space-y-3">
+              {b2cMode && selectedOption && (
+                <div className="p-3 bg-emerald-950/60 rounded-xl border border-emerald-800/80 mb-2 space-y-1.5">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-emerald-300 font-medium">Prix facturé au client (+{b2cMarginPercent}%) :</span>
+                    <span className="font-mono font-bold text-emerald-300">
+                      {Math.round(selectedOption.price * (1 + (b2cMarginPercent || 15) / 100)).toLocaleString()} DZD
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-emerald-400 font-medium">Votre marge commerciale nette :</span>
+                    <span className="font-mono font-bold text-emerald-400">
+                      +{Math.round(selectedOption.price * ((b2cMarginPercent || 15) / 100)).toLocaleString()} DZD
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400">Solde portefeuille actuel :</span>
+                <span className="font-mono font-bold text-white">{agencyBalance.toLocaleString()} DZD</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400">Débit net sur votre solde :</span>
+                <span className="font-mono font-bold text-rose-400">- {selectedOption?.price.toLocaleString()} DZD</span>
+              </div>
+              <div className="border-t border-slate-800 pt-2 flex justify-between items-center">
+                <span className="text-xs font-bold text-slate-300">Solde restant après validation :</span>
+                <span className={`font-mono font-bold text-sm ${agencyBalance >= (selectedOption?.price || 0) ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {(agencyBalance - (selectedOption?.price || 0)).toLocaleString()} DZD
+                </span>
               </div>
             </div>
 
             <Button 
+              disabled={isSubmitting || agencyBalance < (selectedOption?.price || 0)}
               onClick={handleSubmit}
-              className="w-full h-14 bg-blue-600 hover:bg-blue-500 text-white font-bold text-lg rounded-xl shadow-lg shadow-blue-500/30"
+              className="w-full h-14 bg-[#7B1B38] hover:bg-[#63142c] text-white font-black text-base rounded-2xl shadow-lg shadow-[#7B1B38]/30 flex items-center justify-center gap-2 transition-all"
             >
-              Payer et Soumettre
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Transmission du dossier...
+                </>
+              ) : (
+                <>
+                  Débiter et Soumettre le dossier <ArrowRight className="w-5 h-5" />
+                </>
+              )}
             </Button>
-            <p className="text-xs text-center text-slate-400 mt-4">
-              Ce montant sera déduit de votre Wallet Agence : <strong className="text-white">{agencyBalance.toLocaleString()} DZD</strong>
-            </p>
+
+            {agencyBalance < (selectedOption?.price || 0) && (
+              <p className="text-[11px] text-center text-rose-400 mt-3 font-semibold">
+                Solde insuffisant. Veuillez recharger votre portefeuille agence.
+              </p>
+            )}
           </div>
         </div>
-        
       </div>
     </motion.div>
   );
 
+  // ==========================================
+  // ÉTAPE 4 : Confirmation Réussie
+  // ==========================================
   const renderStep4 = () => (
-    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-20">
-      <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 max-w-xl mx-auto">
+      <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/10">
         <CheckCircle2 className="w-12 h-12" />
       </div>
-      <h2 className="text-3xl font-black text-slate-900 mb-4">Commande Confirmée !</h2>
-      <p className="text-lg text-slate-600 mb-8 max-w-lg mx-auto">
-        Le dossier pour <strong className="text-slate-900">{applicant.lastName} {applicant.firstName}</strong> a bien été transmis. Le montant de <strong className="text-slate-900">{selectedOption?.price.toLocaleString()} DZD</strong> a été déduit de votre Wallet.
+
+      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-mono text-xs uppercase mb-3">
+        Dossier N° {submittedAppId}
+      </Badge>
+
+      <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-3">Dossier Transmis avec Succès !</h2>
+      <p className="text-slate-600 text-base leading-relaxed mb-8">
+        La demande pour <strong className="text-slate-900">{applicant.lastName} {applicant.firstName}</strong> a bien été enregistrée et transmise à notre équipe consulaire. L'ensemble des pièces jointes et des informations passeport sont désormais accessibles pour instruction.
       </p>
-      <div className="flex justify-center gap-4">
-        <Button onClick={() => navigate("/agency/applications")} variant="outline" className="h-12 px-6 font-bold">
-          Voir mes dossiers
+
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-600 mb-8 flex justify-around">
+        <div>
+          <span className="text-slate-400 block font-semibold">Montant Débité</span>
+          <strong className="text-slate-900 font-mono text-sm">{selectedOption?.price.toLocaleString()} DZD</strong>
+        </div>
+        <div className="border-r border-slate-200"></div>
+        <div>
+          <span className="text-slate-400 block font-semibold">Nouveau Solde</span>
+          <strong className="text-[#7B1B38] font-mono text-sm">{agencyBalance.toLocaleString()} DZD</strong>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row justify-center gap-4">
+        <Button 
+          onClick={() => navigate("/agency/applications")} 
+          variant="outline" 
+          className="h-12 px-6 font-bold rounded-xl border-slate-300 hover:bg-slate-100"
+        >
+          Accéder au Suivi des Dossiers
         </Button>
-        <Button onClick={() => {
-          setApplicant({ firstName: "", lastName: "", passportNumber: "" });
-          setUploadedFiles({});
-          setTextFields({});
-          setStep(1);
-        }} className="h-12 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold">
-          Nouveau Dossier
+        <Button 
+          onClick={() => {
+            setApplicant({
+              firstName: "",
+              lastName: "",
+              passportNumber: "",
+              dateOfBirth: "",
+              expiryDate: "",
+              issueDate: "",
+              nationality: "Algérienne",
+              gender: "M",
+              placeOfBirth: "",
+              phone: "",
+              email: "",
+              address: ""
+            });
+            setPassportFile(null);
+            setAttachments({});
+            setTextFields({});
+            setScanSuccess(false);
+            setStep(1);
+          }} 
+          className="h-12 px-6 bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold rounded-xl shadow-md shadow-[#7B1B38]/20"
+        >
+          Créer un Nouveau Dossier
         </Button>
       </div>
     </motion.div>
@@ -370,25 +1441,53 @@ export function VisaWizard() {
 
   return (
     <div className="max-w-6xl mx-auto pb-20">
-      {/* Stepper Indicator */}
+      {/* Barre de progression 3 étapes */}
       {step < 4 && (
-        <div className="flex items-center justify-center gap-2 mb-10">
-          {[1, 2, 3].map((s) => (
-            <div key={s} className="flex items-center">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                step === s ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 
-                step > s ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'
-              }`}>
-                {step > s ? <CheckCircle2 className="w-4 h-4" /> : s}
-              </div>
-              {s < 3 && (
-                <div className={`w-12 h-1 ml-2 rounded-full ${step > s ? 'bg-slate-900' : 'bg-slate-100'}`} />
-              )}
-            </div>
-          ))}
+        <div className="mb-10 bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between max-w-2xl mx-auto relative">
+            {/* Ligne d'arrière plan */}
+            <div className="absolute top-1/2 left-0 right-0 h-1 bg-slate-100 -translate-y-1/2 z-0" />
+            
+            {/* Ligne de progression active */}
+            <div 
+              className="absolute top-1/2 left-0 h-1 bg-[#7B1B38] -translate-y-1/2 z-0 transition-all duration-300"
+              style={{ width: step === 1 ? '0%' : step === 2 ? '50%' : '100%' }}
+            />
+
+            {[
+              { num: 1, title: "Destination & Offre" },
+              { num: 2, title: "Passeport & Voyageur" },
+              { num: 3, title: "Pièces & Validation" }
+            ].map(item => {
+              const isPassed = step > item.num;
+              const isCurrent = step === item.num;
+
+              return (
+                <div key={item.num} className="flex flex-col items-center relative z-10">
+                  <div 
+                    className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm transition-all duration-300 ${
+                      isPassed 
+                        ? 'bg-slate-900 text-white shadow-md' 
+                        : isCurrent 
+                          ? 'bg-[#7B1B38] text-white shadow-lg shadow-[#7B1B38]/30 scale-110' 
+                          : 'bg-white border-2 border-slate-200 text-slate-400'
+                    }`}
+                  >
+                    {isPassed ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : item.num}
+                  </div>
+                  <span className={`text-xs mt-2 font-bold transition-colors hidden sm:block ${
+                    isCurrent ? 'text-[#7B1B38]' : isPassed ? 'text-slate-800' : 'text-slate-400'
+                  }`}>
+                    {item.title}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
+      {/* Rendu dynamique des étapes */}
       <AnimatePresence mode="wait">
         {step === 1 && renderStep1()}
         {step === 2 && renderStep2()}

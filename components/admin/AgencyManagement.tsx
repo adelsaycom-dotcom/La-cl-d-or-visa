@@ -45,8 +45,13 @@ export function AgencyManagement() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold tracking-tight">Agences</h2>
-        <Button onClick={() => setIsAddAgencyOpen(true)} className="bg-black text-white hover:bg-gray-800">Ajouter une agence manuellement</Button>
+        <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+          <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
+          Gestion des Agences Partenaires
+        </h2>
+        <Button onClick={() => setIsAddAgencyOpen(true)} className="bg-[#7B1B38] text-white hover:bg-[#63142c] shadow-sm shadow-[#7B1B38]/20 font-bold rounded-xl">
+          Ajouter une agence manuellement
+        </Button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-4 rounded-xl border border-gray-200 shadow-sm">

@@ -2,12 +2,24 @@ export interface Agency {
   id: string;
   name?: string;
   agencyName?: string;
+  companyName?: string;
   email: string;
   phone: string;
+  rc?: string;
+  rcNumber?: string;
+  nif?: string;
+  nifNumber?: string;
+  managerName?: string;
+  address?: string;
+  wilaya?: string;
   status: string;
   balance: number;
   applicationsCount: number;
   role: string;
+  bannedUntil?: string;
+  banReason?: string;
+  b2cMarginPercent?: number;
+  createdAt?: string;
 }
 import { create } from "zustand";
 import { collection, doc, setDoc, updateDoc, deleteDoc, runTransaction, writeBatch, query, where, getDocs } from 'firebase/firestore';
@@ -147,6 +159,18 @@ export interface Application {
   extraData?: Record<string, string>;
   customFormData?: Record<string, any>;
   finalDocument?: string;
+  finalDocumentName?: string;
+  finalDocumentDate?: string;
+  attachments?: Array<{
+    id: string;
+    name: string;
+    category: string;
+    type: string;
+    size: number;
+    dataUrl: string;
+    uploadedAt: string;
+    uploadedBy: "Agency" | "Admin";
+  }>;
   adminNotes?: string;
 }
 
@@ -204,6 +228,14 @@ export interface AppState {
   updateVisaType: (countryId: string, visaId: string, data: Partial<VisaType>) => void;
   removeVisaType: (countryId: string, visaId: string) => void;
 
+  currentAgency: Agency | null;
+  setCurrentAgency: (agency: Agency | null) => void;
+  b2cMode: boolean;
+  setB2cMode: (mode: boolean) => void;
+  b2cMarginPercent: number;
+  setB2cMarginPercent: (percent: number) => void;
+  updateAgency: (id: string, updates: Partial<Agency>) => Promise<void>;
+
   addApplication: (application: Application) => void;
   updateApplicationStatus: (id: string, status: Application["status"]) => void;
   updateApplication: (id: string, updates: Partial<Application>) => void;
@@ -212,10 +244,21 @@ export interface AppState {
 }
 
 export const useAppStore = create<AppState>()((set, get) => ({
+  currentAgency: null,
+  setCurrentAgency: (agency) => set({ currentAgency: agency }),
+  b2cMode: false,
+  setB2cMode: (mode) => set({ b2cMode: mode }),
+  b2cMarginPercent: 15,
+  setB2cMarginPercent: (percent) => set({ b2cMarginPercent: percent }),
+
   agencyBalance: 0,
   setAgencyBalance: (balance) => {
     // In a real app, you'd update this in Firestore via a Cloud Function or Admin rule
     set({ agencyBalance: balance });
+  },
+
+  updateAgency: async (id, updates) => {
+    await updateDoc(doc(db, "users", id), updates);
   },
 
   

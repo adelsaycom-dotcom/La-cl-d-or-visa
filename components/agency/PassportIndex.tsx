@@ -58,17 +58,20 @@ export function PassportIndex() {
     <div className="space-y-6 max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-10">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Index des Passeports</h2>
-          <p className="text-sm text-gray-500 mt-1">Explorez la mobilité mondiale et les exigences en matière de visa.</p>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
+            Index des Passeports
+          </h2>
+          <p className="text-sm text-slate-500 mt-1">Explorez la mobilité mondiale et les exigences en matière de visa.</p>
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div className="flex flex-col md:flex-row gap-6 items-center">
           <div className="flex-1 w-full relative">
-            <div className="text-sm font-medium mb-2 text-gray-500">Sélectionnez un passeport</div>
+            <div className="text-sm font-medium mb-2 text-slate-500">Sélectionnez un passeport</div>
             <Select value={selectedPassport} onValueChange={setSelectedPassport}>
-              <SelectTrigger className="h-14 text-lg bg-gray-50/50">
+              <SelectTrigger className="h-14 text-lg bg-slate-50 border-slate-200">
                 <SelectValue placeholder="Choisir un passeport" />
               </SelectTrigger>
               <SelectContent>
@@ -85,12 +88,12 @@ export function PassportIndex() {
           
           <div className="flex gap-8 w-full md:w-auto mt-4 md:mt-0 justify-between md:justify-start">
             <div className="text-center px-4">
-              <div className="text-sm font-medium text-gray-500 mb-1">Rang Mondial</div>
-              <div className="text-5xl font-black text-slate-800">#{data.rank}</div>
+              <div className="text-sm font-medium text-slate-500 mb-1">Rang Mondial</div>
+              <div className="text-5xl font-black text-slate-900">#{data.rank}</div>
             </div>
-            <div className="text-center px-4 border-l">
-              <div className="text-sm font-medium text-gray-500 mb-1">Score de Mobilité</div>
-              <div className="text-5xl font-black text-blue-600">{data.score}</div>
+            <div className="text-center px-4 border-l border-slate-100">
+              <div className="text-sm font-medium text-slate-500 mb-1">Score de Mobilité</div>
+              <div className="text-5xl font-black text-[#7B1B38]">{data.score}</div>
             </div>
           </div>
         </div>

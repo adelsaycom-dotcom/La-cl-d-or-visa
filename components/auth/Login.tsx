@@ -16,7 +16,6 @@ import {
   Mail, 
   KeyRound,
   Plane,
-  Building2,
   Lock
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
@@ -358,36 +357,6 @@ export function Login() {
             </p>
           </div>
 
-          {/* Quick preset credentials helper */}
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs">
-            <div className="flex items-center justify-between font-semibold text-slate-700 mb-2">
-              <span className="flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-[#7B1B38]" /> Accès rapide aux comptes :
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail("adel.saycom@gmail.com");
-                  setPassword("admin123");
-                }}
-                className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:border-[#7B1B38] hover:text-[#7B1B38] font-medium transition-all shadow-xs"
-              >
-                Super Admin (adel.saycom)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail("admin@cle-dor.com");
-                  setPassword("admin123");
-                }}
-                className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:border-[#7B1B38] hover:text-[#7B1B38] font-medium transition-all shadow-xs"
-              >
-                Admin (cle-dor.com)
-              </button>
-            </div>
-          </div>
 
           {/* Error Banner */}
           {errorMessage && (
@@ -526,10 +495,10 @@ export function Login() {
           <div className="pt-2 text-center text-[11px] text-slate-400">
             Besoin d'aide pour vos accès ?{" "}
             <a 
-              href="mailto:contact@lacle-dor.com" 
+              href="mailto:support@lacledortravel.com" 
               className="text-[#7B1B38] hover:underline font-medium"
             >
-              contact@lacle-dor.com
+              support@lacledortravel.com
             </a>
           </div>
         </div>

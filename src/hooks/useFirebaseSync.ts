@@ -97,7 +97,12 @@ export function useFirebaseSync() {
         
         unsubsRef.current.push(onSnapshot(doc(db, 'users', user.uid), docSnap => {
           if (docSnap.exists()) {
-            setStore({ agencyBalance: docSnap.data().balance || 0 });
+            const data = docSnap.data();
+            setStore({ 
+              agencyBalance: data.balance || 0,
+              currentAgency: { id: docSnap.id, ...data } as any,
+              b2cMarginPercent: typeof data.b2cMarginPercent === 'number' ? data.b2cMarginPercent : 15
+            });
           }
         }));
 

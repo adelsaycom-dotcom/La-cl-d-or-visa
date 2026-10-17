@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Logo } from "@/components/Logo";
-import { LogIn, UserPlus, Menu, X, Phone } from "lucide-react";
+import { LogIn, UserPlus, Menu, X, MapPin } from "lucide-react";
 
 export function LandingNav() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -32,30 +32,24 @@ export function LandingNav() {
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-700">
+          <nav className="hidden md:flex items-center gap-7 text-sm font-bold text-slate-700">
             <a href="#processus" className="hover:text-[#7B1B38] transition-colors">
               Processus B2B
             </a>
             <a href="#avantages" className="hover:text-[#7B1B38] transition-colors">
               Avantages & Outils
             </a>
+            <a href="#localisation" className="hover:text-[#7B1B38] transition-colors flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-[#7B1B38]" />
+              <span>Localisation</span>
+            </a>
             <a href="#faq" className="hover:text-[#7B1B38] transition-colors">
               FAQ Agences
-            </a>
-            <a href="#contact" className="hover:text-[#7B1B38] transition-colors">
-              Contact & Support
             </a>
           </nav>
 
           {/* Action Buttons in #7B1B38 */}
           <div className="hidden sm:flex items-center gap-3">
-            <a 
-              href="tel:0562101719" 
-              className="px-3 py-2 text-xs font-bold text-slate-700 hover:text-[#7B1B38] flex items-center gap-1.5 transition-colors"
-            >
-              <Phone className="w-3.5 h-3.5 text-[#7B1B38]" />
-              <span>0562 10 17 19</span>
-            </a>
 
             <Link
               to="/login"
@@ -111,18 +105,18 @@ export function LandingNav() {
               Avantages Plateforme
             </a>
             <a
+              href="#localisation"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block text-sm font-semibold text-slate-700 hover:text-[#7B1B38] py-1"
+            >
+              Localisation & Siège
+            </a>
+            <a
               href="#faq"
               onClick={() => setMobileMenuOpen(false)}
               className="block text-sm font-semibold text-slate-700 hover:text-[#7B1B38] py-1"
             >
               FAQ Agences
-            </a>
-            <a
-              href="#contact"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block text-sm font-semibold text-slate-700 hover:text-[#7B1B38] py-1"
-            >
-              Contact & Siège
             </a>
             <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
               <Link

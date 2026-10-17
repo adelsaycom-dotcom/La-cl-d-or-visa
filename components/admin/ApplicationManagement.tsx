@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { useAppStore } from "../../src/store/useAppStore";
 import { 
   CheckCircle, XCircle, AlertCircle, 
-  Info, Clock, Send, UploadCloud, FileText, User, MapPin, MessageSquare
+  Info, Clock, Send, UploadCloud, FileText, User, 
+  MessageSquare, Download, Eye, X, FileCheck, Calendar, Phone, Mail, MapPin
 } from "lucide-react";
+import { uploadFileToServer, downloadFileSafe } from "../../src/utils/fileUpload";
 
 export function ApplicationManagement() {
   const { applications, updateApplication, addApplicationTimelineEntry } = useAppStore();
@@ -17,6 +19,7 @@ export function ApplicationManagement() {
   const [replyMessage, setReplyMessage] = useState("");
   const [finalDocUrl, setFinalDocUrl] = useState("");
   const [finalDocFile, setFinalDocFile] = useState<File | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
 
   const selectedApp = applications.find((a) => a.id === selectedAppId);
 
@@ -56,7 +59,12 @@ export function ApplicationManagement() {
     await updateApplication(selectedApp.id, { status: newStatus });
     await addApplicationTimelineEntry(selectedApp.id, {
       title: "Changement de statut",
-      message: `Le dossier est passé en statut : ${newStatus === 'Processing' ? 'En traitement' : newStatus === 'ActionRequired' ? 'Action requise' : newStatus === 'Approved' ? 'Approuvé' : newStatus === 'Rejected' ? 'Rejeté' : 'En attente'}`,
+      message: `Le dossier est passé en statut : ${
+        newStatus === 'Processing' ? 'En cours de traitement consulaire' : 
+        newStatus === 'ActionRequired' ? 'Action requise : documents ou précisions demandés' : 
+        newStatus === 'Approved' ? 'Dossier approuvé' : 
+        newStatus === 'Rejected' ? 'Dossier rejeté' : 'En attente'
+      }`,
       sender: "System"
     });
   };
@@ -73,281 +81,532 @@ export function ApplicationManagement() {
     setReplyMessage("");
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Le document dépasse la limite de 5 Mo.");
+        return;
+      }
       setFinalDocFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFinalDocUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const uploadRes = await uploadFileToServer(file, "Visa");
+        setFinalDocUrl(uploadRes.url);
+      } catch (err) {
+        console.error("Erreur enregistrement visa:", err);
+        alert("Erreur lors de l'enregistrement du document sur le serveur.");
+      }
     }
   };
 
   const handleApproveWithDoc = async () => {
     if (!selectedApp) return;
     
-    const updates: any = { status: "Approved" };
+    const updates: any = { 
+      status: "Approved",
+      finalDocumentDate: new Date().toISOString()
+    };
     if (finalDocUrl.trim()) {
       updates.finalDocument = finalDocUrl.trim();
+      updates.finalDocumentName = finalDocFile?.name || "Visa_Officiel.pdf";
     }
     
     await updateApplication(selectedApp.id, updates);
     await addApplicationTimelineEntry(selectedApp.id, {
-      title: "Dossier Approuvé",
-      message: finalDocUrl.trim() ? "Le document final (visa) est disponible au téléchargement." : "Le dossier a été approuvé avec succès.",
+      title: "Visa Délivré & Dossier Approuvé",
+      message: finalDocUrl.trim() 
+        ? `Le visa officiel (${updates.finalDocumentName}) a été téléversé et mis à disposition de l'agence.` 
+        : "Le dossier a été approuvé avec succès par l'administration.",
       sender: "System"
     });
     setFinalDocUrl("");
     setFinalDocFile(null);
   };
 
-  const isImageBase64 = (str: any) => typeof str === 'string' && str.startsWith('data:image/');
+  // Téléchargement sécurisé et universel sans corruption de PDF
+  const triggerDownload = (fileUrlOrData: string, fileName: string) => {
+    downloadFileSafe(fileUrlOrData, fileName);
+  };
+
+  const isImageBase64 = (str: any) => typeof str === 'string' && (str.startsWith('data:image/') || str.endsWith('.png') || str.endsWith('.jpg') || str.endsWith('.jpeg'));
+  const isPdfBase64 = (str: any) => typeof str === 'string' && (str.startsWith('data:application/pdf') || str.endsWith('.pdf'));
+
+  // Extraction propre de la liste des pièces jointes
+  const getAttachmentsList = () => {
+    if (!selectedApp) return [];
+    
+    const list: Array<{ id: string; name: string; category: string; type: string; size?: number; dataUrl: string }> = [];
+
+    // 1. Structure moderne attachments
+    if (Array.isArray(selectedApp.attachments) && selectedApp.attachments.length > 0) {
+      selectedApp.attachments.forEach(att => {
+        if (att && att.dataUrl) list.push(att);
+      });
+    }
+
+    // 2. Pièces dans customFormData.attachments
+    if (selectedApp.customFormData?.attachments && Array.isArray(selectedApp.customFormData.attachments)) {
+      selectedApp.customFormData.attachments.forEach((att: any) => {
+        if (att && att.dataUrl && !list.some(x => x.dataUrl === att.dataUrl)) {
+          list.push(att);
+        }
+      });
+    }
+
+    // 3. Fallback pièces encodées en direct dans customFormData
+    if (selectedApp.customFormData) {
+      Object.entries(selectedApp.customFormData).forEach(([key, val]) => {
+        if (key !== "attachments" && key !== "applicantDetails" && key !== "textFields" && typeof val === "string" && (isImageBase64(val) || isPdfBase64(val))) {
+          if (!list.some(x => x.dataUrl === val)) {
+            list.push({
+              id: key,
+              name: `${key}.${isPdfBase64(val) ? 'pdf' : 'jpg'}`,
+              category: key,
+              type: isPdfBase64(val) ? 'application/pdf' : 'image/jpeg',
+              dataUrl: val
+            });
+          }
+        }
+      });
+    }
+
+    return list;
+  };
+
+  const appAttachments = getAttachmentsList();
+  const applicantDetails = selectedApp?.customFormData?.applicantDetails;
 
   return (
     <div className="space-y-6 h-[calc(100vh-140px)] flex flex-col">
+      {/* Modal Zoom Image */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-3xl p-4 overflow-hidden flex flex-col items-center" onClick={e => e.stopPropagation()}>
+            <div className="w-full flex justify-between items-center mb-3 px-2">
+              <span className="font-bold text-white text-sm">{previewImage.title}</span>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setPreviewImage(null)} 
+                className="text-white hover:bg-white/20 rounded-full h-8 w-8"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+            <img src={previewImage.src} alt={previewImage.title} className="max-w-full max-h-[75vh] object-contain rounded-xl" />
+            <div className="mt-3">
+              <Button 
+                size="sm" 
+                onClick={() => triggerDownload(previewImage.src, `${previewImage.title}.jpg`)}
+                className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold rounded-xl text-xs gap-1.5"
+              >
+                <Download className="w-4 h-4" /> Télécharger l'image
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
       <div className="flex justify-between items-center shrink-0">
         <div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Traitement des Dossiers</h2>
-          <p className="text-slate-500 font-medium">Gérez le pipeline de vos demandes B2B.</p>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
+            Traitement des Dossiers
+          </h2>
+          <p className="text-slate-500 font-medium">Gérez les demandes de visa B2B et contrôlez les pièces jointes des agences.</p>
         </div>
       </div>
 
-      <div className="flex-1 flex gap-6 min-h-0">
-        {/* Left Column - List of applications (Takes ~30% width) */}
-        <div className={`flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-300 ${selectedApp ? 'w-1/3 hidden lg:flex shrink-0 max-w-[400px]' : 'w-full'}`}>
-          <div className="p-4 border-b border-slate-100 space-y-4 shrink-0 bg-slate-50/50">
-            <Input
-              placeholder="Rechercher nom, passeport..."
+      {/* Main Grid: Split View */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
+        
+        {/* Left List: Applications */}
+        <div className="lg:col-span-5 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-0">
+          <div className="p-4 border-b border-slate-100 flex flex-col gap-3">
+            <Input 
+              placeholder="Rechercher voyageur, passeport, agence..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-white"
+              className="bg-slate-50"
             />
-            <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-              {['ALL', 'Pending', 'Processing', 'ActionRequired', 'Approved', 'Rejected'].map(status => (
+            
+            <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs">
+              {['ALL', 'ActionRequired', 'Processing', 'Approved', 'Pending', 'Rejected'].map(status => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
+                  className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap transition-colors ${
                     statusFilter === status 
-                      ? 'bg-slate-900 text-white' 
-                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                      ? 'bg-[#7B1B38] text-white shadow-sm' 
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  {status === 'ALL' ? 'Tous' : 
-                   status === 'Pending' ? 'En attente' :
-                   status === 'Processing' ? 'En traitement' :
-                   status === 'ActionRequired' ? 'Action Requise' :
-                   status === 'Approved' ? 'Approuvés' : 'Rejetés'}
+                  {status === 'ALL' ? 'Tous les dossiers' : status === 'ActionRequired' ? 'Action Requise' : status === 'Processing' ? 'En traitement' : status === 'Approved' ? 'Approuvés' : status === 'Pending' ? 'En attente' : 'Rejetés'}
                 </button>
               ))}
             </div>
           </div>
-          
-          <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar bg-slate-50/30">
+
+          <div className="flex-1 overflow-y-auto divide-y divide-slate-100 custom-scrollbar">
             {filteredApps.length === 0 ? (
-              <div className="p-8 text-center text-slate-500 font-medium">Aucun dossier trouvé.</div>
+              <div className="p-8 text-center text-slate-400">
+                <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p>Aucun dossier ne correspond à votre filtre.</p>
+              </div>
             ) : (
               filteredApps.map(app => (
                 <div 
                   key={app.id} 
                   onClick={() => setSelectedAppId(app.id)}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md ${
-                    selectedAppId === app.id 
-                      ? 'bg-blue-50/50 border-blue-200 ring-1 ring-blue-200' 
-                      : 'bg-white border-slate-200 hover:border-blue-300'
+                  className={`p-4 cursor-pointer transition-colors ${
+                    selectedAppId === app.id ? 'bg-[#7B1B38]/5 border-l-4 border-[#7B1B38]' : 'hover:bg-slate-50'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <div className="font-bold text-slate-900 truncate pr-2">{app.travelerName}</div>
-                    <div className="shrink-0">{getStatusBadge(app.status)}</div>
+                    <span className="font-mono text-xs font-bold text-slate-400">{app.id}</span>
+                    {getStatusBadge(app.status)}
                   </div>
-                  <div className="text-xs text-slate-500 space-y-1">
-                    <div className="flex items-center gap-1.5 truncate"><User className="w-3 h-3 shrink-0" /> <span className="truncate">{app.agencyName}</span></div>
-                    <div className="flex items-center gap-1.5 truncate"><MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{app.country} - {app.serviceType}</span></div>
+                  <div className="font-black text-slate-900 text-base mb-1">
+                    {app.travelerName || (app as any).applicantName || "Voyageur inconnu"}
                   </div>
+                  <div className="flex justify-between text-xs text-slate-500 font-medium">
+                    <span>{app.serviceType} • {app.country}</span>
+                    <span className="font-bold text-slate-700">{app.agencyName}</span>
+                  </div>
+                  {app.attachments && app.attachments.length > 0 && (
+                    <div className="mt-2 flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+                      <FileCheck className="w-3.5 h-3.5" /> {app.attachments.length} pièce(s) jointe(s) reçue(s)
+                    </div>
+                  )}
                 </div>
               ))
             )}
           </div>
         </div>
 
-        {/* Right Column - Detail & Workspace (Takes ~70% width) */}
+        {/* Right Details Panel */}
         {selectedApp ? (
-          <div className="flex-1 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-0">
-            
-            {/* Header / Actions */}
-            <div className="p-5 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
+          <div className="lg:col-span-7 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-0">
+            {/* Header of selected app */}
+            <div className="p-6 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50 shrink-0">
               <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h3 className="font-black text-2xl text-slate-900">{selectedApp.travelerName}</h3>
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedAppId(null)} className="lg:hidden h-8 px-2">
-                    Fermer
-                  </Button>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-xl font-black text-slate-900">
+                    {selectedApp.travelerName || (selectedApp as any).applicantName}
+                  </h3>
+                  {getStatusBadge(selectedApp.status)}
                 </div>
-                <p className="text-sm text-slate-500 font-medium flex items-center gap-2">
-                  <User className="w-4 h-4" /> {selectedApp.agencyName}
-                </p>
+                <div className="text-xs text-slate-500 mt-1 font-semibold flex items-center gap-2">
+                  <span>Agence : <strong className="text-slate-800">{selectedApp.agencyName}</strong></span>
+                  <span>•</span>
+                  <span>Dossier : <strong className="text-slate-800 font-mono">{selectedApp.id}</strong></span>
+                </div>
               </div>
-              
-              <div className="flex flex-col items-start sm:items-end gap-3">
-                {getStatusBadge(selectedApp.status)}
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleStatusChange("Processing")} className="font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border-blue-200">
-                    En traitement
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleStatusChange("ActionRequired")} className="font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200">
-                    Action requise
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleStatusChange("Rejected")} className="font-bold text-red-700 bg-red-50 hover:bg-red-100 border-red-200">
-                    Rejeter
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleStatusChange("Pending")} className="font-bold text-slate-700 bg-white">
-                    Réinitialiser
-                  </Button>
-                </div>
+
+              {/* Status Action Buttons */}
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleStatusChange("Processing")} 
+                  className="font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border-blue-200 text-xs"
+                >
+                  En traitement
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleStatusChange("ActionRequired")} 
+                  className="font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200 text-xs"
+                >
+                  Action requise
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleStatusChange("Rejected")} 
+                  className="font-bold text-red-700 bg-red-50 hover:bg-red-100 border-red-200 text-xs"
+                >
+                  Rejeter
+                </Button>
               </div>
             </div>
             
-            {/* Body: 2 Sub-columns (Data vs Timeline) */}
+            {/* Body */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/30 custom-scrollbar">
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 
                 {/* Left Side: Data & Documents */}
                 <div className="space-y-6">
-                  {/* Final Delivery */}
-                  {selectedApp.status !== "Approved" && (
-                    <div className="bg-emerald-50 rounded-xl p-5 border border-emerald-100 shadow-sm">
-                      <h4 className="text-sm font-bold uppercase tracking-wider text-emerald-800 mb-3 flex items-center gap-1.5">
-                        <CheckCircle className="w-4 h-4" /> Finaliser & Approuver
-                      </h4>
-                      <div className="space-y-3">
-                        <div className="relative">
-                          <Input 
-                            type="file" 
-                            onChange={handleFileUpload}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                          />
-                          <div className={`flex items-center justify-between p-3 border-2 border-dashed rounded-xl transition-colors ${finalDocFile ? 'border-emerald-500 bg-emerald-100/50' : 'border-emerald-200 hover:border-emerald-400 bg-white'}`}>
-                            <div className="flex items-center gap-3">
-                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${finalDocFile ? 'bg-emerald-200 text-emerald-700' : 'bg-emerald-100 text-emerald-600'}`}>
-                                <UploadCloud className="w-5 h-5" />
-                              </div>
-                              <div className="text-sm">
-                                {finalDocFile ? (
-                                  <p className="font-bold text-emerald-800">{finalDocFile.name}</p>
-                                ) : (
-                                  <p className="font-medium text-emerald-700">Téléverser le visa (PDF, Image...)</p>
-                                )}
-                              </div>
+                  
+                  {/* Zone de Délivrance du Document Final / Visa */}
+                  <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-200/80 shadow-xs">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-emerald-900 mb-3 flex items-center gap-1.5">
+                      <CheckCircle className="w-4 h-4 text-emerald-600" /> Délivrance du Visa Final pour l'Agence
+                    </h4>
+
+                    {selectedApp.finalDocument ? (
+                      <div className="bg-white rounded-xl p-4 border border-emerald-300 mb-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                              <FileCheck className="w-6 h-6" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-black text-slate-900">
+                                {selectedApp.finalDocumentName || "Visa_Officiel_Délivré.pdf"}
+                              </p>
+                              <p className="text-[10px] text-emerald-700 font-bold">
+                                Document actif disponible au téléchargement par l'agence
+                              </p>
+                            </div>
+                          </div>
+                          <Button 
+                            size="sm"
+                            onClick={() => triggerDownload(selectedApp.finalDocument!, selectedApp.finalDocumentName || "Visa_Officiel.pdf")}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg gap-1"
+                          >
+                            <Download className="w-3.5 h-3.5" /> Télécharger
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Zone de dépôt pour nouveau visa ou mise à jour */}
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <input 
+                          type="file" 
+                          accept="image/jpeg,image/png,image/webp,application/pdf"
+                          onChange={handleFileUpload}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                        />
+                        <div className={`flex items-center justify-between p-3.5 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${
+                          finalDocFile ? 'border-emerald-500 bg-emerald-100/60' : 'border-emerald-300 hover:border-emerald-500 bg-white'
+                        }`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                              finalDocFile ? 'bg-emerald-200 text-emerald-800' : 'bg-emerald-100 text-emerald-600'
+                            }`}>
+                              <UploadCloud className="w-5 h-5" />
+                            </div>
+                            <div className="text-xs">
+                              {finalDocFile ? (
+                                <p className="font-bold text-emerald-900 truncate max-w-xs">{finalDocFile.name}</p>
+                              ) : (
+                                <p className="font-bold text-emerald-800">
+                                  {selectedApp.finalDocument ? "Remplacer le visa (PDF ou Image...)" : "Déposer le visa officiel pour l'agence (PDF / Image)"}
+                                </p>
+                              )}
+                              <p className="text-[10px] text-emerald-700">Max 5 Mo • Téléchargement immédiat pour l'agence</p>
                             </div>
                           </div>
                         </div>
-                        <Button onClick={handleApproveWithDoc} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11">
-                          Approuver et envoyer le document
-                        </Button>
                       </div>
-                    </div>
-                  )}
 
-                  {/* General Info */}
-                  <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                    <h4 className="font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-slate-400" /> Informations Générales
+                      <Button 
+                        disabled={!finalDocFile && selectedApp.status === "Approved"}
+                        onClick={handleApproveWithDoc} 
+                        className="w-full bg-[#7B1B38] hover:bg-[#63142c] text-white font-black text-xs h-11 rounded-xl shadow-md shadow-[#7B1B38]/20"
+                      >
+                        {selectedApp.finalDocument && finalDocFile 
+                          ? "Mettre à jour le visa délivré" 
+                          : "Approuver et Transmettre le Visa à l'Agence"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Fiche Voyageur Complète */}
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <h4 className="font-black text-slate-800 pb-3 border-b border-slate-100 flex items-center gap-2 text-sm">
+                      <User className="w-4 h-4 text-[#7B1B38]" /> Fiche Voyageur & Identité
                     </h4>
-                    <div className="grid grid-cols-2 gap-4">
+
+                    <div className="grid grid-cols-2 gap-4 text-xs">
                       <div>
-                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Service</div>
-                        <div className="font-medium text-slate-900">{selectedApp.serviceType} - {selectedApp.country}</div>
+                        <span className="text-slate-400 font-bold uppercase block mb-0.5">Voyageur</span>
+                        <span className="font-black text-slate-900 text-sm">{selectedApp.travelerName}</span>
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Soumission</div>
-                        <div className="font-medium text-slate-900">{new Date(selectedApp.submissionDate).toLocaleDateString()}</div>
+                        <span className="text-slate-400 font-bold uppercase block mb-0.5">Numéro de Passeport</span>
+                        <span className="font-mono font-black text-slate-900 text-sm">{selectedApp.passportNumber}</span>
                       </div>
-                      <div>
-                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Passeport</div>
-                        <div className="font-medium text-slate-900">{selectedApp.passportNumber}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Montant</div>
-                        <div className="font-medium text-slate-900">{typeof selectedApp.price === "number" ? selectedApp.price.toLocaleString() : "0"} DZD</div>
+
+                      {applicantDetails && (
+                        <>
+                          <div>
+                            <span className="text-slate-400 font-bold uppercase block mb-0.5">Date de naissance</span>
+                            <span className="font-bold text-slate-800">{applicantDetails.dateOfBirth || "-"}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 font-bold uppercase block mb-0.5">Expiration Passeport</span>
+                            <span className="font-bold text-slate-800">{applicantDetails.expiryDate || "-"}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 font-bold uppercase block mb-0.5">Nationalité / Sexe</span>
+                            <span className="font-bold text-slate-800">
+                              {applicantDetails.nationality || "Algérienne"} ({applicantDetails.gender === "F" ? "Femme" : "Homme"})
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 font-bold uppercase block mb-0.5">Lieu de naissance</span>
+                            <span className="font-bold text-slate-800">{applicantDetails.placeOfBirth || "-"}</span>
+                          </div>
+                          {applicantDetails.phone && (
+                            <div>
+                              <span className="text-slate-400 font-bold uppercase block mb-0.5">Téléphone contact</span>
+                              <span className="font-bold text-slate-800">{applicantDetails.phone}</span>
+                            </div>
+                          )}
+                          {applicantDetails.email && (
+                            <div>
+                              <span className="text-slate-400 font-bold uppercase block mb-0.5">Courriel</span>
+                              <span className="font-bold text-slate-800 truncate block">{applicantDetails.email}</span>
+                            </div>
+                          )}
+                          {applicantDetails.address && (
+                            <div className="col-span-2">
+                              <span className="text-slate-400 font-bold uppercase block mb-0.5">Adresse de résidence</span>
+                              <span className="font-bold text-slate-800">{applicantDetails.address}</span>
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      <div className="pt-2 border-t border-slate-100 col-span-2 flex justify-between items-center">
+                        <div>
+                          <span className="text-slate-400 font-bold uppercase block mb-0.5">Service & Destination</span>
+                          <span className="font-bold text-slate-800">{selectedApp.serviceType} • {selectedApp.country}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-slate-400 font-bold uppercase block mb-0.5">Tarif facturé</span>
+                          <span className="font-mono font-black text-[#7B1B38] text-sm">{selectedApp.price?.toLocaleString()} DZD</span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Custom Forms / Documents Base64 Handler */}
-                  {selectedApp.customFormData && Object.keys(selectedApp.customFormData).length > 0 && (
-                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                      <h4 className="font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
-                        <UploadCloud className="w-4 h-4 text-slate-400" /> Documents & Données
+                  {/* Galerie des Pièces Jointes reçues de l'Agence */}
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <h4 className="font-black text-slate-800 flex items-center gap-2 text-sm">
+                        <UploadCloud className="w-4 h-4 text-[#7B1B38]" /> Pièces Jointes Transmises ({appAttachments.length})
                       </h4>
-                      <div className="space-y-4">
-                        {Object.entries(selectedApp.customFormData).map(([key, val]: any) => (
-                          <div key={key}>
-                            <div className="text-xs font-bold text-slate-500 mb-1.5">{key}</div>
-                            {isImageBase64(val) ? (
-                              <div className="border border-slate-200 rounded-xl bg-slate-50 p-2 overflow-hidden flex justify-center">
-                                <img 
-                                  src={val} 
-                                  alt={key} 
-                                  className="max-w-full h-auto max-h-[300px] object-contain rounded-lg" 
-                                />
-                              </div>
-                            ) : (
-                              <div className="text-sm text-slate-900 bg-slate-50 p-3 rounded-xl border border-slate-100 whitespace-pre-wrap">
-                                {typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val || '-')}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Documents réels reçus</span>
                     </div>
-                  )}
+
+                    {appAttachments.length === 0 ? (
+                      <div className="text-center py-6 text-slate-400 text-xs">
+                        Aucun document téléversé attaché à ce dossier.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {appAttachments.map((att, idx) => {
+                          const isPdf = isPdfBase64(att.dataUrl) || att.type?.includes("pdf");
+                          const isImg = isImageBase64(att.dataUrl) || att.type?.includes("image");
+
+                          return (
+                            <div key={att.id || idx} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                {isImg ? (
+                                  <div 
+                                    onClick={() => setPreviewImage({ src: att.dataUrl, title: att.category || att.name })}
+                                    className="w-12 h-12 rounded-lg bg-slate-200 overflow-hidden cursor-pointer shrink-0 border border-slate-300 hover:opacity-80 transition-opacity"
+                                  >
+                                    <img src={att.dataUrl} alt={att.name} className="w-full h-full object-cover" />
+                                  </div>
+                                ) : (
+                                  <div className="w-12 h-12 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                                    <FileText className="w-6 h-6" />
+                                  </div>
+                                )}
+
+                                <div className="overflow-hidden">
+                                  <div className="flex items-center gap-2">
+                                    <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-[10px] py-0">
+                                      {att.category || "Justificatif"}
+                                    </Badge>
+                                    {isPdf && <Badge variant="outline" className="text-[9px] py-0 text-rose-600 border-rose-300">PDF</Badge>}
+                                  </div>
+                                  <p className="text-xs font-bold text-slate-900 truncate mt-1 max-w-[180px] sm:max-w-xs">{att.name}</p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {isImg && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    onClick={() => setPreviewImage({ src: att.dataUrl, title: att.category || att.name })}
+                                    className="h-8 w-8 p-0 text-slate-500 hover:text-slate-900 rounded-lg"
+                                    title="Agrandir"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => triggerDownload(att.dataUrl, att.name || `${att.category}.${isPdf ? 'pdf' : 'jpg'}`)}
+                                  className="h-8 px-2.5 text-xs font-bold rounded-lg border-slate-300 hover:bg-slate-200 text-slate-700 gap-1"
+                                >
+                                  <Download className="w-3.5 h-3.5" /> Télécharger
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Right Side: Timeline & Messages */}
-                <div className="flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-[500px] xl:h-auto xl:max-h-[800px]">
+                <div className="flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-[550px] xl:h-auto xl:max-h-[800px]">
                   <div className="p-4 border-b border-slate-100 bg-slate-50 shrink-0">
-                    <h4 className="font-bold text-slate-800 flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4 text-blue-500" /> Journal & Messagerie
+                    <h4 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
+                      <MessageSquare className="w-4 h-4 text-[#7B1B38]" /> Messagerie Directe avec l'Agence
                     </h4>
                   </div>
                   
-                  <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-slate-50/20">
                     {(!selectedApp.timeline || selectedApp.timeline.length === 0) ? (
-                      <div className="text-center py-10 text-slate-400">
+                      <div className="text-center py-12 text-slate-400">
                         <MessageSquare className="w-10 h-10 mx-auto mb-2 opacity-20" />
-                        <p className="text-sm">Aucun historique pour ce dossier.</p>
+                        <p className="text-xs">Aucun message échangé pour le moment.</p>
                       </div>
                     ) : (
                       selectedApp.timeline.map(entry => (
-                        <div key={entry.id} className={`p-4 rounded-xl border ${
-                          entry.sender === 'Admin' ? 'bg-blue-50 border-blue-100 ml-6 shadow-sm' : 
-                          entry.sender === 'Agency' ? 'bg-white border-slate-200 mr-6 shadow-sm' :
-                          'bg-slate-50 border-slate-100 mx-10 text-center'
+                        <div key={entry.id} className={`p-3.5 rounded-xl border text-xs ${
+                          entry.sender === 'Admin' ? 'bg-[#7B1B38]/5 border-[#7B1B38]/20 ml-6 shadow-xs' : 
+                          entry.sender === 'Agency' ? 'bg-white border-slate-200 mr-6 shadow-xs' :
+                          'bg-slate-100 border-slate-200 mx-6 text-center'
                         }`}>
-                          <div className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${
-                            entry.sender === 'Admin' ? 'text-blue-700' :
+                          <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${
+                            entry.sender === 'Admin' ? 'text-[#7B1B38]' :
                             entry.sender === 'System' ? 'text-slate-400' : 'text-slate-500'
                           }`}>
-                            {entry.sender === 'System' ? 'Système' : entry.sender === 'Admin' ? 'Vous (Admin)' : 'Agence'} • {new Date(entry.date).toLocaleDateString()} {new Date(entry.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            {entry.sender === 'System' ? 'Système' : entry.sender === 'Admin' ? 'Vous (Administration)' : 'Agence Partenaire'} • {new Date(entry.date).toLocaleDateString()} {new Date(entry.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </div>
-                          <div className="text-sm text-slate-800 whitespace-pre-wrap">{entry.message}</div>
+                          <div className="text-slate-800 font-medium whitespace-pre-wrap leading-relaxed">{entry.message}</div>
                         </div>
                       ))
                     )}
                   </div>
                   
-                  <div className="p-4 border-t border-slate-100 bg-white shrink-0 flex gap-2">
+                  <div className="p-3.5 border-t border-slate-100 bg-white shrink-0 flex gap-2">
                     <Input 
-                      placeholder="Message à l'agence..." 
+                      placeholder="Écrire à l'agence (demande de pièce, précision...)..." 
                       value={replyMessage}
                       onChange={(e) => setReplyMessage(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                      className="bg-slate-50"
+                      className="bg-slate-50 text-xs h-10 rounded-xl"
                     />
-                    <Button onClick={handleSendMessage} className="bg-blue-600 hover:bg-blue-700 text-white shrink-0">
+                    <Button onClick={handleSendMessage} className="bg-[#7B1B38] hover:bg-[#63142c] text-white shrink-0 h-10 px-4 rounded-xl">
                       <Send className="w-4 h-4" />
                     </Button>
                   </div>
@@ -358,13 +617,13 @@ export function ApplicationManagement() {
 
           </div>
         ) : (
-          <div className="hidden lg:flex flex-1 flex-col items-center justify-center bg-white rounded-2xl border border-slate-200 shadow-sm text-center p-12">
-            <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-5 border border-slate-100">
-              <FileText className="w-10 h-10 text-slate-300" />
+          <div className="hidden lg:flex lg:col-span-7 flex-col items-center justify-center bg-white rounded-2xl border border-slate-200 shadow-sm text-center p-12">
+            <div className="w-20 h-20 bg-slate-50 rounded-2xl flex items-center justify-center mb-4 border border-slate-100 text-[#7B1B38]">
+              <FileText className="w-10 h-10 opacity-40" />
             </div>
-            <h3 className="text-xl font-bold text-slate-700 mb-2">Sélectionnez un dossier</h3>
-            <p className="text-slate-500 max-w-sm">
-              Cliquez sur un dossier dans la liste à gauche pour afficher ses détails, visualiser ses documents et interagir avec l'agence.
+            <h3 className="text-lg font-black text-slate-800 mb-1">Sélectionnez un dossier à traiter</h3>
+            <p className="text-slate-500 text-xs max-w-sm">
+              Choisissez une demande dans la liste à gauche pour contrôler les scans reçus, communiquer avec l'agence et délivrer le visa.
             </p>
           </div>
         )}
