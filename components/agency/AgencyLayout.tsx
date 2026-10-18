@@ -2,7 +2,7 @@ import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, WalletCards, Bell, HelpCircle, FileText, 
   Settings, LogOut, Plane, Building2, ShieldCheck, MapPin, Menu, X, ChevronRight, User, Globe2,
-  Eye, EyeOff, SlidersHorizontal, Percent
+  Eye, EyeOff, SlidersHorizontal, Percent, AlertTriangle
 } from "lucide-react";
 import { 
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger 
@@ -331,6 +331,32 @@ export function AgencyLayout() {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
               >
+                {currentAgency?.status === "SUSPENDED" && (
+                  <div className="mb-6 p-4 bg-red-50 border-2 border-red-300 rounded-2xl flex items-start gap-3 shadow-sm">
+                    <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                    <div className="text-xs text-red-900 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-black text-sm">Compte Agence Temporairement Suspendu</span>
+                        {currentAgency.bannedUntil && (
+                          <span className="bg-red-200 text-red-900 px-2 py-0.5 rounded-full font-bold text-[10px]">
+                            Jusqu'au {new Date(currentAgency.bannedUntil).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 leading-relaxed">
+                        Votre accès aux dépôts de demandes et au solde B2B est restreint par l'administration.
+                        {currentAgency.banReason && (
+                          <span className="block mt-1 font-semibold italic text-red-800">
+                            Motif : {currentAgency.banReason}
+                          </span>
+                        )}
+                      </p>
+                      <Link to="/agency/support" className="inline-block mt-2 font-bold underline text-red-700 hover:text-red-900">
+                        Contacter le support d'urgence pour régulariser votre compte →
+                      </Link>
+                    </div>
+                  </div>
+                )}
                 <Outlet />
               </motion.div>
             </AnimatePresence>

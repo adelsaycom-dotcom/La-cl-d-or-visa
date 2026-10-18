@@ -28,120 +28,7 @@ export interface AttachmentItem {
   uploadedBy: "Agency";
 }
 
-export interface ServiceFamilyConfig {
-  id: string;
-  name: string;
-  badge: string;
-  description: string;
-  icon: any;
-  color: string;
-  textColor: string;
-  bgColor: string;
-  borderColor: string;
-  matchKeys: string[];
-  directRoute?: string;
-}
-
-export const SERVICE_FAMILIES: ServiceFamilyConfig[] = [
-  {
-    id: "invitation",
-    name: "Invitations & Affaires",
-    badge: "Garanti 100%",
-    description: "Invitations d'affaires officielles, légalisations consulaires et visas business.",
-    icon: Mail,
-    color: "bg-cyan-500",
-    textColor: "text-cyan-700",
-    bgColor: "bg-cyan-50/70",
-    borderColor: "border-cyan-200 hover:border-cyan-400",
-    matchKeys: ["invitation", "affaires", "business"]
-  },
-  {
-    id: "evisa",
-    name: "E-Visas & Visas Consulaires",
-    badge: "Délivrance rapide",
-    description: "Visas électroniques en ligne (ETA, eVisa) et visas classiques de tourisme ou transit.",
-    icon: Globe,
-    color: "bg-blue-500",
-    textColor: "text-blue-700",
-    bgColor: "bg-blue-50/70",
-    borderColor: "border-blue-200 hover:border-blue-400",
-    matchKeys: ["evisa", "e-visa", "visa", "tourisme"]
-  },
-  {
-    id: "residence",
-    name: "Dossiers Résidence & Séjour",
-    badge: "Accompagnement VIP",
-    description: "Résidence permanente, permis de séjour temporaire et regroupement familial.",
-    icon: Building2,
-    color: "bg-indigo-500",
-    textColor: "text-indigo-700",
-    bgColor: "bg-indigo-50/70",
-    borderColor: "border-indigo-200 hover:border-indigo-400",
-    matchKeys: ["residence", "dossier résidence", "séjour", "titre de séjour"]
-  },
-  {
-    id: "rendezvous",
-    name: "Prise de Rendez-vous Consulaire",
-    badge: "Créneaux prioritaires",
-    description: "Réservation de créneaux rapides TLScontact, VFS Global, BLS et centres consulaires.",
-    icon: CalendarDays,
-    color: "bg-amber-500",
-    textColor: "text-amber-700",
-    bgColor: "bg-amber-50/70",
-    borderColor: "border-amber-200 hover:border-amber-400",
-    matchKeys: ["rendez-vous", "prise de rendez-vous", "rdv", "tls", "vfs", "bls"]
-  },
-  {
-    id: "dossier",
-    name: "Constitution & Traduction de Dossier",
-    badge: "Conformité consulaire",
-    description: "Montage complet de dossiers consulaires, vérification d'éligibilité et traductions assermentées.",
-    icon: FolderOpen,
-    color: "bg-teal-500",
-    textColor: "text-teal-700",
-    bgColor: "bg-teal-50/70",
-    borderColor: "border-teal-200 hover:border-teal-400",
-    matchKeys: ["dossier", "traitement de dossier", "traduction", "formulaire"]
-  },
-  {
-    id: "permis",
-    name: "Permis de Conduire International",
-    badge: "Valide 3 ans",
-    description: "Délivrance rapide du livret officiel de permis de conduire international auto & moto.",
-    icon: Car,
-    color: "bg-orange-500",
-    textColor: "text-orange-700",
-    bgColor: "bg-orange-50/70",
-    borderColor: "border-orange-200 hover:border-orange-400",
-    matchKeys: ["permis", "permis internationnal", "permis international", "conduire"]
-  },
-  {
-    id: "etude",
-    name: "Visa Études & Admissions",
-    badge: "Universités mondiales",
-    description: "Inscriptions universitaires, acceptations Campus France et procédures visa étudiant.",
-    icon: GraduationCap,
-    color: "bg-purple-500",
-    textColor: "text-purple-700",
-    bgColor: "bg-purple-50/70",
-    borderColor: "border-purple-200 hover:border-purple-400",
-    matchKeys: ["etude", "visa études", "études", "université"],
-    directRoute: "/agency/study"
-  },
-  {
-    id: "trips",
-    name: "Voyages Organisés & Omra",
-    badge: "Départs garantis",
-    description: "Séjours de groupe tout compris, pèlerinages Omra, hôtels et excursions avec guide.",
-    icon: Plane,
-    color: "bg-pink-500",
-    textColor: "text-pink-700",
-    bgColor: "bg-pink-50/70",
-    borderColor: "border-pink-200 hover:border-pink-400",
-    matchKeys: ["voyages", "voyages organisés", "omra", "séjours"],
-    directRoute: "/agency/trips"
-  }
-];
+import { AGENCY_SERVICES, AgencyServiceConfig } from "../../src/constants/servicesConfig";
 
 export function VisaWizard() {
   const { services, addApplication, agencyBalance, b2cMode, setB2cMode, b2cMarginPercent } = useAppStore();
@@ -149,18 +36,19 @@ export function VisaWizard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlServiceParam = searchParams.get("service");
 
-  // Déduire la famille initiale si un paramètre d'URL est fourni
-  const initialFamily = useMemo(() => {
+  // Déduire le service initial parmi les 10 officiels si un paramètre d'URL est fourni
+  const initialService = useMemo(() => {
     if (!urlServiceParam) return null;
     const p = urlServiceParam.toLowerCase().trim();
-    return SERVICE_FAMILIES.find(f => 
-      f.id === p || 
-      f.name.toLowerCase().includes(p) ||
-      f.matchKeys.some(k => k.toLowerCase() === p || p.includes(k.toLowerCase()) || k.toLowerCase().includes(p))
+    return AGENCY_SERVICES.find(s => 
+      s.id === p || 
+      s.name.toLowerCase() === p ||
+      s.name.toLowerCase().includes(p) ||
+      s.matchKeys.some(k => k.toLowerCase() === p || p.includes(k.toLowerCase()) || k.toLowerCase().includes(p))
     ) || null;
   }, [urlServiceParam]);
 
-  const [selectedFamily, setSelectedFamily] = useState<ServiceFamilyConfig | null>(initialFamily);
+  const [selectedFamily, setSelectedFamily] = useState<AgencyServiceConfig | null>(initialService);
 
   // Wizard state (3 étapes principales + confirmation 4)
   const [step, setStep] = useState<number>(1);
@@ -201,10 +89,11 @@ export function VisaWizard() {
   useEffect(() => {
     if (urlServiceParam) {
       const p = urlServiceParam.toLowerCase().trim();
-      const found = SERVICE_FAMILIES.find(f => 
-        f.id === p || 
-        f.name.toLowerCase().includes(p) ||
-        f.matchKeys.some(k => k.toLowerCase() === p || p.includes(k.toLowerCase()) || k.toLowerCase().includes(p))
+      const found = AGENCY_SERVICES.find(s => 
+        s.id === p || 
+        s.name.toLowerCase() === p ||
+        s.name.toLowerCase().includes(p) ||
+        s.matchKeys.some(k => k.toLowerCase() === p || p.includes(k.toLowerCase()) || k.toLowerCase().includes(p))
       );
       setSelectedFamily(found || null);
     } else {
@@ -297,15 +186,21 @@ export function VisaWizard() {
       setPassportFile(passportItem);
 
       // 3. Appel de l'analyse automatique côté serveur (Gemini OCR/MRZ)
+      // Protégé par un timeout rapide de 2.2s pour ne jamais bloquer l'agence sur Hostinger
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2200);
+
         const response = await fetch("/api/scan-passport", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             imageBase64: base64Data,
             mimeType: file.type || "image/jpeg"
-          })
+          }),
+          signal: controller.signal
         });
+        clearTimeout(timeoutId);
 
         if (response.ok) {
           const result = await response.json();
@@ -325,19 +220,23 @@ export function VisaWizard() {
             }));
             setScanSuccess(true);
             setScanSource(result.source || "ai");
+          } else {
+            setScanSuccess(true);
+            setScanSource("manuel");
           }
         } else {
           setScanSuccess(true);
           setScanSource("manuel");
         }
       } catch (scanErr) {
-        console.warn("Analyse passeport en mode manuel:", scanErr);
+        // Environnement Hostinger statique / absence d'API IA :
+        // Le passeport est bien joint, passage immédiat en saisie/vérification assistée
         setScanSuccess(true);
         setScanSource("manuel");
       }
     } catch (err: any) {
       console.error("Erreur lecture passeport:", err);
-      setFileError(err.message || "Impossible d'enregistrer ce document. Veuillez réessayer.");
+      setFileError(err.message || "Impossible de lire ce document. Veuillez sélectionner un fichier valide.");
     } finally {
       setIsScanning(false);
     }
@@ -524,52 +423,52 @@ export function VisaWizard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {SERVICE_FAMILIES.map(family => {
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {AGENCY_SERVICES.map(srv => {
           const matchingCount = services.filter(s => {
             if (!s.active) return false;
             const sType = (s.type || "").toLowerCase();
             const sTitle = (s.title || "").toLowerCase();
-            return family.matchKeys.some(k => sType.includes(k.toLowerCase()) || sTitle.includes(k.toLowerCase()));
+            return srv.matchKeys.some(k => sType.includes(k.toLowerCase()) || sTitle.includes(k.toLowerCase()));
           }).length;
 
           return (
             <div
-              key={family.id}
+              key={srv.id}
               onClick={() => {
-                if (family.directRoute) {
-                  navigate(family.directRoute);
+                if (srv.isExternalLink) {
+                  navigate(srv.path);
                 } else {
-                  setSelectedFamily(family);
-                  setSearchParams({ service: family.id });
+                  setSelectedFamily(srv);
+                  setSearchParams({ service: srv.name });
                 }
               }}
-              className={`group bg-white rounded-3xl border-2 ${family.borderColor} p-6 flex flex-col justify-between shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer relative overflow-hidden`}
+              className={`group bg-white rounded-3xl border-2 ${srv.borderColor} p-5 flex flex-col justify-between shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer relative overflow-hidden`}
             >
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`w-14 h-14 rounded-2xl ${family.bgColor} ${family.textColor} flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs`}>
-                    <family.icon className="w-7 h-7" />
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`w-12 h-12 rounded-2xl ${srv.color} flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs`}>
+                    <srv.icon className="w-6 h-6" />
                   </div>
                   <Badge className="bg-slate-100 text-slate-700 text-[10px] font-bold tracking-wide uppercase">
-                    {family.badge}
+                    {srv.badge}
                   </Badge>
                 </div>
 
-                <h3 className="text-lg font-black text-slate-900 group-hover:text-[#7B1B38] transition-colors mb-2">
-                  {family.name}
+                <h3 className="text-base font-black text-slate-900 group-hover:text-[#7B1B38] transition-colors mb-1.5 leading-tight">
+                  {srv.name}
                 </h3>
-                <p className="text-xs text-slate-500 font-medium leading-relaxed mb-4">
-                  {family.description}
+                <p className="text-xs text-slate-500 font-medium leading-relaxed mb-3 line-clamp-2">
+                  {srv.description}
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-between mt-auto">
-                <span className="text-xs font-semibold text-slate-400">
-                  {family.directRoute ? "Accès direct" : matchingCount > 0 ? `${matchingCount} formule(s)` : "Consulter pays"}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between mt-auto">
+                <span className="text-[11px] font-semibold text-slate-400">
+                  {srv.isExternalLink ? "Accès direct" : matchingCount > 0 ? `${matchingCount} formule(s)` : "Consulter pays"}
                 </span>
                 <span className="inline-flex items-center gap-1 text-xs font-bold text-[#7B1B38] group-hover:translate-x-1 transition-transform">
-                  Continuer <ArrowRight className="w-3.5 h-3.5" />
+                  Ouvrir <ArrowRight className="w-3.5 h-3.5" />
                 </span>
               </div>
             </div>
@@ -826,11 +725,11 @@ export function VisaWizard() {
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6 relative z-10">
           <div>
             <div className="inline-flex items-center gap-2 bg-[#7B1B38] text-white px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase mb-2 shadow-sm">
-              <Sparkles className="w-3.5 h-3.5" /> Détection & Remplissage Automatique
+              <Sparkles className="w-3.5 h-3.5" /> Enregistrement Sécurisé & Données Passeport
             </div>
-            <h3 className="text-xl md:text-2xl font-black">Scannez ou déposez le passeport</h3>
+            <h3 className="text-xl md:text-2xl font-black">Déposez ou scannez le passeport</h3>
             <p className="text-slate-400 text-sm mt-1 max-w-xl">
-              Déposez la page principale du passeport (photo nette ou scan PDF). L'intelligence artificielle extrait instantanément le nom, prénom, numéro et dates de validité.
+              Déposez la page d'identité du passeport (photo nette ou scan PDF). Le document est sauvegardé et rattaché à la demande, vous permettant de vérifier ou compléter les coordonnées ci-dessous.
             </p>
           </div>
 
@@ -864,13 +763,13 @@ export function VisaWizard() {
         ) : (
           <div className="relative z-10 bg-slate-800/80 rounded-2xl p-5 border border-slate-700/80">
             {isScanning ? (
-              <div className="py-8 flex flex-col items-center justify-center text-center">
-                <div className="relative mb-4">
-                  <div className="w-16 h-16 rounded-full border-4 border-[#7B1B38]/30 border-t-[#7B1B38] animate-spin flex items-center justify-center"></div>
-                  <Sparkles className="w-6 h-6 text-[#7B1B38] absolute inset-0 m-auto" />
+              <div className="py-6 flex flex-col items-center justify-center text-center">
+                <div className="relative mb-3">
+                  <div className="w-12 h-12 rounded-full border-4 border-[#7B1B38]/30 border-t-[#7B1B38] animate-spin flex items-center justify-center"></div>
+                  <Sparkles className="w-5 h-5 text-[#7B1B38] absolute inset-0 m-auto" />
                 </div>
-                <h4 className="font-black text-lg text-white">Analyse automatique du passeport en cours...</h4>
-                <p className="text-slate-400 text-xs mt-1">Lecture des zones de texte et de la bande MRZ</p>
+                <h4 className="font-bold text-base text-white">Traitement et validation du passeport...</h4>
+                <p className="text-slate-400 text-xs mt-0.5">Enregistrement et vérification de la pièce d'identité</p>
               </div>
             ) : (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -890,7 +789,10 @@ export function VisaWizard() {
                       </Badge>
                     </div>
                     <p className="text-xs text-emerald-400 flex items-center gap-1 mt-0.5">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Passeport chargé et analysé avec succès
+                      <CheckCircle2 className="w-3.5 h-3.5" /> 
+                      {scanSource === "ai" 
+                        ? "Passeport analysé et coordonnées pré-remplies" 
+                        : "Passeport enregistré avec succès • Coordonnées modifiables"}
                     </p>
                   </div>
                 </div>

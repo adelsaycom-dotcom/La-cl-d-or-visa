@@ -25,6 +25,27 @@ import { create } from "zustand";
 import { collection, doc, setDoc, updateDoc, deleteDoc, runTransaction, writeBatch, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 
+export function sanitizeFirestoreData<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return null as any;
+  }
+  if (Array.isArray(data)) {
+    return data
+      .filter(item => item !== undefined)
+      .map(item => sanitizeFirestoreData(item)) as any;
+  }
+  if (typeof data === 'object' && !(data instanceof Date)) {
+    const cleaned: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        cleaned[key] = sanitizeFirestoreData(value);
+      }
+    }
+    return cleaned;
+  }
+  return data;
+}
+
 export interface VisaType {
   id: string;
   name?: string;
@@ -46,10 +67,12 @@ export interface Country {
   visaTypes: VisaType[];
 }
 
+export type PrestationCategory = "Visa" | "Evisa" | "Invitation" | "Residence" | "Permis" | "Assurance" | "Etude" | "Rendez-vous" | "Dossier" | "Voyage" | string;
+
 export interface PrestationService {
   id: string;
   title: string;
-  type: "Evisa" | "Residence" | "Permis" | "Assurance" | "Etude" | "Invitation" | "Rendez-vous" | "Dossier";
+  type: PrestationCategory;
   destination: string; // 'Monde' or specific country
   flag?: string;
   price: number;
@@ -258,7 +281,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   updateAgency: async (id, updates) => {
-    await updateDoc(doc(db, "users", id), updates);
+    await updateDoc(doc(db, "users", id), sanitizeFirestoreData(updates));
   },
 
   
@@ -268,10 +291,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   addSupportTicket: async (ticket) => {
     const id = doc(collection(db, 'supportTickets')).id;
-    await setDoc(doc(db, 'supportTickets', id), { ...ticket, id, createdAt: new Date().toISOString() });
+    await setDoc(doc(db, 'supportTickets', id), sanitizeFirestoreData({ ...ticket, id, createdAt: new Date().toISOString() }));
   },
   updateSupportTicket: async (id, updates) => {
-    await updateDoc(doc(db, 'supportTickets', id), updates);
+    await updateDoc(doc(db, 'supportTickets', id), sanitizeFirestoreData(updates));
     
     // Check if new message was added by agency
     if (updates.messages) {
@@ -359,10 +382,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   addService: async (s) => {
     const sId = s.id || doc(collection(db, 'services')).id;
-    await setDoc(doc(db, 'services', sId), { ...s, id: sId });
+    await setDoc(doc(db, 'services', sId), sanitizeFirestoreData({ ...s, id: sId }));
   },
   updateService: async (id, s) => {
-    await updateDoc(doc(db, 'services', id), s);
+    await updateDoc(doc(db, 'services', id), sanitizeFirestoreData(s));
   },
   deleteService: async (id) => {
     await deleteDoc(doc(db, 'services', id));
@@ -639,7 +662,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   updateApplication: async (id, updates) => {
-    await updateDoc(doc(db, 'applications', id), updates);
+    await updateDoc(doc(db, 'applications', id), sanitizeFirestoreData(updates));
   },
   addApplicationTimelineEntry: async (id, entry) => {
     const appRef = doc(db, 'applications', id);
@@ -687,6 +710,22 @@ export interface Notification {
   link?: string;
 }
 
+export interface SupportTicketAttachment {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  dataUrl: string;
+}
+
+export interface SupportTicketMessage {
+  id?: string;
+  sender: 'agency' | 'admin' | string;
+  text: string;
+  date: string;
+  attachments?: SupportTicketAttachment[];
+}
+
 export interface SupportTicket {
   id: string;
   agencyId: string;
@@ -698,8 +737,17 @@ export interface SupportTicket {
   date?: string;
   category: string;
   priority: "Faible" | "Moyenne" | "Haute" | "Critique" | string;
-  status: "Ouvert" | "En cours" | "Résolu" | string;
-  messages: { sender: string; text: string; date: string }[];
+  status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "Ouvert" | "En cours" | "Résolu" | string;
+  applicationId?: string;
+  applicationRef?: string;
+  applicationSummary?: {
+    travelerName: string;
+    destination: string;
+    serviceType: string;
+    status: string;
+  };
+  attachments?: SupportTicketAttachment[];
+  messages: SupportTicketMessage[];
   createdAt: string;
 }
 

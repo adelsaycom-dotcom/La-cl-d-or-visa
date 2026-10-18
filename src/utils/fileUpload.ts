@@ -67,29 +67,50 @@ export async function uploadFileToServer(
   file: File, 
   category = "Document"
 ): Promise<{ url: string; size: number; name: string; type: string }> {
+  // 1. Compression intelligente pour garantir un poids plume (< 150 Ko)
   const base64Data = file.type.startsWith("image/") 
     ? await compressImageIfPossible(file) 
     : await fileToBase64(file);
 
-  const res = await fetch("/api/upload-attachment", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      fileBase64: base64Data,
-      fileName: file.name,
-      fileType: file.type || "application/octet-stream",
-      category: category
-    })
-  });
+  // 2. Si le serveur Node.js est actif (développement ou serveur dédié), sauvegarder sur disque
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
 
-  if (!res.ok) {
-    throw new Error("Erreur serveur lors de l'enregistrement du document");
+    const res = await fetch("/api/upload-attachment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileBase64: base64Data,
+        fileName: file.name,
+        fileType: file.type || "application/octet-stream",
+        category: category
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.url) {
+        return {
+          url: data.url,
+          size: data.size || file.size,
+          name: file.name,
+          type: file.type || "application/octet-stream"
+        };
+      }
+    }
+  } catch (e) {
+    // Mode hébergement Hostinger (statique / cPanel / sans serveur Node Express actif)
+    console.warn("Stockage serveur non disponible (environnement Hostinger statique). Utilisation du stockage base64 compressé.");
   }
 
-  const data = await res.json();
+  // 3. Fallback universel 100% autonome pour Hostinger et hébergements web partagés
+  // Ne plante JAMAIS, enregistre la pièce jointe compressée directement dans le dossier Firestore
   return {
-    url: data.url,
-    size: data.size || file.size,
+    url: base64Data,
+    size: Math.round(base64Data.length * 0.75),
     name: file.name,
     type: file.type || "application/octet-stream"
   };
