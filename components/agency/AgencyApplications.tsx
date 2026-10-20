@@ -8,7 +8,7 @@ import {
   ArrowLeft, Download, Send, MessageSquare, UploadCloud, 
   FileCheck, Eye, X, User, ShieldCheck, Loader2
 } from "lucide-react";
-import { uploadFileToServer, downloadFileSafe } from "../../src/utils/fileUpload";
+import { uploadFileToServer, downloadFileSafe, resolveAttachmentData } from "../../src/utils/fileUpload";
 
 export function AgencyApplications() {
   const { applications, updateApplication, addApplicationTimelineEntry } = useAppStore();
@@ -66,9 +66,14 @@ export function AgencyApplications() {
     setReplyMessage("");
   };
 
-  // Téléchargement sécurisé et infaillible sans corruption PDF
-  const triggerDownload = (fileUrlOrData: string, fileName: string) => {
-    downloadFileSafe(fileUrlOrData, fileName);
+  // Téléchargement sécurisé et universel (Compatible Cloud Firestore & Hostinger)
+  const triggerDownload = (fileSource: any, fileName: string) => {
+    downloadFileSafe(fileSource, fileName);
+  };
+
+  const handleOpenPreview = async (att: any) => {
+    const data = await resolveAttachmentData(att);
+    setPreviewImage({ src: data || att.dataUrl || att.url, title: att.category || att.name });
   };
 
   const isImageBase64 = (str: any) => typeof str === 'string' && (str.startsWith('data:image/') || str.endsWith('.png') || str.endsWith('.jpg') || str.endsWith('.jpeg'));
@@ -77,11 +82,22 @@ export function AgencyApplications() {
   // Extraction propre des pièces jointes du dossier
   const getAttachmentsList = () => {
     if (!selectedApp) return [];
-    const list: Array<{ id: string; name: string; category: string; type: string; size?: number; dataUrl: string }> = [];
+    const list: Array<{ id: string; name: string; category: string; type: string; size?: number; dataUrl: string; url?: string; storageId?: string }> = [];
 
     if (Array.isArray(selectedApp.attachments) && selectedApp.attachments.length > 0) {
       selectedApp.attachments.forEach(att => {
-        if (att && att.dataUrl) list.push(att);
+        if (att) {
+          list.push({
+            id: att.id || "",
+            name: att.name || "Document",
+            category: att.category || "Justificatif",
+            type: att.type || "application/octet-stream",
+            size: att.size,
+            dataUrl: att.dataUrl || "",
+            url: att.url,
+            storageId: att.storageId || att.id
+          });
+        }
       });
     }
 
@@ -126,13 +142,14 @@ export function AgencyApplications() {
     try {
       const uploadRes = await uploadFileToServer(file, missingDocCategory || "Complément");
       const newAttachment = {
-        id: `doc_supp_${Date.now()}`,
+        id: uploadRes.storageId || `doc_supp_${Date.now()}`,
         name: file.name,
         category: missingDocCategory || "Document complémentaire",
         type: file.type || "application/octet-stream",
         size: uploadRes.size,
-        dataUrl: uploadRes.url,
+        dataUrl: uploadRes.dataUrl || uploadRes.url,
         url: uploadRes.url,
+        storageId: uploadRes.storageId,
         uploadedAt: new Date().toISOString(),
         uploadedBy: "Agency" as const
       };
@@ -466,7 +483,7 @@ export function AgencyApplications() {
                             <Button 
                               size="sm" 
                               variant="ghost" 
-                              onClick={() => setPreviewImage({ src: att.dataUrl, title: att.category || att.name })}
+                              onClick={() => handleOpenPreview(att)}
                               className="h-7 w-7 p-0 text-slate-500 rounded-lg"
                               title="Aperçu"
                             >
@@ -476,7 +493,7 @@ export function AgencyApplications() {
                           <Button 
                             size="sm" 
                             variant="outline" 
-                            onClick={() => triggerDownload(att.dataUrl, att.name || `${att.category}.${isPdf ? 'pdf' : 'jpg'}`)}
+                            onClick={() => triggerDownload(att, att.name || `${att.category}.${isPdf ? 'pdf' : 'jpg'}`)}
                             className="h-7 px-2 text-[10px] font-bold rounded-lg border-slate-300 text-slate-700"
                             title="Télécharger"
                           >

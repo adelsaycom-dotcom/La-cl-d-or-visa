@@ -1,10 +1,34 @@
 import { useState } from "react";
 import { ChevronDown, HelpCircle, PhoneCall, MessageSquare } from "lucide-react";
+import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export function FaqSection() {
   const [openIdx, setOpenIdx] = useState<number | null>(0);
+  const { language } = useLanguage();
+  const isEn = language === "en";
 
-  const faqs = [
+  const faqs = isEn ? [
+    {
+      q: "How does registration work for travel agencies?",
+      a: "Registration is fast and 100% free. Fill out the application form with your agency details and Trade Register (RC) / License number. Our team validates your profile within 24 business hours to grant certified B2B access."
+    },
+    {
+      q: "How are payments handled and how do we top up our wallet?",
+      a: "All financial transactions are conducted in Algerian Dinars (DZD). Top up your agency wallet via bank wire, postal CCP deposit, or counter payment. Once your receipt is verified, your balance is credited and applications are debited automatically."
+    },
+    {
+      q: "Which destinations and visa categories do you support?",
+      a: "We support 35+ global destinations: direct E-Visas (Turkey, Dubai / UAE, Malaysia, Thailand, Saudi Arabia / Umrah, etc.) as well as full consular applications with appointment booking for Schengen nations (France, Spain, Italy...), Canada, UK, and USA."
+    },
+    {
+      q: "What happens if a client application contains an error or missing document?",
+      a: "Our consular compliance desk runs a systematic pre-check prior to any official lodgement. If a file is incomplete or non-compliant, your agency receives an immediate alert with clear guidance to fix it before submission."
+    },
+    {
+      q: "Do you offer priority support for urgent traveler files?",
+      a: "Yes. As a verified partner agency, you receive a direct phone hotline and priority WhatsApp channel to track urgent or VIP files."
+    }
+  ] : [
     {
       q: "Comment fonctionne l'inscription pour les agences de voyages ?",
       a: "L'inscription est simple et 100% gratuite. Vous remplissez le formulaire avec les coordonnées de votre agence et votre numéro de Registre de Commerce (RC). Notre équipe valide votre profil sous 24h ouvrées et active vos accès B2B."
@@ -39,13 +63,13 @@ export function FaqSection() {
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7B1B38]/10 border border-[#7B1B38]/25 text-[#7B1B38] text-xs font-bold uppercase tracking-wider mb-3">
             <HelpCircle className="w-3.5 h-3.5 text-[#7B1B38]" />
-            Réponses Claires
+            {isEn ? "Clear Answers" : "Réponses Claires"}
           </div>
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            Questions Fréquentes des Agences
+            {isEn ? "Agency Frequently Asked Questions" : "Questions Fréquentes des Agences"}
           </h2>
           <p className="mt-3 text-slate-600 text-base">
-            Tout ce que vous devez savoir pour collaborer avec La Clé d'Or B2B.
+            {isEn ? "Everything you need to know about partnering with La Clé d'Or B2B." : "Tout ce que vous devez savoir pour collaborer avec La Clé d'Or B2B."}
           </p>
         </div>
 
@@ -85,8 +109,12 @@ export function FaqSection() {
         {/* Still have questions block */}
         <div className="mt-12 p-6 rounded-2xl bg-[#7B1B38]/5 border border-[#7B1B38]/20 text-center flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-left">
-            <div className="font-bold text-slate-900 text-base">Une question spécifique pour votre agence ?</div>
-            <div className="text-xs sm:text-sm text-slate-600">Nos conseillers B2B sont à votre écoute du samedi au jeudi.</div>
+            <div className="font-bold text-slate-900 text-base">
+              {isEn ? "Have a specific question for your agency?" : "Une question spécifique pour votre agence ?"}
+            </div>
+            <div className="text-xs sm:text-sm text-slate-600">
+              {isEn ? "Our B2B team is available Saturday to Thursday." : "Nos conseillers B2B sont à votre écoute du samedi au jeudi."}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <a
@@ -99,8 +127,8 @@ export function FaqSection() {
             <a
               href="https://whatsapp.com/channel/0029VbBSSDgKGGGQ2mCZwF0z"
               target="_blank"
-              rel="noreferrer"
-              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm shadow-emerald-600/20"
+              rel="noopener noreferrer"
+              className="px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
             >
               <MessageSquare className="w-4 h-4" />
               <span>WhatsApp Pro</span>

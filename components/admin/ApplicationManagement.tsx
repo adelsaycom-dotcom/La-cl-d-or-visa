@@ -8,7 +8,7 @@ import {
   Info, Clock, Send, UploadCloud, FileText, User, 
   MessageSquare, Download, Eye, X, FileCheck, Calendar, Phone, Mail, MapPin
 } from "lucide-react";
-import { uploadFileToServer, downloadFileSafe } from "../../src/utils/fileUpload";
+import { uploadFileToServer, downloadFileSafe, resolveAttachmentData } from "../../src/utils/fileUpload";
 
 export function ApplicationManagement() {
   const { applications, updateApplication, addApplicationTimelineEntry } = useAppStore();
@@ -123,9 +123,14 @@ export function ApplicationManagement() {
     setFinalDocFile(null);
   };
 
-  // Téléchargement sécurisé et universel sans corruption de PDF
-  const triggerDownload = (fileUrlOrData: string, fileName: string) => {
-    downloadFileSafe(fileUrlOrData, fileName);
+  // Téléchargement sécurisé et universel (Compatible Cloud Firestore & Hostinger)
+  const triggerDownload = (fileSource: any, fileName: string) => {
+    downloadFileSafe(fileSource, fileName);
+  };
+
+  const handleOpenPreview = async (att: any) => {
+    const data = await resolveAttachmentData(att);
+    setPreviewImage({ src: data || att.dataUrl || att.url, title: att.category || att.name });
   };
 
   const isImageBase64 = (str: any) => typeof str === 'string' && (str.startsWith('data:image/') || str.endsWith('.png') || str.endsWith('.jpg') || str.endsWith('.jpeg'));
@@ -135,12 +140,23 @@ export function ApplicationManagement() {
   const getAttachmentsList = () => {
     if (!selectedApp) return [];
     
-    const list: Array<{ id: string; name: string; category: string; type: string; size?: number; dataUrl: string }> = [];
+    const list: Array<{ id: string; name: string; category: string; type: string; size?: number; dataUrl: string; url?: string; storageId?: string }> = [];
 
     // 1. Structure moderne attachments
     if (Array.isArray(selectedApp.attachments) && selectedApp.attachments.length > 0) {
       selectedApp.attachments.forEach(att => {
-        if (att && att.dataUrl) list.push(att);
+        if (att) {
+          list.push({
+            id: att.id || "",
+            name: att.name || "Document",
+            category: att.category || "Justificatif",
+            type: att.type || "application/octet-stream",
+            size: att.size,
+            dataUrl: att.dataUrl || "",
+            url: att.url,
+            storageId: att.storageId || att.id
+          });
+        }
       });
     }
 
@@ -514,10 +530,10 @@ export function ApplicationManagement() {
                               <div className="flex items-center gap-3 overflow-hidden">
                                 {isImg ? (
                                   <div 
-                                    onClick={() => setPreviewImage({ src: att.dataUrl, title: att.category || att.name })}
+                                    onClick={() => handleOpenPreview(att)}
                                     className="w-12 h-12 rounded-lg bg-slate-200 overflow-hidden cursor-pointer shrink-0 border border-slate-300 hover:opacity-80 transition-opacity"
                                   >
-                                    <img src={att.dataUrl} alt={att.name} className="w-full h-full object-cover" />
+                                    <img src={att.dataUrl || att.url} alt={att.name} className="w-full h-full object-cover" />
                                   </div>
                                 ) : (
                                   <div className="w-12 h-12 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
@@ -541,7 +557,7 @@ export function ApplicationManagement() {
                                   <Button 
                                     size="sm" 
                                     variant="ghost" 
-                                    onClick={() => setPreviewImage({ src: att.dataUrl, title: att.category || att.name })}
+                                    onClick={() => handleOpenPreview(att)}
                                     className="h-8 w-8 p-0 text-slate-500 hover:text-slate-900 rounded-lg"
                                     title="Agrandir"
                                   >
@@ -551,7 +567,7 @@ export function ApplicationManagement() {
                                 <Button 
                                   size="sm" 
                                   variant="outline" 
-                                  onClick={() => triggerDownload(att.dataUrl, att.name || `${att.category}.${isPdf ? 'pdf' : 'jpg'}`)}
+                                  onClick={() => triggerDownload(att, att.name || `${att.category}.${isPdf ? 'pdf' : 'jpg'}`)}
                                   className="h-8 px-2.5 text-xs font-bold rounded-lg border-slate-300 hover:bg-slate-200 text-slate-700 gap-1"
                                 >
                                   <Download className="w-3.5 h-3.5" /> Télécharger

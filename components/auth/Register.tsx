@@ -22,6 +22,8 @@ import {
   FileText
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { useLanguage } from "../../src/i18n/LanguageContext";
+import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 
 interface MapHub {
   id: string;
@@ -47,6 +49,8 @@ const HUBS: MapHub[] = [
 
 export function Register() {
   const navigate = useNavigate();
+  const { language } = useLanguage();
+  const isEn = language === "en";
   const [formData, setFormData] = useState({
     agencyName: "",
     rcNumber: "",
@@ -303,20 +307,23 @@ export function Register() {
           ======================================================== */}
       <div className="lg:col-span-6 xl:col-span-6 bg-white p-6 sm:p-10 lg:p-12 flex flex-col justify-center items-center relative z-10 overflow-y-auto">
         
-        {/* Top Status & Back button */}
+        {/* Top Status & Back button + Language Switcher */}
         <div className="w-full max-w-xl flex justify-between items-center mb-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B1B38]/10 border border-[#7B1B38]/20 text-[#7B1B38] text-xs font-semibold">
             <span className="w-2 h-2 rounded-full bg-[#7B1B38] animate-pulse" />
-            <span>Demande d'Accès Agence B2B</span>
+            <span>{isEn ? "Agency B2B Access Application" : "Demande d'Accès Agence B2B"}</span>
           </div>
 
-          <Link 
-            to="/" 
-            className="hidden lg:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#7B1B38] transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Retour accueil</span>
-          </Link>
+          <div className="flex items-center gap-3">
+            <LanguageSwitcher variant="outline" className="h-8 px-2 text-xs" />
+            <Link 
+              to="/" 
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#7B1B38] transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>{isEn ? "Back to Home" : "Retour accueil"}</span>
+            </Link>
+          </div>
         </div>
 
         <div className="w-full max-w-xl space-y-6">

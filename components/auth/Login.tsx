@@ -19,6 +19,8 @@ import {
   Lock
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { useLanguage } from "../../src/i18n/LanguageContext";
+import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 
 interface MapHub {
   id: string;
@@ -43,6 +45,7 @@ const HUBS: MapHub[] = [
 ];
 
 export function Login() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");  
   const [password, setPassword] = useState("");
@@ -329,20 +332,23 @@ export function Login() {
           ======================================================== */}
       <div className="lg:col-span-5 bg-white p-6 sm:p-10 lg:p-14 flex flex-col justify-center items-center relative z-10">
         
-        {/* Top Status Badge */}
+        {/* Top Status Badge & Language Switcher */}
         <div className="w-full max-w-md flex justify-between items-center mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Portail Sécurisé B2B</span>
           </div>
 
-          <Link 
-            to="/" 
-            className="hidden lg:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#7B1B38] transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Retour accueil</span>
-          </Link>
+          <div className="flex items-center gap-2.5">
+            <LanguageSwitcher variant="outline" />
+            <Link 
+              to="/" 
+              className="hidden lg:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#7B1B38] transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>{t("nav.backToHome")}</span>
+            </Link>
+          </div>
         </div>
 
         <div className="w-full max-w-md space-y-7">
@@ -350,10 +356,10 @@ export function Login() {
           {/* Header */}
           <div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Connexion Partenaire
+              {t("auth.loginTitle")}
             </h2>
             <p className="text-slate-500 font-medium text-sm mt-1.5">
-              Accédez à votre espace agence B2B et gestion des visas
+              {t("auth.loginSubtitle")}
             </p>
           </div>
 
@@ -372,7 +378,7 @@ export function Login() {
             {/* Email Field */}
             <div className="space-y-1.5">
               <label htmlFor="login-email" className="block text-xs font-bold text-slate-700 uppercase tracking-wide">
-                Email Professionnel
+                {t("auth.emailLabel")}
               </label>
               <div className="relative">
                 <input
@@ -393,7 +399,7 @@ export function Login() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label htmlFor="login-password" className="block text-xs font-bold text-slate-700 uppercase tracking-wide">
-                  Mot de Passe
+                  {t("auth.passwordLabel")}
                 </label>
                 <button
                   type="button"
@@ -405,7 +411,7 @@ export function Login() {
                   }}
                   className="text-xs font-semibold text-[#7B1B38] hover:underline transition-colors"
                 >
-                  Mot de passe oublié ?
+                  {t("auth.forgotPassword")}
                 </button>
               </div>
 
@@ -442,7 +448,7 @@ export function Login() {
                 className="h-4 w-4 rounded border-slate-300 text-[#7B1B38] focus:ring-[#7B1B38] accent-[#7B1B38] cursor-pointer"
               />
               <label htmlFor="remember-me" className="ml-2 block text-xs font-medium text-slate-600 cursor-pointer">
-                Maintenir ma session active
+                {t("auth.rememberMe")}
               </label>
             </div>
 
@@ -456,11 +462,11 @@ export function Login() {
                 {isLoading ? (
                   <>
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Vérification des accès...</span>
+                    <span>{t("auth.loggingIn")}</span>
                   </>
                 ) : (
                   <>
-                    <span>Se connecter</span>
+                    <span>{t("auth.loginButton")}</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </>
                 )}
@@ -471,12 +477,12 @@ export function Login() {
           {/* Sign up prompt & Back to Home */}
           <div className="pt-4 border-t border-slate-100 space-y-3 text-center">
             <p className="text-xs text-slate-500 font-medium">
-              Vous n'avez pas encore de compte agence ?{" "}
+              {t("auth.noAccount")}{" "}
               <Link 
                 to="/register" 
                 className="font-bold text-[#7B1B38] hover:underline transition-colors"
               >
-                Demander un partenariat
+                {t("auth.registerLink")}
               </Link>
             </p>
 

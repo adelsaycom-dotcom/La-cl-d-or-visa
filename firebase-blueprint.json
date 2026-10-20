@@ -152,6 +152,22 @@
         "createdAt": { "type": "string" }
       },
       "required": ["agencyId", "subject", "category", "priority", "status"]
+    },
+    "Attachment": {
+      "title": "Attachment",
+      "description": "Universal cloud document and scan storage.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "size": { "type": "number" },
+        "category": { "type": "string" },
+        "data": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "uploadedBy": { "type": "string" }
+      },
+      "required": ["id", "name", "type"]
     }
   },
   "firestore": {
@@ -186,6 +202,10 @@
     "supportTickets": {
       "schema": { "$ref": "#/entities/SupportTicket" },
       "description": "Support tickets raised by agencies."
+    },
+    "attachments": {
+      "schema": { "$ref": "#/entities/Attachment" },
+      "description": "Universal cloud file and document storage for attachments and visas."
     }
   }
 }

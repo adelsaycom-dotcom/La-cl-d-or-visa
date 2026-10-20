@@ -191,6 +191,8 @@ export interface Application {
     type: string;
     size: number;
     dataUrl: string;
+    url?: string;
+    storageId?: string;
     uploadedAt: string;
     uploadedBy: "Agency" | "Admin";
   }>;

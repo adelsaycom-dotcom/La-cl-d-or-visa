@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from "react";
 interface TrailPoint {
   x: number;
   y: number;
-  id: number;
+  id: string;
   opacity: number;
   scale: number;
 }
@@ -16,7 +16,7 @@ export function AirplaneCursor() {
   const posRef = useRef({ x: -100, y: -100 });
   const targetRef = useRef({ x: -100, y: -100 });
   const angleRef = useRef(45);
-  const trailIdRef = useRef(0);
+  const trailCounterRef = useRef(0);
   const animFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -27,11 +27,12 @@ export function AirplaneCursor() {
 
     const handleMouseMove = (e: MouseEvent) => {
       targetRef.current = { x: e.clientX, y: e.clientY };
-      if (!isVisible) setIsVisible(true);
+      setIsVisible(true);
     };
 
     const handleMouseLeave = () => {
       setIsVisible(false);
+      setTrail([]);
     };
 
     const handleMouseEnter = () => {
@@ -63,38 +64,41 @@ export function AirplaneCursor() {
         // SVG plane is oriented pointing towards top-right (45 deg) by default
         const rawAngle = Math.atan2(dy, dx) * (180 / Math.PI);
         // Smoothly rotate
-        let diff = (rawAngle - angleRef.current + 180) % 360 - 180;
+        const diff = ((rawAngle - angleRef.current + 180) % 360) - 180;
         angleRef.current += diff * 0.25;
       }
 
       setPlanePos({ x: current.x, y: current.y, angle: angleRef.current + 45 });
 
-      // Generate vapor trail points every ~35ms when moving
-      if (dist > 2 && time - lastTrailTime > 35) {
+      // Determine if a new trail point should be spawned
+      const shouldSpawnTrail = dist > 2 && time - lastTrailTime > 35;
+      if (shouldSpawnTrail) {
         lastTrailTime = time;
-        trailIdRef.current += 1;
-        setTrail((prev) => [
-          ...prev.slice(-10), // keep last 10 points
-          {
-            x: current.x,
-            y: current.y,
-            id: trailIdRef.current,
-            opacity: 0.6,
-            scale: 1,
-          },
-        ]);
       }
 
-      // Age existing trail
-      setTrail((prev) =>
-        prev
+      // Single atomic trail update to avoid multiple re-renders and duplicate key collisions
+      setTrail((prev) => {
+        const aged = prev
           .map((pt) => ({
             ...pt,
             opacity: pt.opacity - 0.04,
             scale: pt.scale + 0.1,
           }))
-          .filter((pt) => pt.opacity > 0.05)
-      );
+          .filter((pt) => pt.opacity > 0.05);
+
+        if (shouldSpawnTrail) {
+          trailCounterRef.current += 1;
+          aged.push({
+            x: current.x,
+            y: current.y,
+            id: `trail_${trailCounterRef.current}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            opacity: 0.6,
+            scale: 1,
+          });
+        }
+
+        return aged.slice(-12);
+      });
 
       animFrameRef.current = requestAnimationFrame(updatePlane);
     };
@@ -107,7 +111,7 @@ export function AirplaneCursor() {
       document.removeEventListener("mouseenter", handleMouseEnter);
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [isVisible]);
+  }, []);
 
   if (!isVisible) return null;
 

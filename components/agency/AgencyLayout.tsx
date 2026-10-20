@@ -12,6 +12,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Logo } from '@/components/Logo';
 import { auth } from "../../src/firebase";
 import { useAppStore } from "../../src/store/useAppStore";
+import { useLanguage } from "../../src/i18n/LanguageContext";
+import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 
 export function AgencyLayout() {
   const { 
@@ -45,16 +47,18 @@ export function AgencyLayout() {
     setSidebarOpen(false);
   }, [location.pathname]);
 
+  const { t } = useLanguage();
+
   const navItems = [
-    { name: "Tableau de Bord", path: "/agency", icon: LayoutDashboard },
-    { name: "Index Passeport", path: "/agency/passport-index", icon: Globe2 },
-    { name: "Nouvelle Demande", path: "/agency/apply", icon: FileText, highlight: true },
-    { name: "Mes Dossiers", path: "/agency/applications", icon: Plane },
-    { name: "Voyages Organisés", path: "/agency/trips", icon: MapPin },
-    { name: "Visa Études", path: "/agency/study", icon: FileText },
-    { name: "Mon Portefeuille", path: "/agency/wallet", icon: WalletCards },
-    { name: "Assistance", path: "/agency/support", icon: HelpCircle },
-    { name: "Paramètres", path: "/agency/settings", icon: Settings },
+    { name: t("nav.dashboard"), path: "/agency", icon: LayoutDashboard },
+    { name: t("nav.passportIndex"), path: "/agency/passport-index", icon: Globe2 },
+    { name: t("nav.newApplication"), path: "/agency/apply", icon: FileText, highlight: true },
+    { name: t("nav.myApplications"), path: "/agency/applications", icon: Plane },
+    { name: t("nav.organizedTrips"), path: "/agency/trips", icon: MapPin },
+    { name: t("nav.studyVisa"), path: "/agency/study", icon: FileText },
+    { name: t("nav.wallet"), path: "/agency/wallet", icon: WalletCards },
+    { name: t("nav.support"), path: "/agency/support", icon: HelpCircle },
+    { name: t("nav.settings"), path: "/agency/settings", icon: Settings },
   ];
 
   return (
@@ -77,7 +81,7 @@ export function AgencyLayout() {
         <div className="h-20 flex items-center justify-between px-6 border-b border-slate-800 shrink-0">
           <Link to="/agency" className="flex items-center gap-3">
              <Logo imageClassName="h-8 w-auto" />
-             <span className="font-bold text-lg tracking-tight text-white">Espace Agence</span>
+             <span className="font-bold text-lg tracking-tight text-white">{t("nav.b2bPlatform")}</span>
           </Link>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-white">
             <X className="w-6 h-6" />
@@ -99,7 +103,7 @@ export function AgencyLayout() {
            </div>
            
            <div className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
-             <div className="text-xs text-slate-400 font-medium mb-1 uppercase tracking-wider">Solde Actuel</div>
+             <div className="text-xs text-slate-400 font-medium mb-1 uppercase tracking-wider">{t("header.agencyBalance")}</div>
              <div className="text-2xl font-bold text-white">
                {agencyBalance.toLocaleString()} <span className="text-sm font-medium text-slate-400">DZD</span>
              </div>
@@ -136,7 +140,7 @@ export function AgencyLayout() {
         <div className="p-4 border-t border-slate-800 shrink-0">
           <Link to="/login" className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors group">
             <LogOut className="w-5 h-5 text-slate-500 group-hover:text-red-400" />
-            <span className="font-semibold text-sm">Déconnexion</span>
+            <span className="font-semibold text-sm">{t("nav.logout")}</span>
           </Link>
         </div>
       </aside>
@@ -151,7 +155,7 @@ export function AgencyLayout() {
               <Menu className="w-6 h-6" />
             </button>
             <h1 className="text-lg lg:text-2xl font-bold text-slate-800 hidden sm:block">
-              {navItems.find(i => location.pathname === i.path || (i.path !== '/agency' && location.pathname.startsWith(i.path)))?.name || "Tableau de Bord"}
+              {navItems.find(i => location.pathname === i.path || (i.path !== '/agency' && location.pathname.startsWith(i.path)))?.name || t("nav.dashboard")}
             </h1>
           </div>
 
@@ -265,8 +269,11 @@ export function AgencyLayout() {
 
              {/* Quick Apply Button (Desktop) */}
              <Link to="/agency/apply" className="hidden md:flex items-center gap-2 bg-[#7B1B38] text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-[#63142c] transition-colors shadow-sm shadow-[#7B1B38]/20 hover:shadow">
-               <FileText className="w-4 h-4" /> Nouvelle Demande
+               <FileText className="w-4 h-4" /> {t("nav.newApplication")}
              </Link>
+
+             {/* Sélecteur de langue bilingue FR/EN */}
+             <LanguageSwitcher variant="outline" />
 
              {/* Notifications */}
              <DropdownMenu>

@@ -9,8 +9,11 @@ import {
   Headphones,
   CheckCircle2
 } from "lucide-react";
+import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export function HeroSection() {
+  const { t } = useLanguage();
+
   return (
     <section className="relative pt-28 pb-20 md:pt-36 md:pb-28 overflow-hidden text-slate-900 border-b border-slate-200">
       
@@ -43,9 +46,9 @@ export function HeroSection() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B1B38] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#7B1B38]"></span>
             </span>
-            <span>Portail B2B Officiel • La Clé d'Or Algérie</span>
+            <span>{t("landing.hero.badgeOfficial")}</span>
             <span className="text-slate-300">|</span>
-            <span className="text-slate-700 hidden sm:inline">Dédié aux Agences de Voyages</span>
+            <span className="text-slate-700 hidden sm:inline">{t("landing.hero.badgeAgencies")}</span>
           </motion.div>
         </div>
 
@@ -57,29 +60,33 @@ export function HeroSection() {
           className="text-center max-w-4xl mx-auto space-y-6"
         >
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[1.1] text-slate-900 drop-shadow-sm">
-            Le Back-Office Visa Conçu Pour Les{" "}
+            {t("landing.hero.title")}{" "}
             <span className="text-[#7B1B38]">
-              Agences de Voyages
+              {t("landing.hero.titleHighlight")}
             </span>
           </h1>
 
-          {/* Quick Metrics Bar (Light mode cards with crisp borders & visible background) */}
+          <p className="text-base sm:text-lg md:text-xl text-slate-700 font-medium max-w-2xl mx-auto leading-relaxed drop-shadow-sm">
+            {t("landing.hero.subtitle")}
+          </p>
+
+          {/* Quick Metrics Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-3xl mx-auto pt-4 pb-4">
             <div className="p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-md hover:border-[#7B1B38]/50 transition-all">
               <div className="text-2xl sm:text-3xl font-black text-[#7B1B38]">35+</div>
-              <div className="text-xs text-slate-700 font-bold mt-0.5">Destinations Directes</div>
+              <div className="text-xs text-slate-700 font-bold mt-0.5">{t("landing.hero.metricDestinations")}</div>
             </div>
             <div className="p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-md hover:border-slate-300 transition-all">
               <div className="text-2xl sm:text-3xl font-black text-slate-900">1 250+</div>
-              <div className="text-xs text-slate-700 font-bold mt-0.5">Dossiers / Mois</div>
+              <div className="text-xs text-slate-700 font-bold mt-0.5">{t("landing.hero.metricVolume")}</div>
             </div>
             <div className="p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-md hover:border-emerald-300 transition-all">
               <div className="text-2xl sm:text-3xl font-black text-emerald-600">99.2%</div>
-              <div className="text-xs text-slate-700 font-bold mt-0.5">Conformité Consulaire</div>
+              <div className="text-xs text-slate-700 font-bold mt-0.5">{t("landing.hero.metricCompliance")}</div>
             </div>
             <div className="p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-md hover:border-[#7B1B38]/40 transition-all">
               <div className="text-2xl sm:text-3xl font-black text-[#7B1B38]">24/7</div>
-              <div className="text-xs text-slate-700 font-bold mt-0.5">Assistance Agence</div>
+              <div className="text-xs text-slate-700 font-bold mt-0.5">{t("landing.hero.metricSupport")}</div>
             </div>
           </div>
 
@@ -90,7 +97,7 @@ export function HeroSection() {
               className="w-full sm:w-auto px-8 py-4 rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-base transition-all duration-200 shadow-lg shadow-[#7B1B38]/30 flex items-center justify-center gap-2 group cursor-pointer"
             >
               <Building2 className="w-5 h-5 text-white" />
-              <span>Ouvrir un Accès Agence B2B</span>
+              <span>{t("landing.hero.ctaRegister")}</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </Link>
 
@@ -98,7 +105,7 @@ export function HeroSection() {
               to="/login"
               className="w-full sm:w-auto px-7 py-4 rounded-xl bg-white/95 hover:bg-slate-50 text-slate-800 hover:text-[#7B1B38] border-2 border-slate-200 hover:border-[#7B1B38]/40 font-bold text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-sm"
             >
-              <span>Se Connecter à l'Espace Pro</span>
+              <span>{t("landing.hero.ctaLogin")}</span>
             </Link>
           </div>
 
@@ -106,12 +113,12 @@ export function HeroSection() {
           <div className="pt-2 flex items-center justify-center gap-6 text-xs text-slate-600 font-semibold bg-white/70 backdrop-blur-sm py-2 px-4 rounded-full max-w-fit mx-auto border border-white/80">
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              Activation immédiate après validation
+              {t("landing.hero.trustImmediate")}
             </span>
             <span className="hidden sm:inline text-slate-300">•</span>
             <span className="hidden sm:flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              Facturation mensuelle ou rechargement DZD
+              {t("landing.hero.trustBilling")}
             </span>
           </div>
 
@@ -127,8 +134,8 @@ export function HeroSection() {
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                <div className="font-bold text-sm text-slate-900">Vérification Anti-Rejet</div>
-                <div className="text-xs text-slate-500">Contrôle avant dépôt officiel</div>
+                <div className="font-bold text-sm text-slate-900">{t("landing.hero.pillarAntiReject")}</div>
+                <div className="text-xs text-slate-500">{t("landing.hero.pillarAntiRejectSub")}</div>
               </div>
             </div>
 
@@ -137,8 +144,8 @@ export function HeroSection() {
                 <Clock className="w-5 h-5" />
               </div>
               <div>
-                <div className="font-bold text-sm text-slate-900">Délais Express</div>
-                <div className="text-xs text-slate-500">Traitement E-Visa sous 24-72h</div>
+                <div className="font-bold text-sm text-slate-900">{t("landing.hero.pillarExpress")}</div>
+                <div className="text-xs text-slate-500">{t("landing.hero.pillarExpressSub")}</div>
               </div>
             </div>
 
@@ -147,8 +154,8 @@ export function HeroSection() {
                 <FileCheck className="w-5 h-5" />
               </div>
               <div>
-                <div className="font-bold text-sm text-slate-900">Tarifs Négociés B2B</div>
-                <div className="text-xs text-slate-500">Marges directes pour agences</div>
+                <div className="font-bold text-sm text-slate-900">{t("landing.hero.pillarB2BPrice")}</div>
+                <div className="text-xs text-slate-500">{t("landing.hero.pillarB2BPriceSub")}</div>
               </div>
             </div>
 
@@ -157,8 +164,8 @@ export function HeroSection() {
                 <Headphones className="w-5 h-5" />
               </div>
               <div>
-                <div className="font-bold text-sm text-slate-900">Support Agence Dédié</div>
-                <div className="text-xs text-slate-500">Ligne directe & WhatsApp pro</div>
+                <div className="font-bold text-sm text-slate-900">{t("landing.hero.pillarDedicatedSupport")}</div>
+                <div className="text-xs text-slate-500">{t("landing.hero.pillarDedicatedSupportSub")}</div>
               </div>
             </div>
           </div>

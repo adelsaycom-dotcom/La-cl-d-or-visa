@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { uploadFileToServer, compressImageIfPossible, fileToBase64 } from "../../src/utils/fileUpload";
+import { scanPassportSmart } from "../../src/utils/passportScanner";
 
 export interface AttachmentItem {
   id: string;
@@ -59,6 +60,8 @@ export function VisaWizard() {
   const [passportFile, setPassportFile] = useState<AttachmentItem | null>(null);
   const [passportPreview, setPassportPreview] = useState<string>("");
   const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [scanProgress, setScanProgress] = useState<number>(0);
+  const [scanStatusText, setScanStatusText] = useState<string>("");
   const [scanSuccess, setScanSuccess] = useState<boolean>(false);
   const [scanSource, setScanSource] = useState<string>("");
   const passportInputRef = useRef<HTMLInputElement>(null);
@@ -158,85 +161,67 @@ export function VisaWizard() {
     try {
       setIsScanning(true);
       setScanSuccess(false);
+      setScanProgress(15);
+      setScanStatusText("Téléversement et optimisation du document...");
 
-      // 1. Base64 optimisé pour l'OCR Gemini
+      // 1. Compression et préparation de l'aperçu
       const base64Data = file.type.startsWith("image/")
         ? await compressImageIfPossible(file)
         : await fileToBase64(file);
 
       setPassportPreview(base64Data);
 
-      // 2. Sauvegarde du fichier sur le serveur (renvoie une URL légère comme "/uploads/att_...")
-      // ce qui évite de gonfler le document Firestore au-delà de 1 Mo !
+      // 2. Sauvegarde universelle (Cloud Firestore 'attachments' + local)
       const uploadRes = await uploadFileToServer(file, "Passeport");
 
       const passportItem: AttachmentItem = {
-        id: `pass_${Date.now()}`,
+        id: uploadRes.storageId || `pass_${Date.now()}`,
         name: file.name,
         category: "Passeport",
         type: file.type || "image/jpeg",
         size: uploadRes.size,
-        dataUrl: uploadRes.url, // URL légère au lieu de 5 millions de caractères
+        dataUrl: uploadRes.dataUrl,
         url: uploadRes.url,
-        previewUrl: base64Data,
+        previewUrl: uploadRes.dataUrl,
         uploadedAt: new Date().toISOString(),
         uploadedBy: "Agency"
       };
 
       setPassportFile(passportItem);
 
-      // 3. Appel de l'analyse automatique côté serveur (Gemini OCR/MRZ)
-      // Protégé par un timeout rapide de 2.2s pour ne jamais bloquer l'agence sur Hostinger
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2200);
+      // 3. Scan universel : IA Gemini si disponible, basculement automatique vers l'OCR MRZ autonome sur Hostinger
+      setScanProgress(35);
+      setScanStatusText("Détection de la zone biométrique du passeport...");
 
-        const response = await fetch("/api/scan-passport", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            imageBase64: base64Data,
-            mimeType: file.type || "image/jpeg"
-          }),
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
+      const scanResult = await scanPassportSmart(file, (status, prog) => {
+        setScanStatusText(status);
+        setScanProgress(prog);
+      });
 
-        if (response.ok) {
-          const result = await response.json();
-          if (result && result.data) {
-            const data = result.data;
-            setApplicant(prev => ({
-              ...prev,
-              firstName: data.firstName || prev.firstName,
-              lastName: data.lastName || prev.lastName,
-              passportNumber: data.passportNumber || prev.passportNumber,
-              dateOfBirth: data.dateOfBirth || prev.dateOfBirth,
-              expiryDate: data.expiryDate || prev.expiryDate,
-              issueDate: data.issueDate || prev.issueDate,
-              nationality: data.nationality || prev.nationality || "Algérienne",
-              gender: data.gender === "F" ? "F" : "M",
-              placeOfBirth: data.placeOfBirth || prev.placeOfBirth
-            }));
-            setScanSuccess(true);
-            setScanSource(result.source || "ai");
-          } else {
-            setScanSuccess(true);
-            setScanSource("manuel");
-          }
-        } else {
-          setScanSuccess(true);
-          setScanSource("manuel");
-        }
-      } catch (scanErr) {
-        // Environnement Hostinger statique / absence d'API IA :
-        // Le passeport est bien joint, passage immédiat en saisie/vérification assistée
+      if (scanResult.success && scanResult.data) {
+        const data = scanResult.data;
+        setApplicant(prev => ({
+          ...prev,
+          firstName: data.firstName || prev.firstName,
+          lastName: data.lastName || prev.lastName,
+          passportNumber: data.passportNumber || prev.passportNumber,
+          dateOfBirth: data.dateOfBirth || prev.dateOfBirth,
+          expiryDate: data.expiryDate || prev.expiryDate,
+          issueDate: data.issueDate || prev.issueDate,
+          nationality: data.nationality || prev.nationality || "Algérienne",
+          gender: data.gender === "F" ? "F" : "M",
+          placeOfBirth: data.placeOfBirth || prev.placeOfBirth
+        }));
         setScanSuccess(true);
+        setScanSource(scanResult.source === "gemini" ? "ai" : "mrz");
+      } else {
+        // En cas d'image floue ou document non lisible
+        setScanSuccess(false);
         setScanSource("manuel");
       }
     } catch (err: any) {
       console.error("Erreur lecture passeport:", err);
-      setFileError(err.message || "Impossible de lire ce document. Veuillez sélectionner un fichier valide.");
+      setFileError(err.message || "Impossible d'analyser automatiquement ce document. Veuillez renseigner les informations ci-dessous.");
     } finally {
       setIsScanning(false);
     }
@@ -267,13 +252,14 @@ export function VisaWizard() {
     try {
       const uploadRes = await uploadFileToServer(file, docName);
       const attachment: AttachmentItem = {
-        id: `doc_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+        id: uploadRes.storageId || `doc_${Date.now()}_${Math.random().toString(36).substring(7)}`,
         name: file.name,
         category: docName,
         type: file.type || "application/octet-stream",
         size: uploadRes.size,
-        dataUrl: uploadRes.url, // URL légère "/uploads/att_..."
+        dataUrl: uploadRes.dataUrl || uploadRes.url,
         url: uploadRes.url,
+        previewUrl: uploadRes.dataUrl || uploadRes.url,
         uploadedAt: new Date().toISOString(),
         uploadedBy: "Agency"
       };
@@ -319,13 +305,39 @@ export function VisaWizard() {
     setFileError("");
 
     try {
-      // Regrouper tous les documents (Passeport + pièces complémentaires)
-      const allAttachmentsList: AttachmentItem[] = [];
+      // Regrouper tous les documents avec références légères
+      const allAttachmentsList: any[] = [];
       if (passportFile) {
-        allAttachmentsList.push(passportFile);
+        allAttachmentsList.push({
+          id: passportFile.id,
+          name: passportFile.name,
+          category: passportFile.category,
+          type: passportFile.type,
+          size: passportFile.size,
+          storageId: passportFile.id,
+          url: passportFile.url,
+          dataUrl: passportFile.dataUrl && passportFile.dataUrl.length < 150000 
+            ? passportFile.dataUrl 
+            : (passportFile.url || `/attachments/${passportFile.id}`),
+          uploadedAt: passportFile.uploadedAt,
+          uploadedBy: "Agency"
+        });
       }
       Object.values(attachments).forEach(att => {
-        allAttachmentsList.push(att);
+        allAttachmentsList.push({
+          id: att.id,
+          name: att.name,
+          category: att.category,
+          type: att.type,
+          size: att.size,
+          storageId: att.id,
+          url: att.url,
+          dataUrl: att.dataUrl && att.dataUrl.length < 150000 
+            ? att.dataUrl 
+            : (att.url || `/attachments/${att.id}`),
+          uploadedAt: att.uploadedAt,
+          uploadedBy: "Agency"
+        });
       });
 
       const newAppId = `DOSS-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
@@ -347,13 +359,8 @@ export function VisaWizard() {
             ...applicant,
             fullName: `${applicant.lastName.toUpperCase()} ${applicant.firstName}`
           },
-          attachments: allAttachmentsList,
           textFields: textFields,
-          // Compatibilité rétroactive directe pour l'admin
-          ...allAttachmentsList.reduce((acc, curr) => {
-            acc[curr.category] = curr.dataUrl;
-            return acc;
-          }, {} as Record<string, string>)
+          attachmentsCount: allAttachmentsList.length
         },
         timeline: [
           {
@@ -763,13 +770,25 @@ export function VisaWizard() {
         ) : (
           <div className="relative z-10 bg-slate-800/80 rounded-2xl p-5 border border-slate-700/80">
             {isScanning ? (
-              <div className="py-6 flex flex-col items-center justify-center text-center">
-                <div className="relative mb-3">
-                  <div className="w-12 h-12 rounded-full border-4 border-[#7B1B38]/30 border-t-[#7B1B38] animate-spin flex items-center justify-center"></div>
-                  <Sparkles className="w-5 h-5 text-[#7B1B38] absolute inset-0 m-auto" />
+              <div className="py-6 flex flex-col items-center justify-center text-center max-w-md mx-auto">
+                <div className="relative mb-4">
+                  <div className="w-14 h-14 rounded-full border-4 border-[#7B1B38]/30 border-t-[#7B1B38] animate-spin flex items-center justify-center"></div>
+                  <Sparkles className="w-6 h-6 text-[#7B1B38] absolute inset-0 m-auto animate-pulse" />
                 </div>
-                <h4 className="font-bold text-base text-white">Traitement et validation du passeport...</h4>
-                <p className="text-slate-400 text-xs mt-0.5">Enregistrement et vérification de la pièce d'identité</p>
+                <h4 className="font-bold text-base text-white">Analyse biométrique du passeport en cours...</h4>
+                <p className="text-slate-300 text-xs mt-1.5 font-medium">{scanStatusText || "Lecture et extraction automatique des informations..."}</p>
+                
+                {/* Barre de progression dynamique */}
+                <div className="w-full bg-slate-700/60 rounded-full h-2 mt-4 overflow-hidden border border-slate-600">
+                  <div 
+                    className="bg-gradient-to-r from-[#7B1B38] to-emerald-500 h-full transition-all duration-300 ease-out"
+                    style={{ width: `${Math.max(10, Math.min(100, scanProgress))}%` }}
+                  />
+                </div>
+                <div className="flex justify-between items-center w-full mt-1.5 text-[10px] text-slate-400">
+                  <span>Moteur universel (Compatible Hostinger)</span>
+                  <span className="font-mono font-bold text-white">{scanProgress}%</span>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -791,7 +810,9 @@ export function VisaWizard() {
                     <p className="text-xs text-emerald-400 flex items-center gap-1 mt-0.5">
                       <CheckCircle2 className="w-3.5 h-3.5" /> 
                       {scanSource === "ai" 
-                        ? "Passeport analysé et coordonnées pré-remplies" 
+                        ? "Passeport analysé par IA • Coordonnées pré-remplies" 
+                        : scanSource === "mrz"
+                        ? "Lecture biométrique MRZ réussie • Coordonnées pré-remplies"
                         : "Passeport enregistré avec succès • Coordonnées modifiables"}
                     </p>
                   </div>
@@ -816,13 +837,27 @@ export function VisaWizard() {
 
       {/* Message de succès automatique */}
       {scanSuccess && !isScanning && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-start gap-3">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-          <div>
-            <h4 className="font-bold text-emerald-900 text-sm">Informations extraites automatiquement !</h4>
-            <p className="text-xs text-emerald-700 mt-0.5">
-              Les données ci-dessous ont été remplies automatiquement d'après votre passeport. Vous avez la possibilité de modifier ou compléter chaque information en cas de besoin.
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
+          <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="font-bold text-emerald-900 text-sm">Passeport décodé avec succès !</h4>
+              <Badge className="bg-emerald-600 text-white border-none text-[10px] px-2 py-0.5">
+                {scanSource === "ai" ? "Moteur IA Gemini" : "Moteur Optique MRZ ICAO"}
+              </Badge>
+            </div>
+            <p className="text-xs text-emerald-800 mt-1">
+              Les coordonnées du titulaire (Nom, Prénom, N° Passeport, Dates) ont été extraites et injectées dans le formulaire. Vous pouvez les ajuster à tout moment ci-dessous.
             </p>
+            {applicant.passportNumber && (
+              <div className="mt-2.5 flex items-center gap-3 text-xs bg-emerald-100/60 p-2 rounded-xl text-emerald-950 font-medium">
+                <span>N° Passeport : <strong className="font-mono font-bold text-emerald-900">{applicant.passportNumber}</strong></span>
+                <span>•</span>
+                <span>Titulaire : <strong>{applicant.lastName} {applicant.firstName}</strong></span>
+              </div>
+            )}
           </div>
         </motion.div>
       )}

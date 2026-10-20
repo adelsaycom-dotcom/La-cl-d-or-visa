@@ -8,6 +8,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
 import { useState, useEffect, lazy, Suspense } from "react";
 import { useAppStore } from "./store/useAppStore";
 import { Logo } from '@/components/Logo';
+import { LanguageProvider, useLanguage } from "./i18n/LanguageContext";
+import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 
 // Eager imports for layout components
 import { VisaEditor } from "@/components/admin/VisaEditor";
@@ -46,6 +48,7 @@ const SuspenseFallback = () => (
 
 // Admin Layout
 function AdminLayout() {
+  const { t } = useLanguage();
   const { notifications, markNotificationAsRead, markAllNotificationsAsRead } = useAppStore();
   const unreadNotifications = (notifications || []).filter(n => !n.read && n.agencyId === 'admin').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const adminNotifsCount = unreadNotifications.length;
@@ -59,15 +62,15 @@ function AdminLayout() {
   }, [location.pathname]);
 
   const navItems = [
-    { name: "Dashboard", path: "/admin", icon: LayoutDashboard },
-    { name: "Catalogue Services", path: "/admin/countries", icon: Globe2 },
-    { name: "Dossiers", path: "/admin/applications", icon: FileText, highlight: true },
-    { name: "Voyages Organisés", path: "/admin/trips", icon: MapPin },
-    { name: "Visa Études", path: "/admin/study", icon: GraduationCap },
-    { name: "Agences", path: "/admin/agencies", icon: Users },
-    { name: "Finances", path: "/admin/finances", icon: DollarSign },
-    { name: "Support", path: "/admin/support", icon: HelpCircle },
-    { name: "Paramètres", path: "/admin/settings", icon: Settings },
+    { name: t("nav.dashboard"), path: "/admin", icon: LayoutDashboard },
+    { name: t("nav.serviceCatalog"), path: "/admin/countries", icon: Globe2 },
+    { name: t("nav.myApplications"), path: "/admin/applications", icon: FileText, highlight: true },
+    { name: t("nav.organizedTrips"), path: "/admin/trips", icon: MapPin },
+    { name: t("nav.studyVisa"), path: "/admin/study", icon: GraduationCap },
+    { name: t("nav.agencies"), path: "/admin/agencies", icon: Users },
+    { name: t("nav.finances"), path: "/admin/finances", icon: DollarSign },
+    { name: t("nav.support"), path: "/admin/support", icon: HelpCircle },
+    { name: t("nav.settings"), path: "/admin/settings", icon: Settings },
   ];
 
   return (
@@ -130,7 +133,7 @@ function AdminLayout() {
         <div className="p-4 border-t border-slate-800/50 shrink-0">
           <Link to="/login" className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors group">
             <LogOut className="w-5 h-5 text-slate-500 group-hover:text-red-400" />
-            <span className="font-semibold text-sm">Déconnexion</span>
+            <span className="font-semibold text-sm">{t("nav.logout")}</span>
           </Link>
         </div>
       </aside>
@@ -145,11 +148,14 @@ function AdminLayout() {
               <Menu className="w-6 h-6" />
             </button>
             <h1 className="text-xl lg:text-2xl font-bold text-slate-800 hidden sm:block">
-              {navItems.find(i => location.pathname === i.path || (i.path !== '/admin' && location.pathname.startsWith(i.path)))?.name || "Administration"}
+              {navItems.find(i => location.pathname === i.path || (i.path !== '/admin' && location.pathname.startsWith(i.path)))?.name || t("nav.administration")}
             </h1>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+             {/* Sélecteur de langue bilingue FR/EN */}
+             <LanguageSwitcher variant="outline" />
+
              {/* Notifications */}
              <DropdownMenu>
               <DropdownMenuTrigger className="relative p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors outline-none">
@@ -225,40 +231,42 @@ function AdminLayout() {
 export default function App() {
   useFirebaseSync();
   return (
-    <Router>
-      <Suspense fallback={<SuspenseFallback />}>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          
-          {/* Admin Space */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="countries" element={<ServiceCatalog />} />
-            <Route path="agencies" element={<AgencyManagement />} />
-            <Route path="applications" element={<ApplicationManagement />} />
-            <Route path="trips" element={<OrganizedTripsManagement />} />
-            <Route path="study" element={<StudyProgramsManagement />} />
-            <Route path="finances" element={<FinancesManagement />} />
-            <Route path="support" element={<SupportManagement />} />
-            <Route path="settings" element={<AdminSettings />} />
-          </Route>
+    <LanguageProvider>
+      <Router>
+        <Suspense fallback={<SuspenseFallback />}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            
+            {/* Admin Space */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="countries" element={<ServiceCatalog />} />
+              <Route path="agencies" element={<AgencyManagement />} />
+              <Route path="applications" element={<ApplicationManagement />} />
+              <Route path="trips" element={<OrganizedTripsManagement />} />
+              <Route path="study" element={<StudyProgramsManagement />} />
+              <Route path="finances" element={<FinancesManagement />} />
+              <Route path="support" element={<SupportManagement />} />
+              <Route path="settings" element={<AdminSettings />} />
+            </Route>
 
-          {/* Agency Space */}
-          <Route path="/agency" element={<AgencyLayout />}>
-            <Route index element={<AgencyDashboard />} />
-            <Route path="apply" element={<VisaWizard />} />
-            <Route path="applications" element={<AgencyApplications />} />
-            <Route path="trips" element={<OrganizedTrips />} />
-            <Route path="study" element={<StudyPrograms />} />
-            <Route path="wallet" element={<AgencyWallet />} />
-            <Route path="support" element={<AgencySupport />} />
-            <Route path="settings" element={<AgencySettings />} />
-            <Route path="passport-index" element={<PassportIndex />} />
-          </Route>
-        </Routes>
-      </Suspense>
+            {/* Agency Space */}
+            <Route path="/agency" element={<AgencyLayout />}>
+              <Route index element={<AgencyDashboard />} />
+              <Route path="apply" element={<VisaWizard />} />
+              <Route path="applications" element={<AgencyApplications />} />
+              <Route path="trips" element={<OrganizedTrips />} />
+              <Route path="study" element={<StudyPrograms />} />
+              <Route path="wallet" element={<AgencyWallet />} />
+              <Route path="support" element={<AgencySupport />} />
+              <Route path="settings" element={<AgencySettings />} />
+              <Route path="passport-index" element={<PassportIndex />} />
+            </Route>
+          </Routes>
+        </Suspense>
       </Router>
+    </LanguageProvider>
   );
 }

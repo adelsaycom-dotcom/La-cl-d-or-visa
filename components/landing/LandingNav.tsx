@@ -2,10 +2,13 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { LogIn, UserPlus, Menu, X, MapPin } from "lucide-react";
+import { useLanguage } from "../../src/i18n/LanguageContext";
+import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 
 export function LandingNav() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -34,29 +37,30 @@ export function LandingNav() {
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-7 text-sm font-bold text-slate-700">
             <a href="#processus" className="hover:text-[#7B1B38] transition-colors">
-              Processus B2B
+              {t("landing.nav.process")}
             </a>
             <a href="#avantages" className="hover:text-[#7B1B38] transition-colors">
-              Avantages & Outils
+              {t("landing.nav.features")}
             </a>
             <a href="#localisation" className="hover:text-[#7B1B38] transition-colors flex items-center gap-1">
               <MapPin className="w-3.5 h-3.5 text-[#7B1B38]" />
-              <span>Localisation</span>
+              <span>{t("landing.nav.location")}</span>
             </a>
             <a href="#faq" className="hover:text-[#7B1B38] transition-colors">
-              FAQ Agences
+              {t("landing.nav.faq")}
             </a>
           </nav>
 
-          {/* Action Buttons in #7B1B38 */}
+          {/* Action Buttons & Language Switcher */}
           <div className="hidden sm:flex items-center gap-3">
+            <LanguageSwitcher variant="outline" />
 
             <Link
               to="/login"
               className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-800 hover:text-[#7B1B38] bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all flex items-center gap-1.5"
             >
               <LogIn className="w-4 h-4 text-[#7B1B38]" />
-              <span>Espace Pro</span>
+              <span>{t("landing.nav.login")}</span>
             </Link>
 
             <Link
@@ -64,21 +68,22 @@ export function LandingNav() {
               className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-[#7B1B38] hover:bg-[#63142c] transition-all shadow-md shadow-[#7B1B38]/25 flex items-center gap-1.5"
             >
               <UserPlus className="w-4 h-4" />
-              <span>Demande d'Accès</span>
+              <span>{t("landing.nav.register")}</span>
             </Link>
           </div>
 
-          {/* Mobile hamburger button */}
-          <div className="flex md:hidden items-center gap-2">
+          {/* Mobile actions & hamburger button */}
+          <div className="flex sm:hidden items-center gap-2">
+            <LanguageSwitcher variant="outline" className="h-8 px-2 text-xs" />
             <Link
               to="/login"
-              className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-800 bg-slate-100 border border-slate-200"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-800 bg-slate-100 border border-slate-200"
             >
-              Connexion
+              {t("common.status") === "Statut" ? "Connexion" : "Sign In"}
             </Link>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg bg-slate-100 text-slate-700 hover:text-slate-900"
+              className="p-1.5 rounded-lg bg-slate-100 text-slate-700 hover:text-slate-900"
               aria-label="Menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -95,36 +100,37 @@ export function LandingNav() {
               onClick={() => setMobileMenuOpen(false)}
               className="block text-sm font-semibold text-slate-700 hover:text-[#7B1B38] py-1"
             >
-              Processus B2B
+              {t("landing.nav.process")}
             </a>
             <a
               href="#avantages"
               onClick={() => setMobileMenuOpen(false)}
               className="block text-sm font-semibold text-slate-700 hover:text-[#7B1B38] py-1"
             >
-              Avantages Plateforme
+              {t("landing.nav.features")}
             </a>
             <a
               href="#localisation"
               onClick={() => setMobileMenuOpen(false)}
               className="block text-sm font-semibold text-slate-700 hover:text-[#7B1B38] py-1"
             >
-              Localisation & Siège
+              {t("landing.nav.location")}
             </a>
             <a
               href="#faq"
               onClick={() => setMobileMenuOpen(false)}
               className="block text-sm font-semibold text-slate-700 hover:text-[#7B1B38] py-1"
             >
-              FAQ Agences
+              {t("landing.nav.faq")}
             </a>
-            <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+            <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
               <Link
                 to="/register"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full text-center py-2.5 rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-sm shadow-sm"
+                className="w-full py-2.5 rounded-xl text-center text-xs font-bold text-white bg-[#7B1B38] shadow-sm flex items-center justify-center gap-1.5"
               >
-                Créer un Compte Agence
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>{t("landing.nav.register")}</span>
               </Link>
             </div>
           </div>

@@ -10,9 +10,13 @@ import {
   Car,
   Compass
 } from "lucide-react";
+import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export function LocationSection() {
   const [copied, setCopied] = useState(false);
+  const { language } = useLanguage();
+  const isEn = language === "en";
+
   const locationUrl = "https://maps.app.goo.gl/yn9aApV68iC2jVC26";
   const addressText = "Rue Ali Khodja, Bordj El Kiffan, Alger, Algérie";
 
@@ -39,13 +43,16 @@ export function LocationSection() {
         <div className="text-center max-w-3xl mx-auto mb-14">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7B1B38]/10 text-[#7B1B38] text-xs font-bold uppercase tracking-wider mb-3.5 border border-[#7B1B38]/20">
             <MapPin className="w-3.5 h-3.5 text-[#7B1B38]" />
-            <span>Siège & Accueil Partenaires</span>
+            <span>{isEn ? "Headquarters & Partner Reception" : "Siège & Accueil Partenaires"}</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-            Notre Localisation & <span className="text-[#7B1B38]">Siège Officiel</span>
+            {isEn ? "Our Location & " : "Notre Localisation & "}
+            <span className="text-[#7B1B38]">{isEn ? "Official Headquarters" : "Siège Officiel"}</span>
           </h2>
           <p className="mt-3.5 text-base sm:text-lg text-slate-600 font-normal leading-relaxed">
-            Dépôt physique des passeports, retrait des visas validés et accueil privilégié de nos agences de voyages partenaires à Alger.
+            {isEn
+              ? "Physical passport drop-off, collection of validated visas, and private front-desk reception for partner travel agencies in Algiers."
+              : "Dépôt physique des passeports, retrait des visas validés et accueil privilégié de nos agences de voyages partenaires à Alger."}
           </p>
         </div>
 
@@ -86,7 +93,7 @@ export function LocationSection() {
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/90 hover:bg-white text-slate-800 text-xs font-bold shadow-md hover:shadow-lg border border-slate-200 transition-all hover:text-[#7B1B38]"
                 >
                   <Compass className="w-3.5 h-3.5 text-[#7B1B38]" />
-                  <span>Agrandir</span>
+                  <span>{isEn ? "Open in Maps" : "Agrandir"}</span>
                 </a>
               </div>
             </div>
@@ -95,111 +102,116 @@ export function LocationSection() {
             <div className="pt-3 px-2 flex items-center justify-between text-xs text-slate-500">
               <span className="flex items-center gap-1.5">
                 <Navigation2 className="w-3.5 h-3.5 text-[#7B1B38]" />
-                Coordonnées GPS : 36.7465° N, 3.1902° E
+                {isEn ? "GPS Coordinates:" : "Coordonnées GPS :"} 36.7465° N, 3.1902° E
               </span>
               <span className="hidden sm:inline font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                ● Agence ouverte aux professionnels
+                {isEn ? "Easy Access (Tramway & Highway)" : "Accès rapide Tramway & Rocade"}
               </span>
             </div>
-
           </div>
 
-          {/* Right Column: Address Details & Direct Action Button */}
-          <div className="lg:col-span-5 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xl shadow-slate-200/50 flex flex-col justify-between">
+          {/* Right Column: Physical Address & Agency Reception Details */}
+          <div className="lg:col-span-5 flex flex-col justify-between gap-6">
             
-            <div className="space-y-6">
+            {/* Main Details Card */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/90 shadow-xl shadow-slate-200/50 space-y-6">
               
-              <div className="border-b border-slate-100 pb-5">
-                <div className="flex items-center gap-2.5 text-xs font-bold text-[#7B1B38] uppercase tracking-wider mb-1.5">
-                  <Building2 className="w-4 h-4" />
-                  <span>Agence Centrale & Dépôt B2B</span>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">
+                    {isEn ? "Agency Reception Desk" : "Bureau Central B2B"}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {isEn ? "Exclusive drop-off desk for accredited agencies" : "Guichet dédié au dépôt physique de vos passeports"}
+                  </p>
                 </div>
-                <h3 className="text-xl sm:text-2xl font-bold text-slate-900">
-                  La Clé d'Or Visa & Services
-                </h3>
+                <div className="w-12 h-12 rounded-2xl bg-[#7B1B38]/10 text-[#7B1B38] flex items-center justify-center shrink-0">
+                  <Building2 className="w-6 h-6" />
+                </div>
               </div>
 
               {/* Address with copy button */}
-              <div className="space-y-2">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Adresse Postale
-                </span>
-                <div className="flex items-start justify-between gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
-                  <div className="flex items-start gap-2.5">
-                    <MapPin className="w-5 h-5 text-[#7B1B38] shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-bold text-slate-900 leading-snug">
-                        Rue Ali Khodja
-                      </p>
-                      <p className="text-xs text-slate-600 mt-0.5 font-medium">
-                        Bordj El Kiffan, Wilaya d'Alger, Algérie
-                      </p>
-                    </div>
-                  </div>
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
+                  <span>{isEn ? "Official Address" : "Adresse Officielle"}</span>
                   <button
                     onClick={handleCopyAddress}
-                    type="button"
-                    title="Copier l'adresse"
-                    className="p-2 rounded-lg bg-white border border-slate-200 hover:border-[#7B1B38] text-slate-600 hover:text-[#7B1B38] transition-all shrink-0"
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7B1B38] hover:underline cursor-pointer"
                   >
                     {copied ? (
-                      <Check className="w-4 h-4 text-emerald-600" />
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="text-emerald-600">{isEn ? "Copied!" : "Copié !"}</span>
+                      </>
                     ) : (
-                      <Copy className="w-4 h-4" />
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>{isEn ? "Copy" : "Copier"}</span>
+                      </>
                     )}
                   </button>
                 </div>
+                <p className="text-sm font-semibold text-slate-900 leading-snug">
+                  {addressText}
+                </p>
               </div>
 
-              {/* Opening Hours */}
-              <div className="space-y-2">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Horaires de Réception des Agences
-                </span>
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2 text-xs">
-                  <div className="flex items-center justify-between font-semibold text-slate-800">
-                    <span className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-[#7B1B38]" />
-                      Du Samedi au Jeudi :
-                    </span>
-                    <span className="text-slate-900 font-bold bg-white px-2 py-0.5 rounded border border-slate-200">
-                      08h30 – 17h00
-                    </span>
+              {/* Working Hours */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2.5 text-xs font-bold text-slate-900">
+                  <Clock className="w-4 h-4 text-[#7B1B38]" />
+                  <span>{isEn ? "Opening & Reception Hours" : "Horaires de Réception des Agences"}</span>
+                </div>
+                <div className="space-y-1.5 text-xs text-slate-600 pl-6 border-l-2 border-[#7B1B38]/30">
+                  <div className="flex justify-between">
+                    <span className="font-medium">{isEn ? "Saturday – Wednesday" : "Samedi – Mercredi"}</span>
+                    <span className="font-bold text-slate-900">08:30 – 17:00</span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-500 font-medium">
-                    <span>Vendredi :</span>
-                    <span className="text-rose-600 font-bold">Fermé (Permanence Urgences)</span>
+                  <div className="flex justify-between">
+                    <span className="font-medium">{isEn ? "Thursday" : "Jeudi"}</span>
+                    <span className="font-bold text-slate-900">08:30 – 15:30</span>
+                  </div>
+                  <div className="flex justify-between text-slate-400">
+                    <span>{isEn ? "Friday" : "Vendredi"}</span>
+                    <span>{isEn ? "Closed (Weekly Break)" : "Fermé (Repos hebdomadaire)"}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Practical information */}
-              <div className="p-3.5 rounded-xl bg-[#7B1B38]/5 border border-[#7B1B38]/15 flex items-start gap-3">
-                <Car className="w-4 h-4 text-[#7B1B38] shrink-0 mt-0.5" />
-                <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                  <strong>Stationnement & Accès :</strong> Possibilité de stationnement à proximité immédiate pour les coursiers et agents déposant des lots de passeports.
-                </p>
+              {/* Quick perks for agency visitors */}
+              <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-3 text-[11px] text-slate-600 font-medium">
+                <div className="flex items-center gap-1.5">
+                  <Car className="w-3.5 h-3.5 text-[#7B1B38]" />
+                  <span>{isEn ? "Easy Parking" : "Stationnement facile"}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{isEn ? "Instant Delivery Receipt" : "Récépissé immédiat"}</span>
+                </div>
               </div>
 
             </div>
 
-            {/* Direct Google Maps Action Button requested by user */}
-            <div className="pt-6 border-t border-slate-100 mt-6 space-y-2">
-              <a
-                href={locationUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-sm transition-all shadow-lg shadow-[#7B1B38]/25 hover:shadow-xl hover:shadow-[#7B1B38]/30 group"
-              >
-                <Navigation2 className="w-4 h-4 text-white transition-transform group-hover:translate-x-0.5" />
-                <span>Ouvrir dans Google Maps</span>
-                <ExternalLink className="w-4 h-4 text-white/80 ml-0.5" />
-              </a>
-
-              <p className="text-center text-[11px] text-slate-400 font-medium">
-                Ouvre directement l'itinéraire GPS sur votre application mobile ou navigateur
-              </p>
-            </div>
+            {/* Direct Google Maps Action CTA Card */}
+            <a
+              href={locationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group p-5 rounded-3xl bg-[#7B1B38] hover:bg-[#63142c] text-white shadow-xl shadow-[#7B1B38]/25 transition-all flex items-center justify-between"
+            >
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold text-white/80">
+                  {isEn ? "Need Directions?" : "Besoin d'un itinéraire ?"}
+                </p>
+                <p className="text-base font-bold text-white flex items-center gap-1.5">
+                  <span>{isEn ? "Open in Google Maps" : "Ouvrir dans Google Maps"}</span>
+                  <ExternalLink className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform">
+                <Navigation2 className="w-5 h-5" />
+              </div>
+            </a>
 
           </div>
 

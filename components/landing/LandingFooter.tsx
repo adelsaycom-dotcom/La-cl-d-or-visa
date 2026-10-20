@@ -1,8 +1,12 @@
 import { Logo } from "@/components/Logo";
 import { Phone, Mail, Facebook, Instagram, Youtube, MessageCircle, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export function LandingFooter() {
+  const { language } = useLanguage();
+  const isEn = language === "en";
+
   return (
     <footer id="contact" className="bg-slate-100 text-slate-700 border-t-4 border-[#7B1B38] pt-16 pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -16,18 +20,22 @@ export function LandingFooter() {
               <Logo />
             </div>
             <p className="text-sm text-slate-600 leading-relaxed">
-              La plateforme B2B de référence en Algérie pour le traitement automatisé des visas, voyages et séjours linguistiques des agences partenaires.
+              {isEn
+                ? "Algeria's premier B2B platform for automated visa processing, travel logistics, and study abroad services for partner agencies."
+                : "La plateforme B2B de référence en Algérie pour le traitement automatisé des visas, voyages et séjours linguistiques des agences partenaires."}
             </p>
             <div className="pt-2">
               <span className="inline-block px-3 py-1 rounded-md bg-[#7B1B38]/10 border border-[#7B1B38]/25 text-[#7B1B38] text-xs font-bold">
-                Accès Réservé aux Professionnels du Tourisme
+                {isEn ? "Strictly Reserved for Tourism Professionals" : "Accès Réservé aux Professionnels du Tourisme"}
               </span>
             </div>
           </div>
 
           {/* Col 2: Support Téléphonique */}
           <div className="space-y-4">
-            <h4 className="text-slate-900 font-bold text-base uppercase tracking-wider">Ligne Agences B2B</h4>
+            <h4 className="text-slate-900 font-bold text-base uppercase tracking-wider">
+              {isEn ? "Agency B2B Phone Lines" : "Ligne Agences B2B"}
+            </h4>
             <div className="space-y-2.5 text-sm">
               <a href="tel:0562101719" className="flex items-center gap-3 text-slate-700 hover:text-[#7B1B38] transition-colors">
                 <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-[#7B1B38] shrink-0 shadow-sm">
@@ -52,18 +60,22 @@ export function LandingFooter() {
 
           {/* Col 3: Courriels Professionnels */}
           <div className="space-y-4">
-            <h4 className="text-slate-900 font-bold text-base uppercase tracking-wider">Courriels Professionnels</h4>
+            <h4 className="text-slate-900 font-bold text-base uppercase tracking-wider">
+              {isEn ? "Professional Inquiries" : "Courriels Professionnels"}
+            </h4>
             <div className="space-y-2 text-xs">
               <a 
                 href="mailto:manager@lacledortravel.com" 
                 className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-[#7B1B38] hover:border-[#7B1B38]/40 transition-all shadow-xs group"
-                title="Direction Générale"
+                title={isEn ? "General Management" : "Direction Générale"}
               >
                 <div className="w-6 h-6 rounded-lg bg-[#7B1B38]/10 text-[#7B1B38] flex items-center justify-center shrink-0">
                   <Mail className="w-3.5 h-3.5" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase leading-none">Direction</span>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase leading-none">
+                    {isEn ? "Management" : "Direction"}
+                  </span>
                   <span className="font-bold text-slate-900 group-hover:text-[#7B1B38] truncate mt-0.5">manager@lacledortravel.com</span>
                 </div>
               </a>
@@ -71,13 +83,15 @@ export function LandingFooter() {
               <a 
                 href="mailto:contact@lacledortravel.com" 
                 className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-[#7B1B38] hover:border-[#7B1B38]/40 transition-all shadow-xs group"
-                title="Contact Général & Partenariats"
+                title={isEn ? "Agency Contact" : "Contact & Agences"}
               >
                 <div className="w-6 h-6 rounded-lg bg-[#7B1B38]/10 text-[#7B1B38] flex items-center justify-center shrink-0">
                   <Mail className="w-3.5 h-3.5" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase leading-none">Contact & Agences</span>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase leading-none">
+                    {isEn ? "Partnerships" : "Contact & Agences"}
+                  </span>
                   <span className="font-bold text-slate-900 group-hover:text-[#7B1B38] truncate mt-0.5">contact@lacledortravel.com</span>
                 </div>
               </a>
@@ -85,13 +99,15 @@ export function LandingFooter() {
               <a 
                 href="mailto:finance@lacledortravel.com" 
                 className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-[#7B1B38] hover:border-[#7B1B38]/40 transition-all shadow-xs group"
-                title="Comptabilité & Facturation"
+                title={isEn ? "Invoicing & Finance" : "Facturation & Finance"}
               >
                 <div className="w-6 h-6 rounded-lg bg-[#7B1B38]/10 text-[#7B1B38] flex items-center justify-center shrink-0">
                   <Mail className="w-3.5 h-3.5" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase leading-none">Facturation & Finance</span>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase leading-none">
+                    {isEn ? "Billing & Finance" : "Facturation & Finance"}
+                  </span>
                   <span className="font-bold text-slate-900 group-hover:text-[#7B1B38] truncate mt-0.5">finance@lacledortravel.com</span>
                 </div>
               </a>
@@ -99,13 +115,15 @@ export function LandingFooter() {
               <a 
                 href="mailto:support@lacledortravel.com" 
                 className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-[#7B1B38] hover:border-[#7B1B38]/40 transition-all shadow-xs group"
-                title="Support Technique & Visas"
+                title={isEn ? "Platform Support" : "Support Plateforme"}
               >
                 <div className="w-6 h-6 rounded-lg bg-[#7B1B38]/10 text-[#7B1B38] flex items-center justify-center shrink-0">
                   <Mail className="w-3.5 h-3.5" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase leading-none">Support Plateforme</span>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase leading-none">
+                    {isEn ? "Tech Support" : "Support Plateforme"}
+                  </span>
                   <span className="font-bold text-slate-900 group-hover:text-[#7B1B38] truncate mt-0.5">support@lacledortravel.com</span>
                 </div>
               </a>
@@ -114,7 +132,9 @@ export function LandingFooter() {
 
           {/* Col 4: Canaux Officiels & Inscription */}
           <div className="space-y-4">
-            <h4 className="text-slate-900 font-bold text-base uppercase tracking-wider">Canaux Officiels</h4>
+            <h4 className="text-slate-900 font-bold text-base uppercase tracking-wider">
+              {isEn ? "Official Channels" : "Canaux Officiels"}
+            </h4>
             <div className="flex flex-wrap gap-2">
               <a 
                 href="https://whatsapp.com/channel/0029VbBSSDgKGGGQ2mCZwF0z" 
@@ -170,7 +190,7 @@ export function LandingFooter() {
                 to="/register"
                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs transition-colors shadow-md shadow-[#7B1B38]/20"
               >
-                <span>Rejoindre le Réseau d'Agences</span>
+                <span>{isEn ? "Join Agency Network" : "Rejoindre le Réseau d'Agences"}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -181,12 +201,16 @@ export function LandingFooter() {
         {/* Bottom Bar */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div>
-            &copy; {new Date().getFullYear()} La Clé d'Or B2B. Tous droits réservés.
+            &copy; {new Date().getFullYear()} La Clé d'Or B2B. {isEn ? "All rights reserved." : "Tous droits réservés."}
           </div>
           <div className="flex gap-6">
-            <span className="hover:text-slate-800 transition-colors">Plateforme Sécurisée SSL 256-bit</span>
+            <span className="hover:text-slate-800 transition-colors">
+              {isEn ? "SSL 256-Bit Encrypted Platform" : "Plateforme Sécurisée SSL 256-bit"}
+            </span>
             <span>•</span>
-            <span className="hover:text-slate-800 transition-colors">Conforme aux Réglementations IATA & Consulaires</span>
+            <span className="hover:text-slate-800 transition-colors">
+              {isEn ? "IATA & Consular Standards Compliant" : "Conforme aux Réglementations IATA & Consulaires"}
+            </span>
           </div>
         </div>
 
