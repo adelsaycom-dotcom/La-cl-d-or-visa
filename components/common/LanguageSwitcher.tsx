@@ -1,79 +1,116 @@
 import React from "react";
 import { useLanguage } from "../../src/i18n/LanguageContext";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Globe, Check } from "lucide-react";
+
+/**
+ * Drapeaux vectoriels SVG haute fidélité (100% compatibles Windows, Android, iOS, macOS, Linux).
+ * Aucune dépendance sur les polices emojis système (qui échouent sur Windows et Android).
+ */
+export function FlagFR({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg 
+      viewBox="0 0 512 512" 
+      className={`inline-block shrink-0 rounded-full overflow-hidden shadow-xs ring-1 ring-black/10 ${className}`}
+      aria-hidden="true"
+    >
+      <path fill="#002654" d="M0 0h170.7v512H0z" />
+      <path fill="#ffffff" d="M170.7 0h170.6v512H170.7z" />
+      <path fill="#ce1126" d="M341.3 0H512v512H341.3z" />
+    </svg>
+  );
+}
+
+export function FlagGB({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg 
+      viewBox="0 0 512 512" 
+      className={`inline-block shrink-0 rounded-full overflow-hidden shadow-xs ring-1 ring-black/10 ${className}`}
+      aria-hidden="true"
+    >
+      <path fill="#012169" d="M0 0h512v512H0z" />
+      <path fill="#FFF" d="M60 0l196 193L452 0h60v53L316 256l196 203v53h-60L256 319 60 512H0v-53l196-203L0 53V0h60z" />
+      <path fill="#C8102E" d="M339 307l173 170v35l-208-205h35zm-124-99L42 38V3l208 205h-35zm124 0L512 38V3L304 208h35zM0 477l173-170h35L0 512v-35z" />
+      <path fill="#FFF" d="M200 0h112v512H200zM0 200h512v112H0z" />
+      <path fill="#C8102E" d="M221 0h70v512h-70zM0 221h512v70H0z" />
+    </svg>
+  );
+}
 
 interface LanguageSwitcherProps {
   variant?: "outline" | "ghost" | "glass" | "pill";
   className?: string;
-  showLabel?: boolean;
+  showLabels?: boolean;
 }
 
+/**
+ * Commutateur de langue B2B ultra-moderne et ergonomique :
+ * - Commutation en 1 seul clic
+ * - Drapeaux ronds SVG haute précision (zéro emoji système, compatible 100% Windows/Android)
+ * - Indicateur actif avec badge contrasté et accent de marque Clé d'Or (#7B1B38)
+ * - Structure HTML purement valide (zéro imbrication de button, pas de dropdown instable)
+ */
 export function LanguageSwitcher({ 
   variant = "outline", 
-  className = "", 
-  showLabel = true 
+  className = "",
+  showLabels = true
 }: LanguageSwitcherProps) {
   const { language, setLanguage } = useLanguage();
 
-  const languages = [
-    { code: "fr" as const, label: "Français", short: "FR", flag: "🇫🇷" },
-    { code: "en" as const, label: "English", short: "EN", flag: "🇬🇧" }
-  ];
-
-  const current = languages.find(l => l.code === language) || languages[0];
+  const isGlass = variant === "glass";
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant={variant === "glass" ? "ghost" : variant === "pill" ? "outline" : "outline"}
-          size="sm"
-          className={`h-9 px-3 rounded-xl gap-2 font-bold text-xs transition-all border-slate-200 hover:border-slate-300 ${
-            variant === "glass"
-              ? "bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md"
-              : variant === "pill"
-              ? "rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800"
-              : "bg-white hover:bg-slate-50 text-slate-800 shadow-sm"
-          } ${className}`}
-          title="Changer de langue / Change language"
-        >
-          <span className="text-base leading-none select-none">{current.flag}</span>
-          <span className="font-bold tracking-wide uppercase">{current.short}</span>
-        </Button>
-      </DropdownMenuTrigger>
+    <div 
+      className={`inline-flex items-center p-1 rounded-2xl transition-all duration-200 select-none ${
+        isGlass 
+          ? "bg-white/10 border border-white/20 backdrop-blur-md shadow-xs" 
+          : "bg-slate-100/95 border border-slate-200/90 shadow-inner"
+      } ${className}`}
+      role="radiogroup"
+      aria-label="Choix de langue / Language toggle"
+    >
+      {/* Bouton Français */}
+      <button
+        type="button"
+        role="radio"
+        aria-checked={language === "fr"}
+        onClick={() => setLanguage("fr")}
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+          language === "fr"
+            ? isGlass
+              ? "bg-white text-slate-900 shadow-md scale-[1.02]"
+              : "bg-white text-[#7B1B38] shadow-sm border border-slate-200/80 scale-[1.02]"
+            : isGlass
+              ? "text-white/70 hover:text-white hover:bg-white/5"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+        }`}
+        title="Passer en Français"
+      >
+        <FlagFR className="w-4 h-4 shadow-2xs" />
+        {showLabels && <span className="tracking-wide">FR</span>}
+      </button>
 
-      <DropdownMenuContent align="end" className="w-40 p-1.5 rounded-2xl shadow-xl border-slate-200">
-        <div className="px-2 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-          Langue / Language
-        </div>
-        {languages.map((lang) => {
-          const isSelected = language === lang.code;
-          return (
-            <DropdownMenuItem
-              key={lang.code}
-              onClick={() => setLanguage(lang.code)}
-              className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
-                isSelected 
-                  ? "bg-[#7B1B38]/10 text-[#7B1B38]" 
-                  : "text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="text-base leading-none">{lang.flag}</span>
-                <span>{lang.label}</span>
-              </div>
-              {isSelected && <Check className="w-3.5 h-3.5 text-[#7B1B38]" />}
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      {/* Séparateur élégant */}
+      <span className={`h-3 w-px mx-0.5 ${isGlass ? "bg-white/20" : "bg-slate-300/80"}`} />
+
+      {/* Bouton Anglais */}
+      <button
+        type="button"
+        role="radio"
+        aria-checked={language === "en"}
+        onClick={() => setLanguage("en")}
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+          language === "en"
+            ? isGlass
+              ? "bg-white text-slate-900 shadow-md scale-[1.02]"
+              : "bg-white text-[#7B1B38] shadow-sm border border-slate-200/80 scale-[1.02]"
+            : isGlass
+              ? "text-white/70 hover:text-white hover:bg-white/5"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+        }`}
+        title="Switch to English"
+      >
+        <FlagGB className="w-4 h-4 shadow-2xs" />
+        {showLabels && <span className="tracking-wide">EN</span>}
+      </button>
+    </div>
   );
 }

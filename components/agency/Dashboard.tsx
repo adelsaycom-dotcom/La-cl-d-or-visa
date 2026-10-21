@@ -5,7 +5,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { MapPin, Info, DollarSign, Star } from "lucide-react";
 import { useAppStore } from "../../src/store/useAppStore";
 import { auth } from "../../src/firebase";
@@ -13,9 +13,11 @@ import { AGENCY_SERVICES } from "../../src/constants/servicesConfig";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export function AgencyDashboard() {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
+
   const { agencyBalance, applications, organizedTrips, currentAgency, b2cMode, b2cMarginPercent } = useAppStore();
-  const agencyDisplayName = currentAgency?.agencyName || currentAgency?.companyName || currentAgency?.name || auth.currentUser?.displayName || "Mon Agence";
+  const agencyDisplayName = currentAgency?.agencyName || currentAgency?.companyName || currentAgency?.name || auth.currentUser?.displayName || (isEn ? "My Agency" : "Mon Agence");
   const navigate = useNavigate();
   const [newTripPopupOpen, setNewTripPopupOpen] = useState(false);
   const [popupTrip, setPopupTrip] = useState<any>(null);
@@ -26,12 +28,11 @@ export function AgencyDashboard() {
   useEffect(() => {
     // Show popup for the most recently added active trip if not seen
     if (activeTrips.length > 0) {
-      // Sort by creation date if available, or just take the last one
       const sortedTrips = [...activeTrips].sort((a, b) => {
         if (a.createdAt && b.createdAt) {
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }
-        return 0; // Fallback
+        return 0;
       });
       
       const latestTrip = sortedTrips[0];
@@ -74,7 +75,7 @@ export function AgencyDashboard() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B1B38] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[#7B1B38]"></span>
             </span>
-            <span>Portail Agence B2B • La Clé d'Or</span>
+            <span>{isEn ? "B2B Partner Portal • La Clé d'Or" : "Portail Agence B2B • La Clé d'Or"}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-2">
             {t("agencyDashboard.welcome")}, {agencyDisplayName} 👋
@@ -99,9 +100,11 @@ export function AgencyDashboard() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
-                  Voyages à la une
+                  {t("agencyDashboard.featuredTripsTitle")}
                 </h2>
-                <Link to="/agency/trips" className="text-sm text-[#7B1B38] font-bold hover:underline">Voir tout</Link>
+                <Link to="/agency/trips" className="text-sm text-[#7B1B38] font-bold hover:underline">
+                  {t("agencyDashboard.viewAll")}
+                </Link>
               </div>
               <div className="flex gap-4 overflow-x-auto pb-4 snap-x hide-scrollbar">
                 {featuredTrips.map(trip => (
@@ -111,7 +114,7 @@ export function AgencyDashboard() {
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent"></div>
                       <div className="absolute top-2 left-2">
                         <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider flex items-center gap-1 shadow-md">
-                          <Star className="w-3 h-3 fill-current" /> À la une
+                          <Star className="w-3 h-3 fill-current" /> {isEn ? "Featured" : "À la une"}
                         </span>
                       </div>
                       <div className="absolute bottom-3 left-3 right-3">
@@ -124,11 +127,13 @@ export function AgencyDashboard() {
                     <div className="p-4 flex flex-col gap-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <span className="block text-[10px] uppercase font-bold text-slate-400">Prix B2B</span>
+                          <span className="block text-[10px] uppercase font-bold text-slate-400">
+                            {t("agencyDashboard.b2bPrice")}
+                          </span>
                           <span className="font-black text-slate-900 text-lg leading-none">{trip.price.toLocaleString()} DZD</span>
                         </div>
                         <Link to="/agency/trips" className="bg-[#7B1B38]/10 text-[#7B1B38] hover:bg-[#7B1B38]/15 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
-                          Voir détails
+                          {t("agencyDashboard.viewDetails")}
                         </Link>
                       </div>
                     </div>
@@ -143,7 +148,7 @@ export function AgencyDashboard() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
-                Démarrer une demande
+                {t("agencyDashboard.startApplicationTitle")}
               </h2>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
@@ -167,7 +172,7 @@ export function AgencyDashboard() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
-                Performances & Statistiques
+                {t("agencyDashboard.statsTitle")}
               </h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -175,21 +180,27 @@ export function AgencyDashboard() {
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all">
                   <Clock className="w-16 h-16 text-amber-500" />
                 </div>
-                <div className="text-sm font-bold text-slate-500 mb-2 uppercase tracking-wider">En cours</div>
+                <div className="text-sm font-bold text-slate-500 mb-2 uppercase tracking-wider">
+                  {t("agencyDashboard.pending")}
+                </div>
                 <div className="text-4xl font-black text-slate-900">{pendingApps}</div>
               </div>
               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all">
                   <CheckCircle2 className="w-16 h-16 text-emerald-500" />
                 </div>
-                <div className="text-sm font-bold text-slate-500 mb-2 uppercase tracking-wider">Approuvées</div>
+                <div className="text-sm font-bold text-slate-500 mb-2 uppercase tracking-wider">
+                  {t("agencyDashboard.approved")}
+                </div>
                 <div className="text-4xl font-black text-slate-900">{approvedApps}</div>
               </div>
               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all">
                   <ShieldCheck className="w-16 h-16 text-red-500" />
                 </div>
-                <div className="text-sm font-bold text-slate-500 mb-2 uppercase tracking-wider">Rejetées</div>
+                <div className="text-sm font-bold text-slate-500 mb-2 uppercase tracking-wider">
+                  {t("agencyDashboard.rejected")}
+                </div>
                 <div className="text-4xl font-black text-slate-900">{rejectedApps}</div>
               </div>
             </div>
@@ -204,8 +215,12 @@ export function AgencyDashboard() {
             <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 p-6 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-48 h-48 bg-[#7B1B38]/25 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
               <div className="flex items-center justify-between mb-2 relative z-10">
-                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Solde Disponible</h3>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#7B1B38]/30 text-rose-200 border border-[#7B1B38]/40">B2B Actif</span>
+                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">
+                  {t("agencyDashboard.availableBalance")}
+                </h3>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#7B1B38]/30 text-rose-200 border border-[#7B1B38]/40">
+                  {t("agencyDashboard.b2bActive")}
+                </span>
               </div>
               <div className="text-3xl font-black text-white relative z-10 flex items-end gap-2">
                 {agencyBalance.toLocaleString()} <span className="text-lg text-slate-400 mb-1">DZD</span>
@@ -213,15 +228,15 @@ export function AgencyDashboard() {
             </div>
             <div className="p-6">
               <div className="flex items-center justify-between text-sm mb-4 pb-4 border-b border-slate-100">
-                <span className="text-slate-500 font-medium">Réservations Vols</span>
+                <span className="text-slate-500 font-medium">{t("agencyDashboard.flightBookings")}</span>
                 <span className="font-bold text-slate-900">0 DZD</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-500 font-medium">Services & Visas</span>
+                <span className="text-slate-500 font-medium">{t("agencyDashboard.servicesAndVisas")}</span>
                 <span className="font-bold text-slate-900">{agencyBalance.toLocaleString()} DZD</span>
               </div>
               <Link to="/agency/wallet" className="mt-6 w-full flex items-center justify-center gap-2 bg-[#7B1B38]/10 text-[#7B1B38] hover:bg-[#7B1B38]/15 px-4 py-2.5 rounded-xl font-bold transition-colors">
-                Gérer le portefeuille <ArrowUpRight className="w-4 h-4" />
+                {t("agencyDashboard.manageWallet")} <ArrowUpRight className="w-4 h-4" />
               </Link>
             </div>
           </div>
@@ -229,8 +244,10 @@ export function AgencyDashboard() {
           {/* Recent Applications Mini-List */}
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="font-bold text-slate-900">Dossiers Récents</h3>
-              <Link to="/agency/applications" className="text-sm text-[#7B1B38] font-bold hover:underline">Voir tout</Link>
+              <h3 className="font-bold text-slate-900">{t("agencyDashboard.recentApplications")}</h3>
+              <Link to="/agency/applications" className="text-sm text-[#7B1B38] font-bold hover:underline">
+                {t("agencyDashboard.viewAll")}
+              </Link>
             </div>
             
             <div className="space-y-4">
@@ -246,12 +263,14 @@ export function AgencyDashboard() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-bold text-slate-900">{app.price} DA</div>
+                    <div className="text-sm font-bold text-slate-900">{app.price.toLocaleString()} DZD</div>
                   </div>
                 </div>
               ))}
               {applications.length === 0 && (
-                <div className="text-center text-slate-500 text-sm py-4">Aucun dossier récent.</div>
+                <div className="text-center text-slate-500 text-sm py-4">
+                  {t("agencyDashboard.emptyApplications")}
+                </div>
               )}
             </div>
           </div>
@@ -268,7 +287,7 @@ export function AgencyDashboard() {
                 <img src={popupTrip.photoUrl} alt={popupTrip.title} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent flex flex-col justify-end p-6">
                   <div className="inline-flex items-center gap-1.5 bg-[#7B1B38]/20 text-rose-100 border border-[#7B1B38]/40 backdrop-blur-md px-2.5 py-1 rounded-full text-xs font-bold w-fit mb-3">
-                    <Star className="w-3.5 h-3.5 fill-current" /> Nouvelle offre disponible
+                    <Star className="w-3.5 h-3.5 fill-current" /> {isEn ? "New offer available!" : "Nouvelle offre disponible"}
                   </div>
                   <h2 className="text-white font-black text-2xl leading-tight mb-1">{popupTrip.title}</h2>
                   <p className="text-slate-300 text-sm flex items-center gap-1.5">
@@ -283,21 +302,25 @@ export function AgencyDashboard() {
                 
                 <div className="flex items-center justify-between mb-6 p-3 bg-slate-50 rounded-xl border border-slate-100">
                    <div>
-                     <span className="block text-[10px] uppercase font-bold text-slate-500 mb-0.5">Tarif B2B</span>
+                     <span className="block text-[10px] uppercase font-bold text-slate-500 mb-0.5">
+                       {t("agencyDashboard.b2bPrice")}
+                     </span>
                      <span className="font-black text-xl text-slate-900">{popupTrip.price.toLocaleString()} DZD</span>
                    </div>
                    <div className="text-right">
-                     <span className="block text-[10px] uppercase font-bold text-slate-500 mb-0.5">Places dispo</span>
+                     <span className="block text-[10px] uppercase font-bold text-slate-500 mb-0.5">
+                       {isEn ? "Seats available" : "Places dispo"}
+                     </span>
                      <span className="font-bold text-slate-700">{popupTrip.availableSeats}</span>
                    </div>
                 </div>
                 
                 <div className="flex gap-3">
                   <Button variant="outline" className="flex-1 h-12 rounded-xl font-bold border-slate-200" onClick={handleDismissPopup}>
-                    Retirer
+                    {isEn ? "Dismiss" : "Retirer"}
                   </Button>
                   <Button className="flex-1 h-12 rounded-xl font-bold bg-[#7B1B38] hover:bg-[#63142c] text-white shadow-md shadow-[#7B1B38]/20" onClick={handleAccessPopup}>
-                    Y accéder
+                    {isEn ? "Explore" : "Y accéder"}
                   </Button>
                 </div>
               </div>

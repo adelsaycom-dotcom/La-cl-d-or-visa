@@ -15,8 +15,12 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export function AgencyManagement() {
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
+
   const { 
     agencies, updateAgencyStatus, updateAgency, applications, 
     transactions, rechargeRequests, addTransaction 
@@ -264,17 +268,17 @@ export function AgencyManagement() {
   const getStatusBadge = (agency: Agency) => {
     switch (agency.status) {
       case "ACTIVE":
-        return <Badge className="bg-emerald-100 text-emerald-800 border-none font-bold text-xs">Active</Badge>;
+        return <Badge className="bg-emerald-100 text-emerald-800 border-none font-bold text-xs">{isEn ? "Active" : "Active"}</Badge>;
       case "PENDING":
-        return <Badge className="bg-amber-100 text-amber-800 border-none font-bold text-xs">En attente de validation</Badge>;
+        return <Badge className="bg-amber-100 text-amber-800 border-none font-bold text-xs">{isEn ? "Awaiting Validation" : "En attente de validation"}</Badge>;
       case "SUSPENDED":
         return (
           <Badge className="bg-red-100 text-red-800 border-none font-bold text-xs flex items-center gap-1">
-            <Ban className="w-3 h-3" /> Suspendue
+            <Ban className="w-3 h-3" /> {isEn ? "Suspended" : "Suspendue"}
           </Badge>
         );
       case "REJECTED":
-        return <Badge className="bg-slate-200 text-slate-700 border-none font-bold text-xs">Rejetée</Badge>;
+        return <Badge className="bg-slate-200 text-slate-700 border-none font-bold text-xs">{isEn ? "Rejected" : "Rejetée"}</Badge>;
       default:
         return <Badge className="bg-slate-100 text-slate-800 border-none">{agency.status}</Badge>;
     }
@@ -290,13 +294,15 @@ export function AgencyManagement() {
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-[#7B1B38] uppercase tracking-wider mb-1">
             <Building2 className="w-4 h-4" />
-            <span>Gestion Réseau B2B</span>
+            <span>{isEn ? "B2B Network Management" : "Gestion Réseau B2B"}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Agences Partenaires & Profils 360°
+            {isEn ? "Partner Agencies & 360° Profiles" : "Agences Partenaires & Profils 360°"}
           </h2>
           <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
-            Suivi des dossiers, mouvements de solde, fiches juridiques (RC/NIF) et sanctions administratives.
+            {isEn 
+              ? "Follow-up of dossiers, balance adjustments, corporate records (RC/NIF) and administrative sanctions."
+              : "Suivi des dossiers, mouvements de solde, fiches juridiques (RC/NIF) et sanctions administratives."}
           </p>
         </div>
 
@@ -305,29 +311,37 @@ export function AgencyManagement() {
           className="bg-[#7B1B38] text-white hover:bg-[#63142c] shadow-sm shadow-[#7B1B38]/20 font-bold rounded-xl text-xs h-11 px-5 flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
-          <span>Créer une agence</span>
+          <span>{isEn ? "Create Agency" : "Créer une agence"}</span>
         </Button>
       </div>
 
       {/* Cartes d'indicateurs clés */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Agences</span>
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+            {isEn ? "Total Agencies" : "Total Agences"}
+          </span>
           <div className="text-2xl font-black text-slate-900 font-mono mt-1">{stats.total}</div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-          <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider block">Agences Actives</span>
+          <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider block">
+            {isEn ? "Active Agencies" : "Agences Actives"}
+          </span>
           <div className="text-2xl font-black text-emerald-700 font-mono mt-1">{stats.active}</div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-          <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider block">En Attente Validation</span>
+          <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider block">
+            {isEn ? "Pending Approval" : "En Attente Validation"}
+          </span>
           <div className="text-2xl font-black text-amber-700 font-mono mt-1">{stats.pending}</div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Soldes B2B</span>
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+            {isEn ? "Total B2B Balances" : "Total Soldes B2B"}
+          </span>
           <div className="text-2xl font-black text-slate-900 font-mono mt-1">
             {stats.totalBalance.toLocaleString()} <span className="text-xs font-bold text-slate-500">DZD</span>
           </div>
@@ -337,11 +351,16 @@ export function AgencyManagement() {
       {/* ============================================================ */}
       {/* Filtres & Recherche Rapide                                   */}
       {/* ============================================================ */}
+      {/* ============================================================ */}
+      {/* Filtres & Recherche Rapide                                   */}
+      {/* ============================================================ */}
       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
         <div className="relative w-full sm:flex-1">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <Input 
-            placeholder="Rechercher par nom d'agence, email, téléphone, RC ou gérant..." 
+            placeholder={isEn 
+              ? "Search by agency name, email, phone, trade register or manager..." 
+              : "Rechercher par nom d'agence, email, téléphone, RC ou gérant..."} 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 h-10 bg-slate-50 border-slate-200 text-xs rounded-xl focus:bg-white"
@@ -356,13 +375,13 @@ export function AgencyManagement() {
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="w-full sm:w-56 h-10 bg-slate-50 border-slate-200 text-xs rounded-xl font-medium">
-              <SelectValue placeholder="Filtrer par statut" />
+              <SelectValue placeholder={isEn ? "Filter by status" : "Filtrer par statut"} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL" className="text-xs">Toutes les agences</SelectItem>
-              <SelectItem value="ACTIVE" className="text-xs font-bold text-emerald-700">Actives uniquement</SelectItem>
-              <SelectItem value="PENDING" className="text-xs font-bold text-amber-700">En attente d'approbation</SelectItem>
-              <SelectItem value="SUSPENDED" className="text-xs font-bold text-red-600">Suspendues / Sanctionnées</SelectItem>
+              <SelectItem value="ALL" className="text-xs">{isEn ? "All agencies" : "Toutes les agences"}</SelectItem>
+              <SelectItem value="ACTIVE" className="text-xs font-bold text-emerald-700">{isEn ? "Active only" : "Actives uniquement"}</SelectItem>
+              <SelectItem value="PENDING" className="text-xs font-bold text-amber-700">{isEn ? "Awaiting approval" : "En attente d'approbation"}</SelectItem>
+              <SelectItem value="SUSPENDED" className="text-xs font-bold text-red-600">{isEn ? "Suspended / Sanctioned" : "Suspendues / Sanctionnées"}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -376,13 +395,13 @@ export function AgencyManagement() {
           <Table>
             <TableHeader className="bg-slate-50 text-[11px] uppercase font-bold text-slate-500">
               <TableRow>
-                <TableHead className="py-3.5 px-4">Agence & Raison Sociale</TableHead>
-                <TableHead className="py-3.5 px-4">Juridique & Gérant</TableHead>
-                <TableHead className="py-3.5 px-4">Coordonnées</TableHead>
-                <TableHead className="py-3.5 px-4 text-right">Solde Actuel</TableHead>
-                <TableHead className="py-3.5 px-4 text-center">Dossiers</TableHead>
-                <TableHead className="py-3.5 px-4 text-center">Statut</TableHead>
-                <TableHead className="py-3.5 px-4 text-right">Actions</TableHead>
+                <TableHead className="py-3.5 px-4">{isEn ? "Agency & Corporate Name" : "Agence & Raison Sociale"}</TableHead>
+                <TableHead className="py-3.5 px-4">{isEn ? "Legal & Manager" : "Juridique & Gérant"}</TableHead>
+                <TableHead className="py-3.5 px-4">{isEn ? "Contact Info" : "Coordonnées"}</TableHead>
+                <TableHead className="py-3.5 px-4 text-right">{isEn ? "Current Balance" : "Solde Actuel"}</TableHead>
+                <TableHead className="py-3.5 px-4 text-center">{isEn ? "Files" : "Dossiers"}</TableHead>
+                <TableHead className="py-3.5 px-4 text-center">{isEn ? "Status" : "Statut"}</TableHead>
+                <TableHead className="py-3.5 px-4 text-right">{isEn ? "Actions" : "Actions"}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-slate-100 text-xs">

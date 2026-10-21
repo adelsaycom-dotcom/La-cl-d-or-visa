@@ -8,8 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../ui/textarea';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
+import { useLanguage } from '../../src/i18n/LanguageContext';
 
 export default function OrganizedTripsManagement() {
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
+
   const { organizedTrips, tripReservations, addOrganizedTrip, updateOrganizedTrip, deleteOrganizedTrip, updateTripReservationStatus, updateTripReservationPayment } = useAppStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -119,33 +123,58 @@ export default function OrganizedTripsManagement() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Voyages Organisés</h2>
-          <p className="text-slate-500 text-sm">Gérez les offres de voyages de groupe pour les agences</p>
+          <h2 className="text-2xl font-bold text-slate-800">
+            {isEn ? "Organized Group Trips" : "Voyages Organisés"}
+          </h2>
+          <p className="text-slate-500 text-sm">
+            {isEn ? "Manage group travel offers for partner agencies" : "Gérez les offres de voyages de groupe pour les agences"}
+          </p>
         </div>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <div onClick={() => { setEditingTripId(null); setNewTrip({ title: '', destination: '', description: '', photoUrl: '', totalSeats: 0, price: 0, startDate: '', endDate: '', status: 'active', customFormFields: [] }); setIsAddOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium"><Plus className="w-4 h-4 mr-2" /> Nouveau Voyage</div>
+          <div 
+            onClick={() => { 
+              setEditingTripId(null); 
+              setNewTrip({ title: '', destination: '', description: '', photoUrl: '', totalSeats: 0, price: 0, startDate: '', endDate: '', status: 'active', customFormFields: [] }); 
+              setIsAddOpen(true); 
+            }} 
+            className="bg-[#7B1B38] hover:bg-[#63142c] text-white cursor-pointer inline-flex items-center justify-center px-4 py-2 rounded-xl text-sm font-bold shadow-sm"
+          >
+            <Plus className="w-4 h-4 mr-2" /> {isEn ? "New Trip" : "Nouveau Voyage"}
+          </div>
           <DialogContent className="w-[95vw] sm:max-w-[700px] bg-white max-h-[90vh] overflow-hidden flex flex-col">
             <DialogHeader>
-              <DialogTitle>{editingTripId ? "Modifier le Voyage Organisé" : "Publier un Voyage Organisé"}</DialogTitle>
+              <DialogTitle>
+                {editingTripId 
+                  ? (isEn ? "Modify Organized Trip" : "Modifier le Voyage Organisé") 
+                  : (isEn ? "Publish Organized Trip" : "Publier un Voyage Organisé")}
+              </DialogTitle>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto min-h-0 pr-4 -mr-4 p-1">
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4 px-1">
               <div className="md:col-span-2">
-                <label className="text-sm font-bold text-slate-700 mb-1.5 block">Titre de l'offre</label>
-                <Input className="h-11 bg-slate-50 border-slate-200 focus:bg-white" value={newTrip.title} onChange={e => setNewTrip({...newTrip, title: e.target.value})} placeholder="Ex: Merveilles de la Cappadoce" />
+                <label className="text-sm font-bold text-slate-700 mb-1.5 block">
+                  {isEn ? "Package Title" : "Titre de l'offre"}
+                </label>
+                <Input className="h-11 bg-slate-50 border-slate-200 focus:bg-white" value={newTrip.title} onChange={e => setNewTrip({...newTrip, title: e.target.value})} placeholder={isEn ? "e.g., Cappadocia Wonders" : "Ex: Merveilles de la Cappadoce"} />
               </div>
               <div>
-                <label className="text-sm font-bold text-slate-700 mb-1.5 block">Destination</label>
-                <Input className="h-11 bg-slate-50 border-slate-200 focus:bg-white" value={newTrip.destination} onChange={e => setNewTrip({...newTrip, destination: e.target.value})} placeholder="Ex: Turquie" />
+                <label className="text-sm font-bold text-slate-700 mb-1.5 block">
+                  {isEn ? "Destination" : "Destination"}
+                </label>
+                <Input className="h-11 bg-slate-50 border-slate-200 focus:bg-white" value={newTrip.destination} onChange={e => setNewTrip({...newTrip, destination: e.target.value})} placeholder={isEn ? "e.g., Turkey" : "Ex: Turquie"} />
               </div>
               
               <div>
-                <label className="text-sm font-bold text-slate-700 mb-1.5 block">Photo d'illustration</label>
+                <label className="text-sm font-bold text-slate-700 mb-1.5 block">
+                  {isEn ? "Cover Photo" : "Photo d'illustration"}
+                </label>
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     <Input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                    <Button type="button" variant="outline" className="h-11 bg-slate-50 border-slate-200">Choisir une image</Button>
+                    <Button type="button" variant="outline" className="h-11 bg-slate-50 border-slate-200">
+                      {isEn ? "Choose Image" : "Choisir une image"}
+                    </Button>
                   </div>
                   {newTrip.photoUrl && newTrip.photoUrl.startsWith('data:') && (
                     <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 border border-slate-200 shadow-sm">
@@ -157,66 +186,88 @@ export default function OrganizedTripsManagement() {
 
               <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-sm font-bold text-slate-700 mb-1.5 block">Date de départ</label>
+                  <label className="text-sm font-bold text-slate-700 mb-1.5 block">
+                    {isEn ? "Departure Date" : "Date de départ"}
+                  </label>
                   <Input type="date" className="h-11 bg-white" value={newTrip.startDate} onChange={e => setNewTrip({...newTrip, startDate: e.target.value})} />
                 </div>
                 <div>
-                  <label className="text-sm font-bold text-slate-700 mb-1.5 block">Date de retour</label>
+                  <label className="text-sm font-bold text-slate-700 mb-1.5 block">
+                    {isEn ? "Return Date" : "Date de retour"}
+                  </label>
                   <Input type="date" className="h-11 bg-white" value={newTrip.endDate} onChange={e => setNewTrip({...newTrip, endDate: e.target.value})} />
                 </div>
                 <div>
-                  <label className="text-sm font-bold text-slate-700 mb-1.5 block">Nombre de places</label>
+                  <label className="text-sm font-bold text-slate-700 mb-1.5 block">
+                    {isEn ? "Total Seats" : "Nombre de places"}
+                  </label>
                   <Input type="number" min="1" className="h-11 bg-white font-bold" value={newTrip.totalSeats} onChange={e => setNewTrip({...newTrip, totalSeats: Number(e.target.value)})} />
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-bold text-slate-700 mb-1.5 block">Prix net B2B (DZD)</label>
+                <label className="text-sm font-bold text-slate-700 mb-1.5 block">
+                  {isEn ? "Net B2B Price (DZD)" : "Prix net B2B (DZD)"}
+                </label>
                 <Input type="number" min="0" className="h-11 bg-slate-50 border-slate-200 font-bold text-emerald-600 focus:bg-white" value={newTrip.price} onChange={e => setNewTrip({...newTrip, price: Number(e.target.value)})} />
               </div>
 
               <div>
-                <label className="text-sm font-bold text-slate-700 mb-1.5 block">Statut initial</label>
+                <label className="text-sm font-bold text-slate-700 mb-1.5 block">
+                  {isEn ? "Initial Status" : "Statut initial"}
+                </label>
                 <Select value={newTrip.status} onValueChange={(val) => setNewTrip({...newTrip, status: val})}>
-                  <SelectTrigger className="h-11 bg-slate-50 border-slate-200 focus:bg-white"><SelectValue/></SelectTrigger>
+                  <SelectTrigger className="h-11 bg-slate-50 border-slate-200">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Actif (Visible par les agences)</SelectItem>
-                    <SelectItem value="draft">Brouillon (Caché)</SelectItem>
-                    <SelectItem value="completed">Terminé</SelectItem>
+                    <SelectItem value="active">{isEn ? "Active / Published" : "Actif (Publié)"}</SelectItem>
+                    <SelectItem value="draft">{isEn ? "Draft" : "Brouillon"}</SelectItem>
+                    <SelectItem value="completed">{isEn ? "Completed" : "Terminé"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="md:col-span-2">
-                <label className="text-sm font-bold text-slate-700 mb-1.5 block">Programme détaillé</label>
-                <Textarea className="min-h-[120px] bg-slate-50 border-slate-200 focus:bg-white leading-relaxed" value={newTrip.description} onChange={e => setNewTrip({...newTrip, description: e.target.value})} placeholder="Jour 1: Arrivée et transfert...&#10;Jour 2: Visite de la ville..." />
+                <label className="text-sm font-bold text-slate-700 mb-1.5 block">
+                  {isEn ? "Full Description & Program" : "Description détaillée du séjour"}
+                </label>
+                <Textarea className="bg-slate-50 border-slate-200 focus:bg-white" rows={4} value={newTrip.description} onChange={e => setNewTrip({...newTrip, description: e.target.value})} placeholder={isEn ? "Detailed daily program, included hotels, flights..." : "Programme détaillé jour par jour, hôtels inclus, vols..."} />
               </div>
+            </div>
             
-
+            <div className="flex justify-end gap-3 mt-4 pt-3 border-t border-slate-100">
+              <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>
+                {isEn ? "Cancel" : "Annuler"}
+              </Button>
+              <Button type="button" className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold" onClick={handleSaveTrip}>
+                {editingTripId ? (isEn ? "Save Changes" : "Enregistrer") : (isEn ? "Publish Offer" : "Publier l'offre")}
+              </Button>
             </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-4 border-t pt-4">
-              <Button variant="outline" onClick={() => setIsAddOpen(false)}>Annuler</Button>
-              <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleSaveTrip}>{editingTripId ? "Enregistrer" : "Créer l'offre"}</Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="flex gap-4 items-center bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-          <Input className="pl-9" placeholder="Rechercher par titre ou destination..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full sm:w-80">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Input 
+            placeholder={isEn ? "Search by title, destination..." : "Rechercher par titre, destination..."} 
+            className="pl-9 bg-white" 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Statut" />
+          <SelectTrigger className="w-full sm:w-48 bg-white">
+            <SelectValue placeholder={isEn ? "All Statuses" : "Tous les statuts"} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tous les statuts</SelectItem>
-            <SelectItem value="active">Actifs</SelectItem>
-            <SelectItem value="draft">Brouillons</SelectItem>
-            <SelectItem value="completed">Terminés</SelectItem>
+            <SelectItem value="all">{isEn ? "All Statuses" : "Tous les statuts"}</SelectItem>
+            <SelectItem value="active">{isEn ? "Active" : "Actifs"}</SelectItem>
+            <SelectItem value="draft">{isEn ? "Drafts" : "Brouillons"}</SelectItem>
+            <SelectItem value="completed">{isEn ? "Completed" : "Terminés"}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -239,11 +290,15 @@ export default function OrganizedTripsManagement() {
                 )}
                                 <div className="absolute top-3 left-3 flex gap-2">
                   <Badge className={trip.status === 'active' ? 'bg-green-500' : trip.status === 'draft' ? 'bg-slate-500' : 'bg-blue-500'}>
-                    {trip.status === 'active' ? 'Publié' : trip.status === 'draft' ? 'Brouillon' : 'Terminé'}
+                    {trip.status === 'active' 
+                      ? (isEn ? 'Published' : 'Publié') 
+                      : trip.status === 'draft' 
+                        ? (isEn ? 'Draft' : 'Brouillon') 
+                        : (isEn ? 'Completed' : 'Terminé')}
                   </Badge>
                   {trip.featured && (
                     <Badge className="bg-amber-500 text-white border-none shadow-md shadow-amber-500/20 px-2 py-0.5 flex items-center gap-1">
-                      <Star className="w-3 h-3 fill-current" /> À la une
+                      <Star className="w-3 h-3 fill-current" /> {isEn ? "Featured" : "À la une"}
                     </Badge>
                   )}
                 </div>
@@ -269,7 +324,7 @@ export default function OrganizedTripsManagement() {
                     size="icon" 
                     className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm text-slate-600 hover:bg-red-50 hover:text-red-600 shadow-sm"
                     onClick={(e) => {
-                      if(window.confirm('Voulez-vous vraiment supprimer ce voyage ?')) deleteOrganizedTrip(trip.id);
+                      if(window.confirm(isEn ? 'Do you really want to delete this trip?' : 'Voulez-vous vraiment supprimer ce voyage ?')) deleteOrganizedTrip(trip.id);
                     }}
                   >
                     <Trash2 className="w-4 h-4" />
@@ -286,7 +341,7 @@ export default function OrganizedTripsManagement() {
                 <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-sm text-slate-600 mb-4">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-blue-500" />
-                    <span>{new Date(trip.startDate).toLocaleDateString('fr-FR')}</span>
+                    <span>{new Date(trip.startDate).toLocaleDateString(isEn ? 'en-US' : 'fr-FR')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-emerald-500" />
@@ -296,7 +351,7 @@ export default function OrganizedTripsManagement() {
                     <Users className="w-4 h-4 text-purple-500" />
                     <div className="flex-1">
                       <div className="flex justify-between text-xs mb-1">
-                        <span>Places occupées</span>
+                        <span>{isEn ? "Booked seats" : "Places occupées"}</span>
                         <span className="font-medium text-slate-800">{totalReserved} / {trip.totalSeats}</span>
                       </div>
                       <div className="w-full bg-slate-100 rounded-full h-1.5">
@@ -310,9 +365,9 @@ export default function OrganizedTripsManagement() {
                 </div>
 
                 <div className="mt-auto flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => { setSelectedTrip(trip); setIsReservationsOpen(true); }}>
+                  <Button variant="outline" className="flex-1 font-bold text-xs" onClick={() => { setSelectedTrip(trip); setIsReservationsOpen(true); }}>
                     <Users className="w-4 h-4 mr-2" />
-                    Réservations ({tripRes.length})
+                    {isEn ? "Bookings" : "Réservations"} ({tripRes.length})
                   </Button>
                   <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => deleteOrganizedTrip(trip.id)}>
                     <Trash2 className="w-4 h-4" />
@@ -326,8 +381,12 @@ export default function OrganizedTripsManagement() {
       {filteredTrips.length === 0 && (
         <div className="text-center py-12 bg-white rounded-xl border border-slate-100">
           <MapPin className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="text-lg font-medium text-slate-800">Aucun voyage organisé</h3>
-          <p className="text-slate-500">Ajoutez des voyages organisés pour permettre aux agences de réserver.</p>
+          <h3 className="text-lg font-medium text-slate-800">
+            {isEn ? "No organized trips found" : "Aucun voyage organisé"}
+          </h3>
+          <p className="text-slate-500 text-sm mt-1">
+            {isEn ? "Publish your first trip package above" : "Publiez votre première offre de voyage ci-dessus"}
+          </p>
         </div>
       )}
 

@@ -9,8 +9,12 @@ import {
   FileCheck, Eye, X, User, ShieldCheck, Loader2
 } from "lucide-react";
 import { uploadFileToServer, downloadFileSafe, resolveAttachmentData } from "../../src/utils/fileUpload";
+import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export function AgencyApplications() {
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
+
   const { applications, updateApplication, addApplicationTimelineEntry } = useAppStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("ALL");
@@ -20,18 +24,18 @@ export function AgencyApplications() {
   
   // Action Required Upload State
   const [isUploadingMissingDoc, setIsUploadingMissingDoc] = useState(false);
-  const [missingDocCategory, setMissingDocCategory] = useState("Complément de dossier");
+  const [missingDocCategory, setMissingDocCategory] = useState(isEn ? "Additional Supporting Document" : "Complément de dossier");
   const missingDocInputRef = useRef<HTMLInputElement>(null);
 
   const selectedApp = applications.find(a => a.id === selectedAppId);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "Approved": return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200 font-bold"><CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Approuvée</Badge>;
-      case "Rejected": return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-red-200 font-bold"><XCircle className="w-3.5 h-3.5 mr-1" /> Rejetée</Badge>;
-      case "Processing": return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 font-bold"><Clock className="w-3.5 h-3.5 mr-1" /> En traitement</Badge>;
-      case "ActionRequired": return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 font-bold"><AlertCircle className="w-3.5 h-3.5 mr-1 animate-pulse" /> Action Requise</Badge>;
-      default: return <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 border-slate-200 font-bold"><Clock className="w-3.5 h-3.5 mr-1" /> En attente</Badge>;
+      case "Approved": return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200 font-bold"><CheckCircle2 className="w-3.5 h-3.5 mr-1" /> {isEn ? "Approved" : "Approuvée"}</Badge>;
+      case "Rejected": return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-red-200 font-bold"><XCircle className="w-3.5 h-3.5 mr-1" /> {isEn ? "Rejected" : "Rejetée"}</Badge>;
+      case "Processing": return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 font-bold"><Clock className="w-3.5 h-3.5 mr-1" /> {isEn ? "Processing" : "En traitement"}</Badge>;
+      case "ActionRequired": return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 font-bold"><AlertCircle className="w-3.5 h-3.5 mr-1 animate-pulse" /> {isEn ? "Action Required" : "Action Requise"}</Badge>;
+      default: return <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 border-slate-200 font-bold"><Clock className="w-3.5 h-3.5 mr-1" /> {isEn ? "Pending" : "En attente"}</Badge>;
     }
   };
 
@@ -520,16 +524,16 @@ export function AgencyApplications() {
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
-            Suivi des Dossiers & Visas
+            {t("applications.title")}
           </h1>
-          <p className="text-slate-500 font-medium">Gérez vos demandes B2B, consultez les documents et téléchargez vos visas délivrés.</p>
+          <p className="text-slate-500 font-medium">{t("applications.subtitle")}</p>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <div className="relative">
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input 
-              placeholder="Rechercher voyageur, passeport..." 
+              placeholder={isEn ? "Search traveler, passport..." : "Rechercher voyageur, passeport..."} 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 w-full sm:w-64 bg-slate-50 border-slate-200 rounded-xl text-xs"
@@ -549,7 +553,17 @@ export function AgencyApplications() {
                 : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}
           >
-            {status === 'ALL' ? 'Tous les dossiers' : status === 'ActionRequired' ? 'Action Requise' : status === 'Processing' ? 'En cours' : status === 'Approved' ? 'Approuvés' : status === 'Pending' ? 'En attente' : 'Rejetés'}
+            {status === 'ALL' 
+              ? (isEn ? 'All Applications' : 'Tous les dossiers')
+              : status === 'ActionRequired' 
+              ? (isEn ? 'Action Required' : 'Action Requise')
+              : status === 'Processing' 
+              ? (isEn ? 'In Progress' : 'En cours')
+              : status === 'Approved' 
+              ? (isEn ? 'Approved' : 'Approuvés')
+              : status === 'Pending' 
+              ? (isEn ? 'Pending' : 'En attente')
+              : (isEn ? 'Rejected' : 'Rejetés')}
           </button>
         ))}
       </div>
@@ -557,8 +571,8 @@ export function AgencyApplications() {
       {filteredApps.length === 0 ? (
         <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center text-slate-500">
           <FileText className="w-12 h-12 mx-auto mb-4 text-slate-300" />
-          <h3 className="text-lg font-black text-slate-800">Aucun dossier trouvé</h3>
-          <p className="text-xs text-slate-500 mt-1">Aucune demande ne correspond à vos critères de recherche actuels.</p>
+          <h3 className="text-lg font-black text-slate-800">{isEn ? "No applications found" : "Aucun dossier trouvé"}</h3>
+          <p className="text-xs text-slate-500 mt-1">{isEn ? "No applications match your current search criteria." : "Aucune demande ne correspond à vos critères de recherche actuels."}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

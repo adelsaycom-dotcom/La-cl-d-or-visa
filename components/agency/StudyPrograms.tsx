@@ -4,10 +4,14 @@ import { Search, MapPin, FileText, ChevronRight, GraduationCap, UploadCloud, Che
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Dialog, DialogContent } from '../ui/dialog';
 import { auth } from '../../src/firebase';
+import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export default function StudyPrograms() {
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
+
   const { studyPrograms, addStudyApplication, agencyBalance } = useAppStore();
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -46,7 +50,7 @@ export default function StudyPrograms() {
     if (!selectedProgram) return;
     if (!formData.studentName || !formData.passportNumber) return;
     if (agencyBalance < selectedProgram.price) {
-      alert("Solde insuffisant pour cette opération.");
+      alert(isEn ? "Insufficient balance for this operation." : "Solde insuffisant pour cette opération.");
       return;
     }
 
@@ -56,7 +60,7 @@ export default function StudyPrograms() {
         programId: selectedProgram.id,
         programTitle: selectedProgram.title,
         agencyId: auth.currentUser?.uid || 'unknown',
-        agencyName: "Mon Agence", // Should be real agency name from context
+        agencyName: "Mon Agence",
         studentName: formData.studentName,
         passportNumber: formData.passportNumber,
         email: formData.email,
@@ -73,7 +77,7 @@ export default function StudyPrograms() {
         setDocuments({});
       }, 2000);
     } catch (error) {
-      alert("Une erreur est survenue.");
+      alert(isEn ? "An error occurred." : "Une erreur est survenue.");
     } finally {
       setIsSubmitting(false);
     }
@@ -83,14 +87,18 @@ export default function StudyPrograms() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Visa Études</h1>
-          <p className="text-slate-500 font-medium">Découvrez nos programmes d'admission universitaire et séjours linguistiques.</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            {isEn ? "Student Visa & University Admissions" : "Visa Études"}
+          </h1>
+          <p className="text-slate-500 font-medium">
+            {isEn ? "Explore higher education admissions, language stays, and student visa pathways." : "Découvrez nos programmes d'admission universitaire et séjours linguistiques."}
+          </p>
         </div>
         
         <div className="relative w-full sm:w-64">
           <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <Input 
-            placeholder="Rechercher (pays, uni...)" 
+            placeholder={isEn ? "Search (country, uni...)" : "Rechercher (pays, uni...)"} 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 bg-slate-50 border-slate-200 rounded-xl"
@@ -104,7 +112,7 @@ export default function StudyPrograms() {
             <div className="h-48 relative overflow-hidden">
               <img src={prog.image} alt={prog.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent"></div>
-              <Badge className="absolute top-4 right-4 bg-blue-600/90 text-white border-none font-bold shadow-sm backdrop-blur-sm">
+              <Badge className="absolute top-4 right-4 bg-[#7B1B38] text-white border-none font-bold shadow-sm backdrop-blur-sm">
                 {prog.type}
               </Badge>
               <div className="absolute bottom-4 left-4 right-4 text-white">
@@ -121,20 +129,22 @@ export default function StudyPrograms() {
               <div className="mt-auto space-y-4">
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                   <div className="flex items-center gap-2 text-slate-600 font-medium">
-                    <FileText className="w-4 h-4 text-blue-500" />
-                    <span className="text-sm">{prog.requiredDocuments?.length || 0} documents requis</span>
+                    <FileText className="w-4 h-4 text-[#7B1B38]" />
+                    <span className="text-sm">
+                      {prog.requiredDocuments?.length || 0} {isEn ? "required document(s)" : "documents requis"}
+                    </span>
                   </div>
                   <div className="font-black text-lg text-slate-900">{prog.price.toLocaleString()} DZD</div>
                 </div>
                 
                 <Button 
-                  className="w-full bg-slate-900 hover:bg-blue-600 text-white font-bold h-12 rounded-xl transition-colors group/btn"
+                  className="w-full bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold h-12 rounded-xl transition-colors group/btn shadow-md shadow-[#7B1B38]/20"
                   onClick={() => {
                     setSelectedProgram(prog);
                     setIsApplyOpen(true);
                   }}
                 >
-                  Déposer un dossier
+                  {isEn ? "Apply for Student Visa" : "Déposer un dossier"}
                   <ChevronRight className="w-4 h-4 ml-2 transition-transform group-hover/btn:translate-x-1" />
                 </Button>
               </div>
@@ -144,8 +154,12 @@ export default function StudyPrograms() {
         {filteredPrograms.length === 0 && (
           <div className="col-span-full py-16 text-center bg-white rounded-3xl border border-slate-200 shadow-sm">
             <GraduationCap className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-xl font-black text-slate-900 mb-2">Aucun programme disponible</h3>
-            <p className="text-slate-500 max-w-md mx-auto">Aucun programme d'études ne correspond à votre recherche ou aucun n'est actuellement ouvert.</p>
+            <h3 className="text-xl font-black text-slate-900 mb-2">
+              {isEn ? "No programs available" : "Aucun programme disponible"}
+            </h3>
+            <p className="text-slate-500 max-w-md mx-auto">
+              {isEn ? "No study program matches your search or is currently open." : "Aucun programme d'études ne correspond à votre recherche ou aucun n'est actuellement ouvert."}
+            </p>
           </div>
         )}
       </div>
@@ -157,9 +171,15 @@ export default function StudyPrograms() {
               <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
                 <CheckCircle2 className="w-12 h-12 text-emerald-600" />
               </div>
-              <h3 className="text-3xl font-black text-slate-900 mb-2">Dossier soumis avec succès !</h3>
-              <p className="text-slate-500 font-medium text-lg">L'administration va examiner les documents.</p>
-              <Button onClick={() => {setIsApplyOpen(false); setSuccess(false);}} className="mt-8 bg-slate-900 text-white hover:bg-slate-800 font-bold h-12 px-8 rounded-xl">Fermer</Button>
+              <h3 className="text-3xl font-black text-slate-900 mb-2">
+                {isEn ? "Application Submitted Successfully!" : "Dossier soumis avec succès !"}
+              </h3>
+              <p className="text-slate-500 font-medium text-lg">
+                {isEn ? "The administration will review the credentials and files." : "L'administration va examiner les documents."}
+              </p>
+              <Button onClick={() => {setIsApplyOpen(false); setSuccess(false);}} className="mt-8 bg-slate-900 text-white hover:bg-slate-800 font-bold h-12 px-8 rounded-xl">
+                {isEn ? "Close" : "Fermer"}
+              </Button>
             </div>
           ) : (
             selectedProgram && (
@@ -169,7 +189,7 @@ export default function StudyPrograms() {
                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex items-end p-6">
                       <div>
                         <h2 className="text-white font-black text-3xl mb-2">{selectedProgram.title}</h2>
-                        <p className="text-blue-100 flex items-center gap-2 font-medium text-lg"><MapPin className="w-5 h-5"/> {selectedProgram.university}, {selectedProgram.country}</p>
+                        <p className="text-rose-100 flex items-center gap-2 font-medium text-lg"><MapPin className="w-5 h-5"/> {selectedProgram.university}, {selectedProgram.country}</p>
                       </div>
                    </div>
                 </div>
@@ -178,30 +198,32 @@ export default function StudyPrograms() {
                   <div className="p-4 sm:p-6 md:p-8">
                     
                     <div className="mb-8">
-                      <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2"><GraduationCap className="w-5 h-5 text-blue-500"/> Détails du Programme</h3>
+                      <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2"><GraduationCap className="w-5 h-5 text-[#7B1B38]"/> {isEn ? "Program Details" : "Détails du Programme"}</h3>
                       <div className="bg-slate-50 rounded-xl p-5 border border-slate-100 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-                        {selectedProgram.description || "Aucune description fournie pour ce programme."}
+                        {selectedProgram.description || (isEn ? "No description provided." : "Aucune description fournie pour ce programme.")}
                       </div>
                     </div>
                     
                     <div className="border-t border-slate-100 pt-8 mt-8">
-                      <h3 className="font-black text-slate-800 mb-6 text-xl tracking-tight">1. Informations de l'étudiant</h3>
+                      <h3 className="font-black text-slate-800 mb-6 text-xl tracking-tight">
+                        {isEn ? "1. Student Details" : "1. Informations de l'étudiant"}
+                      </h3>
                       <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div className="md:col-span-2">
-                          <label className="text-sm font-bold text-slate-700 block mb-2">Nom complet de l'étudiant <span className="text-red-500">*</span></label>
-                          <Input className="h-12 bg-white border-slate-200" value={formData.studentName} onChange={e => setFormData({...formData, studentName: e.target.value})} placeholder="Ex: Jean Dupont" />
+                          <label className="text-sm font-bold text-slate-700 block mb-2">{isEn ? "Full Student Name" : "Nom complet de l'étudiant"} <span className="text-red-500">*</span></label>
+                          <Input className="h-12 bg-white border-slate-200" value={formData.studentName} onChange={e => setFormData({...formData, studentName: e.target.value})} placeholder={isEn ? "e.g., Karim Benali" : "Ex: Karim Benali"} />
                         </div>
                         <div>
-                          <label className="text-sm font-bold text-slate-700 block mb-2">Numéro de passeport <span className="text-red-500">*</span></label>
+                          <label className="text-sm font-bold text-slate-700 block mb-2">{isEn ? "Passport Number" : "Numéro de passeport"} <span className="text-red-500">*</span></label>
                           <Input className="h-12 bg-white border-slate-200" value={formData.passportNumber} onChange={e => setFormData({...formData, passportNumber: e.target.value})} placeholder="Ex: 123456789" />
                         </div>
                         <div>
-                          <label className="text-sm font-bold text-slate-700 block mb-2">Email de contact</label>
-                          <Input type="email" className="h-12 bg-white border-slate-200" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="Ex: jean@email.com" />
+                          <label className="text-sm font-bold text-slate-700 block mb-2">{isEn ? "Contact Email" : "Email de contact"}</label>
+                          <Input type="email" className="h-12 bg-white border-slate-200" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="etudiant@email.com" />
                         </div>
                         <div className="md:col-span-2">
-                          <label className="text-sm font-bold text-slate-700 block mb-2">Téléphone</label>
-                          <Input className="h-12 bg-white border-slate-200" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="Ex: +213..." />
+                          <label className="text-sm font-bold text-slate-700 block mb-2">{isEn ? "Phone Number" : "Téléphone"}</label>
+                          <Input className="h-12 bg-white border-slate-200" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="05 XX XX XX XX" />
                         </div>
                       </div>
                     </div>
@@ -209,9 +231,11 @@ export default function StudyPrograms() {
                     {selectedProgram.requiredDocuments && selectedProgram.requiredDocuments.length > 0 && (
                       <div className="border-t border-slate-100 pt-8 mt-8">
                         <div className="flex items-center justify-between mb-6">
-                          <h3 className="font-black text-slate-800 text-xl tracking-tight">2. Documents Requis</h3>
+                          <h3 className="font-black text-slate-800 text-xl tracking-tight">
+                            {isEn ? "2. Required Documents" : "2. Documents Requis"}
+                          </h3>
                           <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg">
-                            {Object.keys(documents).length} / {selectedProgram.requiredDocuments.length} fournis
+                            {Object.keys(documents).length} / {selectedProgram.requiredDocuments.length} {isEn ? "provided" : "fournis"}
                           </span>
                         </div>
                         
@@ -228,13 +252,15 @@ export default function StudyPrograms() {
                                     <div className={`font-bold ${isUploaded ? 'text-emerald-900' : 'text-slate-700'}`}>
                                       {doc} <span className="text-red-500">*</span>
                                     </div>
-                                    <div className="text-xs font-medium text-slate-400 mt-0.5">Format PDF ou Image</div>
+                                    <div className="text-xs font-medium text-slate-400 mt-0.5">
+                                      {isEn ? "PDF or Image format" : "Format PDF ou Image"}
+                                    </div>
                                   </div>
                                 </div>
                                 <div className="relative shrink-0 sm:w-auto w-full">
                                   <Input type="file" onChange={(e) => handleFileUpload(doc, e)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                                   <Button variant="outline" className={`w-full sm:w-auto h-11 font-bold ${isUploaded ? 'border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100' : 'border-slate-300 hover:bg-slate-50 text-slate-700'}`}>
-                                    <UploadCloud className="w-4 h-4 mr-2" /> {isUploaded ? 'Remplacer le fichier' : 'Téléverser'}
+                                    <UploadCloud className="w-4 h-4 mr-2" /> {isUploaded ? (isEn ? 'Replace file' : 'Remplacer le fichier') : (isEn ? 'Upload' : 'Téléverser')}
                                   </Button>
                                 </div>
                               </div>
@@ -245,46 +271,35 @@ export default function StudyPrograms() {
                     )}
                     
                     <div className="mt-8 pt-8 border-t border-slate-100">
-                      <div className="bg-blue-900 p-6 rounded-2xl mb-6 shadow-lg relative overflow-hidden">
+                      <div className="bg-slate-900 p-6 rounded-2xl mb-6 shadow-lg relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-8 opacity-10">
                           <GraduationCap className="w-32 h-32 text-white" />
                         </div>
                         <div className="relative z-10">
-                          <div className="flex justify-between items-center text-blue-100 mb-2">
-                            <span className="font-medium">Coût du dossier B2B</span>
+                          <div className="flex justify-between items-center text-slate-300 mb-2">
+                            <span className="font-medium">{isEn ? "B2B Dossier Fee" : "Coût du dossier B2B"}</span>
                             <span className="font-bold">{selectedProgram.price.toLocaleString()} DZD</span>
                           </div>
-                          <div className="border-t border-blue-700/50 pt-4 mt-2 flex justify-between items-end">
+                          <div className="border-t border-slate-800 pt-4 mt-2 flex justify-between items-end">
                             <div>
-                              <span className="text-blue-200 text-sm font-bold uppercase tracking-wider block mb-1">Total B2B (à payer)</span>
-                              <span className="text-xs text-blue-300">Aucun débit immédiat</span>
+                              <span className="text-rose-200 text-sm font-bold uppercase tracking-wider block mb-1">{isEn ? "Total B2B (Payable)" : "Total B2B (à payer)"}</span>
+                              <span className="text-xs text-slate-400">{isEn ? "No immediate deduction" : "Aucun débit immédiat"}</span>
                             </div>
                             <span className="font-black text-3xl text-white">{selectedProgram.price.toLocaleString()} DZD</span>
                           </div>
                         </div>
                       </div>
-                      {(!formData.studentName || !formData.passportNumber || ((selectedProgram.requiredDocuments?.length || 0) !== Object.keys(documents).length)) && (
-                        <div className="mb-4 bg-red-50 text-red-600 p-4 rounded-xl text-sm font-bold flex items-start gap-2 border border-red-100">
-                          <span className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center shrink-0">!</span>
-                          <div>
-                            Veuillez remplir les informations obligatoires pour continuer :
-                            <ul className="list-disc ml-5 mt-1 font-medium">
-                              {!formData.studentName && <li>Nom complet de l'étudiant</li>}
-                              {!formData.passportNumber && <li>Numéro de passeport</li>}
-                              {((selectedProgram.requiredDocuments?.length || 0) !== Object.keys(documents).length) && <li>Tous les documents requis ({Object.keys(documents).length}/{selectedProgram.requiredDocuments?.length})</li>}
-                            </ul>
-                          </div>
-                        </div>
-                      )}
                       
                       <Button 
                         onClick={handleApply} 
                         disabled={isSubmitting || !formData.studentName || !formData.passportNumber || ((selectedProgram.requiredDocuments?.length || 0) !== Object.keys(documents).length)}
-                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black h-14 rounded-xl text-lg shadow-emerald-500/20 shadow-lg transition-all hover:-translate-y-0.5 whitespace-normal leading-tight disabled:bg-slate-300 disabled:shadow-none disabled:transform-none"
+                        className="w-full bg-[#7B1B38] hover:bg-[#63142c] text-white font-black h-14 rounded-xl text-lg shadow-[#7B1B38]/25 shadow-lg transition-all hover:-translate-y-0.5 whitespace-normal leading-tight disabled:bg-slate-300 disabled:shadow-none disabled:transform-none"
                       >
-                        {isSubmitting ? 'Traitement en cours...' : 'Confirmer et soumettre le dossier'}
+                        {isSubmitting ? (isEn ? 'Processing...' : 'Traitement en cours...') : (isEn ? 'Confirm & Submit Application' : 'Confirmer et soumettre le dossier')}
                       </Button>
-                      <p className="text-xs text-slate-400 mt-4 text-center font-medium">Votre dossier sera étudié par l'administrateur. Vous serez notifié du statut.</p>
+                      <p className="text-xs text-slate-400 mt-4 text-center font-medium">
+                        {isEn ? "Your application will be verified by administration. You will receive real-time notifications." : "Votre dossier sera étudié par l'administrateur. Vous serez notifié du statut."}
+                      </p>
                     </div>
 
                   </div>

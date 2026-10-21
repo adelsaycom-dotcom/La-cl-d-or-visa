@@ -30,8 +30,11 @@ export interface AttachmentItem {
 }
 
 import { AGENCY_SERVICES, AgencyServiceConfig } from "../../src/constants/servicesConfig";
+import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export function VisaWizard() {
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
   const { services, addApplication, agencyBalance, b2cMode, setB2cMode, b2cMarginPercent } = useAppStore();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -400,13 +403,13 @@ export function VisaWizard() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
         <div className="relative z-10 max-w-2xl">
           <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider mb-3">
-            Catalogue B2B Multi-Services • La Clé d'Or
+            {isEn ? "B2B Multi-Service Catalog • La Clé d'Or" : "Catalogue B2B Multi-Services • La Clé d'Or"}
           </Badge>
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-2">
-            Que souhaitez-vous traiter aujourd'hui ?
+            {isEn ? "What service would you like to process today?" : "Que souhaitez-vous traiter aujourd'hui ?"}
           </h2>
           <p className="text-slate-500 font-medium">
-            Choisissez la famille de prestations consulaire ou administrative à initier pour votre client.
+            {isEn ? "Choose the consular or administrative procedure category to initiate for your traveler." : "Choisissez la famille de prestations consulaire ou administrative à initier pour votre client."}
           </p>
         </div>
 
@@ -417,7 +420,7 @@ export function VisaWizard() {
             onClick={() => setB2cMode(false)}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${!b2cMode ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
           >
-            Vue B2B (Solde)
+            {isEn ? "B2B Wholesale View" : "Vue B2B (Solde)"}
           </button>
           <button
             type="button"
@@ -425,7 +428,7 @@ export function VisaWizard() {
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${b2cMode ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-emerald-700'}`}
           >
             <Eye className="w-3.5 h-3.5" />
-            <span>Comptoir B2C (+{b2cMarginPercent}%)</span>
+            <span>{isEn ? `Client Desk View (+${b2cMarginPercent}%)` : `Comptoir B2C (+${b2cMarginPercent}%)`}</span>
           </button>
         </div>
       </div>
@@ -1392,9 +1395,9 @@ export function VisaWizard() {
             />
 
             {[
-              { num: 1, title: "Destination & Offre" },
-              { num: 2, title: "Passeport & Voyageur" },
-              { num: 3, title: "Pièces & Validation" }
+              { num: 1, title: isEn ? "Destination & Package" : "Destination & Offre" },
+              { num: 2, title: isEn ? "Passport & Traveler" : "Passeport & Voyageur" },
+              { num: 3, title: isEn ? "Documents & Payment" : "Pièces & Validation" }
             ].map(item => {
               const isPassed = step > item.num;
               const isCurrent = step === item.num;

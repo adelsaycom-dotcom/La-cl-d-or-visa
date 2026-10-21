@@ -73,8 +73,8 @@ export function LandingNav() {
           </div>
 
           {/* Mobile actions & hamburger button */}
-          <div className="flex sm:hidden items-center gap-2">
-            <LanguageSwitcher variant="outline" className="h-8 px-2 text-xs" />
+          <div className="flex sm:hidden items-center gap-1.5">
+            <LanguageSwitcher variant="outline" className="scale-90 origin-right" />
             <Link
               to="/login"
               className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-800 bg-slate-100 border border-slate-200"

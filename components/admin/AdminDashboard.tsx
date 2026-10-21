@@ -1,8 +1,12 @@
 import { Users, FileText, CheckCircle2, Clock, Map, TrendingUp, Wallet, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAppStore } from "../../src/store/useAppStore";
+import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export function AdminDashboard() {
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
+
   const { applications, agencies, transactions, rechargeRequests } = useAppStore();
   
   const today = new Date().toISOString().split("T")[0];
@@ -28,14 +32,18 @@ export function AdminDashboard() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-400"></span>
             </span>
-            <span>Console Centrale B2B • La Clé d'Or</span>
+            <span>{isEn ? "Central B2B Console • La Clé d'Or" : "Console Centrale B2B • La Clé d'Or"}</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-2">Tableau de bord central</h1>
-          <p className="text-slate-400 font-medium text-sm">Vue d'ensemble des métriques clés et pilotage de la plateforme.</p>
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-2">
+            {isEn ? "Central Dashboard" : "Tableau de bord central"}
+          </h1>
+          <p className="text-slate-400 font-medium text-sm">
+            {isEn ? "Overview of key metrics, live applications and partner agencies management." : "Vue d'ensemble des métriques clés et pilotage de la plateforme."}
+          </p>
         </div>
         <div className="relative z-10 flex gap-4 w-full md:w-auto">
           <Link to="/admin/applications" className="flex-1 md:flex-none bg-[#7B1B38] text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#63142c] transition-all shadow-md shadow-[#7B1B38]/30 hover:shadow-lg hover:-translate-y-0.5 text-sm">
-             Traiter les dossiers <ArrowRight className="w-4 h-4" />
+             {isEn ? "Process Applications" : "Traiter les dossiers"} <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </div>
@@ -44,55 +52,63 @@ export function AdminDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col group hover:border-[#7B1B38]/40 hover:shadow-md hover:shadow-[#7B1B38]/5 transition-all">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Demandes du jour</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              {isEn ? "Today's Applications" : "Demandes du jour"}
+            </span>
             <div className="w-10 h-10 rounded-full bg-[#7B1B38]/10 text-[#7B1B38] border border-[#7B1B38]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
               <FileText className="w-5 h-5" />
             </div>
           </div>
           <div className="text-4xl font-black text-slate-900">{appsToday}</div>
           <p className="text-xs text-emerald-600 font-bold flex items-center mt-4 pt-4 border-t border-slate-100">
-            <TrendingUp className="w-3.5 h-3.5 mr-1.5"/> Activité stable
+            <TrendingUp className="w-3.5 h-3.5 mr-1.5"/> {isEn ? "Stable activity" : "Activité stable"}
           </p>
         </div>
         
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col group hover:border-amber-300 hover:shadow-md transition-all relative overflow-hidden">
           {pendingApps > 0 && <div className="absolute top-0 right-0 w-3 h-3 bg-amber-500 rounded-full m-6 animate-pulse"></div>}
           <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Dossiers en attente</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              {isEn ? "Pending Applications" : "Dossiers en attente"}
+            </span>
             <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Clock className="w-5 h-5" />
             </div>
           </div>
           <div className="text-4xl font-black text-slate-900">{pendingApps}</div>
           <p className="text-xs text-amber-600 font-bold flex items-center mt-4 pt-4 border-t border-slate-100">
-            Dossiers à traiter urgemment
+            {isEn ? "Applications requiring review" : "Dossiers à traiter urgemment"}
           </p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col group hover:border-[#7B1B38]/40 hover:shadow-md hover:shadow-[#7B1B38]/5 transition-all">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Agences Actives</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              {isEn ? "Active Agencies" : "Agences Actives"}
+            </span>
             <div className="w-10 h-10 rounded-full bg-[#7B1B38]/10 text-[#7B1B38] border border-[#7B1B38]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Users className="w-5 h-5" />
             </div>
           </div>
           <div className="text-4xl font-black text-slate-900">{activeAgencies}</div>
           <p className="text-xs text-slate-500 font-bold flex items-center mt-4 pt-4 border-t border-slate-100">
-            Partenaires sur la plateforme
+            {isEn ? "Partners on platform" : "Partenaires sur la plateforme"}
           </p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col group hover:border-emerald-300 hover:shadow-md transition-all relative">
           {pendingRecharges > 0 && <div className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full m-6 animate-pulse"></div>}
           <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Volume Financier</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              {isEn ? "Financial Volume" : "Volume Financier"}
+            </span>
             <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Wallet className="w-5 h-5" />
             </div>
           </div>
           <div className="text-4xl font-black text-slate-900">{formattedVolume}</div>
           <p className="text-xs text-slate-500 font-bold flex items-center mt-4 pt-4 border-t border-slate-100">
-            DZD en flux total
+            {isEn ? "DZD in total transactions" : "DZD en flux total"}
           </p>
         </div>
       </div>
@@ -104,9 +120,11 @@ export function AdminDashboard() {
           <div className="flex items-center justify-between mb-8">
             <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
               <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
-              Activité Récente
+              {isEn ? "Recent Activity" : "Activité Récente"}
             </h3>
-            <Link to="/admin/applications" className="text-sm font-bold text-[#7B1B38] hover:text-[#63142c] hover:underline">Voir tout</Link>
+            <Link to="/admin/applications" className="text-sm font-bold text-[#7B1B38] hover:text-[#63142c] hover:underline">
+              {isEn ? "View all" : "Voir tout"}
+            </Link>
           </div>
           <div className="space-y-5">
             {applications.slice(0, 5).map(app => (
@@ -117,19 +135,24 @@ export function AdminDashboard() {
                     </div>
                   <div>
                     <div className="font-bold text-slate-900 text-sm">{app.agencyName.split('@')[0]}</div>
-                    <div className="text-xs font-medium text-slate-500 mt-0.5">Demande {app.serviceType} - {app.travelerName}</div>
+                    <div className="text-xs font-medium text-slate-500 mt-0.5">
+                      {isEn ? `Application ${app.serviceType} - ${app.travelerName}` : `Demande ${app.serviceType} - ${app.travelerName}`}
+                    </div>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className={`text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full ${app.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' : app.status === 'Processing' ? 'bg-[#7B1B38]/10 text-[#7B1B38] border border-[#7B1B38]/20' : app.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {app.status}
+                    {app.status === 'Approved' ? (isEn ? 'Approved' : 'Approuvé') :
+                     app.status === 'Processing' ? (isEn ? 'Processing' : 'En cours') :
+                     app.status === 'Rejected' ? (isEn ? 'Rejected' : 'Rejeté') :
+                     (isEn ? 'Pending' : 'En attente')}
                   </div>
                 </div>
               </div>
             ))}
             {applications.length === 0 && (
                <div className="text-center text-slate-500 font-medium py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                 Aucun dossier soumis récemment.
+                 {isEn ? "No applications submitted recently." : "Aucun dossier soumis récemment."}
                </div>
             )}
           </div>
@@ -140,7 +163,7 @@ export function AdminDashboard() {
            <div className="flex items-center justify-between mb-8">
             <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
               <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
-              Actions Requises
+              {isEn ? "Action Required" : "Actions Requises"}
             </h3>
           </div>
           <div className="space-y-4">
@@ -152,12 +175,14 @@ export function AdminDashboard() {
                      <Wallet className="w-6 h-6" />
                    </div>
                    <div>
-                     <div className="font-bold text-amber-900">Recharges de solde</div>
-                     <div className="text-sm font-medium text-amber-700/80">{pendingRecharges} demande(s) en attente de validation</div>
+                     <div className="font-bold text-amber-900">{isEn ? "Wallet Top-ups" : "Recharges de solde"}</div>
+                     <div className="text-sm font-medium text-amber-700/80">
+                       {pendingRecharges} {isEn ? "request(s) awaiting validation" : "demande(s) en attente de validation"}
+                     </div>
                    </div>
                 </div>
                 <Link to="/admin/finances" className="bg-amber-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-amber-700 transition-colors shadow-md shadow-amber-900/10">
-                  Gérer
+                  {isEn ? "Manage" : "Gérer"}
                 </Link>
              </div>
 
@@ -168,12 +193,14 @@ export function AdminDashboard() {
                      <Clock className="w-6 h-6" />
                    </div>
                    <div>
-                     <div className="font-bold text-slate-900">Dossiers en attente</div>
-                     <div className="text-sm font-medium text-slate-600">{pendingApps} nouveau(x) dossier(s) à traiter</div>
+                     <div className="font-bold text-slate-900">{isEn ? "Pending Applications" : "Dossiers en attente"}</div>
+                     <div className="text-sm font-medium text-slate-600">
+                       {pendingApps} {isEn ? "new application(s) to process" : "nouveau(x) dossier(s) à traiter"}
+                     </div>
                    </div>
                 </div>
                 <Link to="/admin/applications" className="bg-[#7B1B38] text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-[#63142c] transition-colors shadow-md shadow-[#7B1B38]/20">
-                  Traiter
+                  {isEn ? "Process" : "Traiter"}
                 </Link>
              </div>
 

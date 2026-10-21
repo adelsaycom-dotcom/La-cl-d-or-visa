@@ -9,8 +9,12 @@ import {
   MessageSquare, Download, Eye, X, FileCheck, Calendar, Phone, Mail, MapPin
 } from "lucide-react";
 import { uploadFileToServer, downloadFileSafe, resolveAttachmentData } from "../../src/utils/fileUpload";
+import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export function ApplicationManagement() {
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
+
   const { applications, updateApplication, addApplicationTimelineEntry } = useAppStore();
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -26,15 +30,15 @@ export function ApplicationManagement() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "Approved":
-        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 font-bold border-emerald-200 px-3 py-1"><CheckCircle className="w-3 h-3 mr-1" /> Approuvée</Badge>;
+        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 font-bold border-emerald-200 px-3 py-1"><CheckCircle className="w-3 h-3 mr-1" /> {isEn ? "Approved" : "Approuvée"}</Badge>;
       case "Rejected":
-        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 font-bold border-red-200 px-3 py-1"><XCircle className="w-3 h-3 mr-1" /> Rejetée</Badge>;
+        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 font-bold border-red-200 px-3 py-1"><XCircle className="w-3 h-3 mr-1" /> {isEn ? "Rejected" : "Rejetée"}</Badge>;
       case "Processing":
-        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 font-bold border-blue-200 px-3 py-1"><Clock className="w-3 h-3 mr-1" /> En traitement</Badge>;
+        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 font-bold border-blue-200 px-3 py-1"><Clock className="w-3 h-3 mr-1" /> {isEn ? "Processing" : "En traitement"}</Badge>;
       case "ActionRequired":
-        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 font-bold border-amber-200 px-3 py-1"><AlertCircle className="w-3 h-3 mr-1 animate-pulse" /> Action Requise</Badge>;
+        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 font-bold border-amber-200 px-3 py-1"><AlertCircle className="w-3 h-3 mr-1 animate-pulse" /> {isEn ? "Action Required" : "Action Requise"}</Badge>;
       default:
-        return <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 font-bold border-slate-200 px-3 py-1"><Info className="w-3 h-3 mr-1" /> En attente</Badge>;
+        return <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 font-bold border-slate-200 px-3 py-1"><Info className="w-3 h-3 mr-1" /> {isEn ? "Pending" : "En attente"}</Badge>;
     }
   };
 
@@ -231,9 +235,11 @@ export function ApplicationManagement() {
         <div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
-            Traitement des Dossiers
+            {isEn ? "Applications & Visa Operations" : "Traitement des Dossiers"}
           </h2>
-          <p className="text-slate-500 font-medium">Gérez les demandes de visa B2B et contrôlez les pièces jointes des agences.</p>
+          <p className="text-slate-500 font-medium">
+            {isEn ? "Manage B2B visa applications and audit agency supporting attachments." : "Gérez les demandes de visa B2B et contrôlez les pièces jointes des agences."}
+          </p>
         </div>
       </div>
 
@@ -244,7 +250,7 @@ export function ApplicationManagement() {
         <div className="lg:col-span-5 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-0">
           <div className="p-4 border-b border-slate-100 flex flex-col gap-3">
             <Input 
-              placeholder="Rechercher voyageur, passeport, agence..." 
+              placeholder={isEn ? "Search traveler, passport, agency..." : "Rechercher voyageur, passeport, agence..."} 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="bg-slate-50"
@@ -261,7 +267,12 @@ export function ApplicationManagement() {
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  {status === 'ALL' ? 'Tous les dossiers' : status === 'ActionRequired' ? 'Action Requise' : status === 'Processing' ? 'En traitement' : status === 'Approved' ? 'Approuvés' : status === 'Pending' ? 'En attente' : 'Rejetés'}
+                  {status === 'ALL' ? (isEn ? 'All Applications' : 'Tous les dossiers') : 
+                   status === 'ActionRequired' ? (isEn ? 'Action Required' : 'Action Requise') : 
+                   status === 'Processing' ? (isEn ? 'Processing' : 'En traitement') : 
+                   status === 'Approved' ? (isEn ? 'Approved' : 'Approuvés') : 
+                   status === 'Pending' ? (isEn ? 'Pending' : 'En attente') : 
+                   (isEn ? 'Rejected' : 'Rejetés')}
                 </button>
               ))}
             </div>

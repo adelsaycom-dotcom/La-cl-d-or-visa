@@ -12,8 +12,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAppStore, SupportTicketAttachment, Application } from "../../src/store/useAppStore";
 import { uploadFileToServer } from "../../src/utils/fileUpload";
+import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export function SupportManagement() {
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
+
   const { supportTickets: tickets, updateSupportTicket, applications } = useAppStore();
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   
@@ -130,13 +134,13 @@ export function SupportManagement() {
     switch (status) {
       case "OPEN":
       case "Ouvert": 
-        return <Badge className="bg-amber-100 text-amber-800 border-none font-bold">Nouveau</Badge>;
+        return <Badge className="bg-amber-100 text-amber-800 border-none font-bold">{isEn ? "New" : "Nouveau"}</Badge>;
       case "IN_PROGRESS":
       case "En cours": 
-        return <Badge className="bg-blue-100 text-blue-800 border-none font-bold">En cours</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 border-none font-bold">{isEn ? "In Progress" : "En cours"}</Badge>;
       case "RESOLVED":
       case "Résolu": 
-        return <Badge className="bg-emerald-100 text-emerald-800 border-none font-bold">Résolu</Badge>;
+        return <Badge className="bg-emerald-100 text-emerald-800 border-none font-bold">{isEn ? "Resolved" : "Résolu"}</Badge>;
       default: 
         return <Badge className="bg-slate-100 text-slate-800 border-none font-bold">{status}</Badge>;
     }
@@ -157,19 +161,21 @@ export function SupportManagement() {
           <div className="p-4 sm:p-5 border-b border-slate-200 bg-white space-y-3 shrink-0">
             <div>
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-black tracking-tight text-slate-900">Support Client B2B</h2>
+                <h2 className="text-xl font-black tracking-tight text-slate-900">{isEn ? "B2B Client Support" : "Support Client B2B"}</h2>
                 <Badge variant="outline" className="border-slate-300 text-slate-600 font-mono text-[10px]">
-                  {filteredTickets.length} ticket(s)
+                  {filteredTickets.length} {isEn ? "ticket(s)" : "ticket(s)"}
                 </Badge>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">Assistance technique et demandes consulaires des agences partenaires.</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {isEn ? "Technical assistance and consular requests from partner agencies." : "Assistance technique et demandes consulaires des agences partenaires."}
+              </p>
             </div>
 
             <div className="space-y-2">
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <Input 
-                  placeholder="Chercher agence, dossier, voyageur..." 
+                  placeholder={isEn ? "Search agency, file, traveler..." : "Chercher agence, dossier, voyageur..."} 
                   className="pl-9 bg-slate-50 border-slate-200 text-xs h-9 rounded-xl focus:bg-white" 
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -179,28 +185,28 @@ export function SupportManagement() {
               <div className="grid grid-cols-2 gap-2">
                 <Select value={filter} onValueChange={setFilter}>
                   <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-xs h-9 rounded-xl">
-                    <SelectValue placeholder="Tickets Actifs" />
+                    <SelectValue placeholder={isEn ? "Active Tickets" : "Tickets Actifs"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ACTIVE" className="text-xs">Tickets Actifs</SelectItem>
-                    <SelectItem value="ALL" className="text-xs">Tous les statuts</SelectItem>
-                    <SelectItem value="URGENT" className="text-xs font-bold text-red-600">Priorité Urgente</SelectItem>
-                    <SelectItem value="OPEN" className="text-xs">Nouveau (Ouvert)</SelectItem>
-                    <SelectItem value="IN_PROGRESS" className="text-xs">En cours</SelectItem>
-                    <SelectItem value="RESOLVED" className="text-xs">Résolus / Archivés</SelectItem>
+                    <SelectItem value="ACTIVE" className="text-xs">{isEn ? "Active Tickets" : "Tickets Actifs"}</SelectItem>
+                    <SelectItem value="ALL" className="text-xs">{isEn ? "All Statuses" : "Tous les statuts"}</SelectItem>
+                    <SelectItem value="URGENT" className="text-xs font-bold text-red-600">{isEn ? "Urgent Priority" : "Priorité Urgente"}</SelectItem>
+                    <SelectItem value="OPEN" className="text-xs">{isEn ? "New (Open)" : "Nouveau (Ouvert)"}</SelectItem>
+                    <SelectItem value="IN_PROGRESS" className="text-xs">{isEn ? "In Progress" : "En cours"}</SelectItem>
+                    <SelectItem value="RESOLVED" className="text-xs">{isEn ? "Resolved / Archived" : "Résolus / Archivés"}</SelectItem>
                   </SelectContent>
                 </Select>
 
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                   <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-xs h-9 rounded-xl">
-                    <SelectValue placeholder="Toutes catégories" />
+                    <SelectValue placeholder={isEn ? "All Categories" : "Toutes catégories"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ALL" className="text-xs">Toutes catégories</SelectItem>
-                    <SelectItem value="Dossier & Démarche" className="text-xs">Dossier consulaire</SelectItem>
-                    <SelectItem value="Délai de traitement anormal" className="text-xs">Délai anormal</SelectItem>
-                    <SelectItem value="Paiement, Solde & Facturation" className="text-xs">Paiement / Solde</SelectItem>
-                    <SelectItem value="Modification voyageur / Document erroné" className="text-xs">Correction données</SelectItem>
+                    <SelectItem value="ALL" className="text-xs">{isEn ? "All categories" : "Toutes catégories"}</SelectItem>
+                    <SelectItem value="Dossier & Démarche" className="text-xs">{isEn ? "Consular Dossier" : "Dossier consulaire"}</SelectItem>
+                    <SelectItem value="Délai de traitement anormal" className="text-xs">{isEn ? "Abnormal Delay" : "Délai anormal"}</SelectItem>
+                    <SelectItem value="Paiement, Solde & Facturation" className="text-xs">{isEn ? "Payment / Balance" : "Paiement / Solde"}</SelectItem>
+                    <SelectItem value="Modification voyageur / Document erroné" className="text-xs">{isEn ? "Data Correction" : "Correction données"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -344,7 +350,7 @@ export function SupportManagement() {
                             onClick={() => updateStatus("IN_PROGRESS")}
                             className="h-8 text-xs font-bold border-blue-200 text-blue-700 hover:bg-blue-50 rounded-lg"
                           >
-                            Prendre en charge
+                            {isEn ? "Take in Charge" : "Prendre en charge"}
                           </Button>
                         )}
                         <Button 
@@ -352,7 +358,7 @@ export function SupportManagement() {
                           onClick={() => updateStatus("RESOLVED")}
                           className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1 shadow-xs"
                         >
-                          <CheckCircle className="w-3.5 h-3.5" /> Clôturer / Résolu
+                          <CheckCircle className="w-3.5 h-3.5" /> {isEn ? "Close / Resolved" : "Clôturer / Résolu"}
                         </Button>
                       </>
                     ) : (
@@ -362,7 +368,7 @@ export function SupportManagement() {
                         onClick={() => updateStatus("IN_PROGRESS")}
                         className="h-8 text-xs font-bold border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg flex items-center gap-1"
                       >
-                        <RotateCcw className="w-3.5 h-3.5" /> Rouvrir
+                        <RotateCcw className="w-3.5 h-3.5" /> {isEn ? "Reopen" : "Rouvrir"}
                       </Button>
                     )}
                   </div>

@@ -5,18 +5,18 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { Link, useNavigate } from "react-router-dom";
 import { 
   ArrowRight, 
-  ArrowLeft,
+  ArrowLeft, 
   ShieldCheck, 
-  Zap,
+  Zap, 
   Headphones, 
   Eye, 
   EyeOff, 
   CheckCircle2, 
   AlertCircle, 
   Mail, 
-  KeyRound,
-  Plane,
-  Lock
+  KeyRound, 
+  Plane, 
+  Lock 
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useLanguage } from "../../src/i18n/LanguageContext";
@@ -34,18 +34,19 @@ interface MapHub {
 
 const HUBS: MapHub[] = [
   { id: "paris", name: "Hub Paris (CDG)", top: "35%", left: "48%", speed: "24-48h", approval: "99.4%", delay: "0.1s" },
-  { id: "london", name: "Hub Londres", top: "32%", left: "46%", speed: "48h", approval: "99.2%", delay: "0.2s" },
-  { id: "dubai", name: "Hub Dubaï (DXB)", top: "45%", left: "59%", speed: "24h Express", approval: "99.8%", delay: "0.3s" },
+  { id: "london", name: "Hub London", top: "32%", left: "46%", speed: "48h", approval: "99.2%", delay: "0.2s" },
+  { id: "dubai", name: "Hub Dubai (DXB)", top: "45%", left: "59%", speed: "24h Express", approval: "99.8%", delay: "0.3s" },
   { id: "delhi", name: "Hub New Delhi", top: "47%", left: "67%", speed: "48-72h", approval: "99.3%", delay: "0.4s" },
-  { id: "singapore", name: "Hub Singapour", top: "57%", left: "75%", speed: "24-48h", approval: "99.7%", delay: "0.5s" },
-  { id: "beijing", name: "Hub Pékin", top: "39%", left: "73%", speed: "72h", approval: "99.1%", delay: "0.6s" },
-  { id: "sydney", name: "Hub Sydney", top: "67%", left: "83%", speed: "4-5 jours", approval: "98.9%", delay: "0.7s" },
-  { id: "newyork", name: "Hub New York (JFK)", top: "37%", left: "27%", speed: "3-5 jours", approval: "98.6%", delay: "0.8s" },
+  { id: "singapore", name: "Hub Singapore", top: "57%", left: "75%", speed: "24-48h", approval: "99.7%", delay: "0.5s" },
+  { id: "beijing", name: "Hub Beijing", top: "39%", left: "73%", speed: "72h", approval: "99.1%", delay: "0.6s" },
+  { id: "sydney", name: "Hub Sydney", top: "67%", left: "83%", speed: "4-5 days", approval: "98.9%", delay: "0.7s" },
+  { id: "newyork", name: "Hub New York (JFK)", top: "37%", left: "27%", speed: "3-5 days", approval: "98.6%", delay: "0.8s" },
   { id: "dakar", name: "Hub Dakar / Abidjan", top: "50%", left: "43%", speed: "48h", approval: "99.0%", delay: "0.9s" },
 ];
 
 export function Login() {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
   const navigate = useNavigate();
   const [email, setEmail] = useState("");  
   const [password, setPassword] = useState("");
@@ -85,10 +86,10 @@ export function Login() {
         } else {
           const status = userDoc.data().status;
           if (status === "PENDING") {
-            setErrorMessage("Votre compte est en attente de validation par l'administrateur.");
+            setErrorMessage(isEn ? "Your account is awaiting approval by the administrator." : "Votre compte est en attente de validation par l'administrateur.");
             auth.signOut();
           } else if (status === "SUSPENDED") {
-            setErrorMessage("Votre compte a été suspendu. Veuillez contacter le support.");
+            setErrorMessage(isEn ? "Your account has been suspended. Please contact support." : "Votre compte a été suspendu. Veuillez contacter le support.");
             auth.signOut();
           } else {
             navigate("/agency");
@@ -100,24 +101,22 @@ export function Login() {
           id: userCred.user.uid,
           email: userCred.user.email,
           role: "admin",
-          status: "APPROVED",
-          agencyName: "Administration La Clé D'or",
-          contactName: "Administrateur",
-          balance: 0,
+          status: "ACTIVE",
           createdAt: new Date().toISOString()
-        });
+        }, { merge: true });
         navigate("/admin");
       } else {
-        setErrorMessage("Utilisateur introuvable dans la base de données.");
+        // Normal agency fallback
+        navigate("/agency");
       }
     } catch (err: any) {
-      console.error("Login error:", err);
-      if (err.code === "auth/invalid-credential" || err.code === "auth/wrong-password" || err.code === "auth/user-not-found") {
-        setErrorMessage("Identifiants incorrects. Veuillez vérifier l'adresse email et le mot de passe.");
+      console.error("Erreur de connexion:", err);
+      if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
+        setErrorMessage(isEn ? "Incorrect email or password. Please verify and try again." : "Identifiants incorrects. Veuillez vérifier votre e-mail et mot de passe.");
       } else if (err.code === "auth/too-many-requests") {
-        setErrorMessage("Trop de tentatives infructueuses. Veuillez patienter quelques instants.");
+        setErrorMessage(isEn ? "Too many attempts. Account temporarily locked for security." : "Trop de tentatives infructueuses. Veuillez patienter avant de réessayer.");
       } else {
-        setErrorMessage(err.message || "Une erreur est survenue lors de la connexion.");
+        setErrorMessage(err.message || (isEn ? "Login failed. Please check your connection." : "Une erreur est survenue lors de la connexion."));
       }
     } finally {
       setIsLoading(false);
@@ -126,21 +125,21 @@ export function Login() {
 
   const handleSendResetEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resetEmail.trim()) return;
+    if (!resetEmail.trim()) {
+      setResetError(isEn ? "Please enter your professional email address." : "Veuillez saisir votre adresse email professionnelle.");
+      return;
+    }
     setResetLoading(true);
     setResetError("");
-    setResetSuccess(false);
     try {
       await sendPasswordResetEmail(auth, resetEmail.trim());
       setResetSuccess(true);
     } catch (err: any) {
-      console.error("Password reset error:", err);
+      console.error("Erreur réinitialisation mot de passe:", err);
       if (err.code === "auth/user-not-found") {
-        setResetError("Aucun compte n'est associé à cette adresse email.");
-      } else if (err.code === "auth/invalid-email") {
-        setResetError("L'adresse email saisie n'est pas valide.");
+        setResetError(isEn ? "No account matches this email address." : "Aucun compte n'est associé à cette adresse e-mail.");
       } else {
-        setResetError("Erreur lors de l'envoi du lien: " + (err.message || String(err)));
+        setResetError(isEn ? "Unable to send reset email. Please try again." : "Erreur lors de l'envoi de l'e-mail. Veuillez réessayer.");
       }
     } finally {
       setResetLoading(false);
@@ -148,33 +147,25 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col lg:grid lg:grid-cols-12 bg-slate-50 font-sans selection:bg-[#7B1B38] selection:text-white">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 grid grid-cols-1 lg:grid-cols-12 overflow-x-hidden selection:bg-[#7B1B38]/20 selection:text-[#7B1B38]">
+      
       {/* ========================================================
-          LEFT COLUMN: Brand Showcase, Stats & Interactive Map (7 cols)
+          LEFT COLUMN: Brand, World Map & Global Network (7 cols)
           ======================================================== */}
-      <div className="lg:col-span-7 bg-[#f1f4f8] p-6 sm:p-10 lg:p-14 flex flex-col justify-between relative overflow-hidden min-h-[520px] lg:min-h-screen border-b lg:border-b-0 lg:border-r border-slate-200">
+      <div className="lg:col-span-7 bg-gradient-to-br from-slate-100 via-white to-slate-100 p-6 sm:p-10 lg:p-14 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-200 relative overflow-hidden">
         
-        {/* Subtle dot grid pattern background */}
-        <div 
-          className="absolute inset-0 pointer-events-none opacity-60" 
-          style={{
-            backgroundImage: "radial-gradient(rgba(15, 23, 42, 0.08) 1.2px, transparent 1.2px)",
-            backgroundSize: "24px 24px"
-          }}
-        />
-
-        {/* Top: Brand Logo */}
+        {/* Top: Brand Logo & Back Link */}
         <div className="relative z-20 flex items-center justify-between">
-          <Link to="/" className="inline-block transition-transform duration-300 hover:scale-105">
+          <Link to="/" className="flex items-center gap-3">
             <Logo />
           </Link>
 
-          <Link 
-            to="/" 
-            className="lg:hidden inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-[#7B1B38] transition-colors"
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-[#7B1B38] bg-white/80 backdrop-blur-sm border border-slate-200 px-3.5 py-1.5 rounded-full transition-all shadow-xs"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Accueil</span>
+            <span>{isEn ? "Home" : "Accueil"}</span>
           </Link>
         </div>
 
@@ -182,11 +173,11 @@ export function Login() {
         <div className="relative z-20 my-auto py-8 max-w-xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B1B38]/10 text-[#7B1B38] text-xs font-bold tracking-wide uppercase mb-5 border border-[#7B1B38]/20">
             <ShieldCheck className="w-3.5 h-3.5" />
-            Portail Partenaire Agréé B2B
+            <span>{isEn ? "Accredited B2B Partner Portal" : "Portail Partenaire Agréé B2B"}</span>
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 leading-[1.15] tracking-tight mb-8">
-            Votre partenaire de confiance en traitement de visas{" "}
+            {isEn ? "Your Trusted Partner for Wholesale Visa Operations" : "Votre partenaire de confiance en traitement de visas"}{" "}
             <span className="text-[#7B1B38] underline decoration-[#7B1B38]/30 underline-offset-4">B2B</span>
           </h1>
 
@@ -196,24 +187,36 @@ export function Login() {
               <div className="w-9 h-9 rounded-lg bg-[#7B1B38]/10 flex items-center justify-center text-[#7B1B38] mb-2.5 group-hover:scale-110 transition-transform">
                 <Zap className="w-5 h-5" />
               </div>
-              <div className="font-bold text-slate-900 text-sm">Traitement Express</div>
-              <div className="text-xs text-slate-500 font-medium">Délais 24h à 72h</div>
+              <div className="font-bold text-slate-900 text-sm">
+                {isEn ? "Express Intake" : "Traitement Express"}
+              </div>
+              <div className="text-xs text-slate-500 font-medium">
+                {isEn ? "24h to 72h turnaround" : "Délais 24h à 72h"}
+              </div>
             </div>
 
             <div className="bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 group">
               <div className="w-9 h-9 rounded-lg bg-[#7B1B38]/10 flex items-center justify-center text-[#7B1B38] mb-2.5 group-hover:scale-110 transition-transform">
                 <Headphones className="w-5 h-5" />
               </div>
-              <div className="font-bold text-slate-900 text-sm">Support Dédié</div>
-              <div className="text-xs text-slate-500 font-medium">Experts 24/7</div>
+              <div className="font-bold text-slate-900 text-sm">
+                {isEn ? "Dedicated Support" : "Support Dédié"}
+              </div>
+              <div className="text-xs text-slate-500 font-medium">
+                {isEn ? "24/7 Experts" : "Experts 24/7"}
+              </div>
             </div>
 
             <div className="bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 group">
               <div className="w-9 h-9 rounded-lg bg-[#7B1B38]/10 flex items-center justify-center text-[#7B1B38] mb-2.5 group-hover:scale-110 transition-transform">
                 <ShieldCheck className="w-5 h-5" />
               </div>
-              <div className="font-bold text-slate-900 text-sm">Sécurité Maximale</div>
-              <div className="text-xs text-slate-500 font-medium">Contrôle anti-rejet</div>
+              <div className="font-bold text-slate-900 text-sm">
+                {isEn ? "Maximum Security" : "Sécurité Maximale"}
+              </div>
+              <div className="text-xs text-slate-500 font-medium">
+                {isEn ? "Anti-rejection review" : "Contrôle anti-rejet"}
+              </div>
             </div>
           </div>
         </div>
@@ -227,48 +230,6 @@ export function Login() {
               alt="Carte Mondiale La Clé D'or" 
               className="w-full h-auto max-h-[85vh] object-contain select-none"
             />
-
-            {/* Animated SVG Flight Pulse */}
-            <svg 
-              className="absolute inset-0 w-full h-full" 
-              viewBox="0 0 100 100" 
-              preserveAspectRatio="none"
-              style={{ overflow: "visible" }}
-            >
-              <defs>
-                <filter id="login-glow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="0.4" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-              </defs>
-              {/* Flight path curve linking the hubs */}
-              <path 
-                d="M 27,37 Q 38,28 48,35 Q 54,40 59,45 Q 63,46 67,47 Q 71,52 75,57 Q 79,62 83,67 Q 78,50 73,39 Q 60,36 46,32 Q 35,34 27,37"
-                fill="none"
-                stroke="#7B1B38"
-                strokeWidth="0.4"
-                strokeDasharray="2 4"
-                strokeLinecap="round"
-                opacity="0.35"
-              />
-              {/* Pulsing traveling dot */}
-              <path 
-                d="M 27,37 Q 38,28 48,35 Q 54,40 59,45 Q 63,46 67,47 Q 71,52 75,57 Q 79,62 83,67 Q 78,50 73,39 Q 60,36 46,32 Q 35,34 27,37"
-                fill="none"
-                stroke="#7B1B38"
-                strokeWidth="0.8"
-                strokeLinecap="round"
-                strokeDasharray="2 400"
-                filter="url(#login-glow)"
-                style={{
-                  animation: "pulseFlow 45s linear infinite"
-                }}
-              />
-            </svg>
 
             {/* Interactive Global Hub Dots with Tooltips */}
             {HUBS.map((hub) => (
@@ -303,11 +264,11 @@ export function Login() {
                     <span>{hub.name}</span>
                   </div>
                   <div className="flex justify-between text-[11px] text-slate-300 border-t border-white/10 pt-1 mt-1">
-                    <span>Délai moyen :</span>
+                    <span>{isEn ? "Avg. Turnaround:" : "Délai moyen :"}</span>
                     <strong className="text-white">{hub.speed}</strong>
                   </div>
                   <div className="flex justify-between text-[11px] text-slate-300">
-                    <span>Approbation :</span>
+                    <span>{isEn ? "Approval:" : "Approbation :"}</span>
                     <strong className="text-emerald-400 font-semibold">{hub.approval}</strong>
                   </div>
                   {/* Tooltip arrow */}
@@ -320,9 +281,9 @@ export function Login() {
 
         {/* Bottom Tagline */}
         <div className="relative z-20 pt-6 text-xs text-slate-500 font-medium hidden sm:flex items-center justify-between border-t border-slate-200/70">
-          <span>Plateforme B2B certifiée • Tous droits réservés La Clé D'or</span>
+          <span>{isEn ? "Certified B2B Platform • All rights reserved La Clé D'or" : "Plateforme B2B certifiée • Tous droits réservés La Clé D'or"}</span>
           <span className="flex items-center gap-1.5 text-slate-600 font-semibold">
-            <Lock className="w-3.5 h-3.5 text-emerald-600" /> Chiffrement AES-256
+            <Lock className="w-3.5 h-3.5 text-emerald-600" /> {isEn ? "AES-256 Encryption" : "Chiffrement AES-256"}
           </span>
         </div>
       </div>
@@ -336,7 +297,7 @@ export function Login() {
         <div className="w-full max-w-md flex justify-between items-center mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Portail Sécurisé B2B</span>
+            <span>{isEn ? "Secure B2B Portal" : "Portail Sécurisé B2B"}</span>
           </div>
 
           <div className="flex items-center gap-2.5">
@@ -363,7 +324,6 @@ export function Login() {
             </p>
           </div>
 
-
           {/* Error Banner */}
           {errorMessage && (
             <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5 animate-fadeIn">
@@ -386,7 +346,7 @@ export function Login() {
                   type="email"
                   autoComplete="email"
                   required
-                  placeholder="contact@votre-agence.com"
+                  placeholder={isEn ? "contact@your-agency.com" : "contact@votre-agence.com"}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full h-12 px-4 pl-10 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#7B1B38] focus:ring-2 focus:ring-[#7B1B38]/15 transition-all shadow-2xs"
@@ -492,14 +452,14 @@ export function Login() {
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                Retourner à la page d'accueil
+                <span>{isEn ? "Return to Home Page" : "Retourner à la page d'accueil"}</span>
               </Link>
             </div>
           </div>
 
           {/* Support help footnote */}
           <div className="pt-2 text-center text-[11px] text-slate-400">
-            Besoin d'aide pour vos accès ?{" "}
+            {isEn ? "Need assistance with your portal access?" : "Besoin d'aide pour vos accès ?"}{" "}
             <a 
               href="mailto:support@lacledortravel.com" 
               className="text-[#7B1B38] hover:underline font-medium"
@@ -521,8 +481,12 @@ export function Login() {
                 <KeyRound className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Mot de passe oublié</h3>
-                <p className="text-xs text-slate-500">Réinitialisez l'accès à votre portail B2B</p>
+                <h3 className="text-lg font-bold text-slate-900">
+                  {isEn ? "Reset Password" : "Mot de passe oublié"}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {isEn ? "Recover access to your B2B account" : "Réinitialisez l'accès à votre portail B2B"}
+                </p>
               </div>
             </div>
 
@@ -531,9 +495,13 @@ export function Login() {
                 <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-3">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-sm">Email envoyé avec succès !</p>
+                    <p className="font-semibold text-sm">
+                      {isEn ? "Email Sent Successfully!" : "Email envoyé avec succès !"}
+                    </p>
                     <p className="mt-1 text-emerald-700 text-xs leading-relaxed">
-                      Un lien officiel et sécurisé de réinitialisation a été envoyé à <strong>{resetEmail}</strong>. Veuillez vérifier votre boîte de réception ainsi que vos courriers indésirables.
+                      {isEn 
+                        ? <>A secure password reset link has been dispatched to <strong>{resetEmail}</strong>. Please check your inbox and spam folder.</>
+                        : <>Un lien officiel et sécurisé de réinitialisation a été envoyé à <strong>{resetEmail}</strong>. Veuillez vérifier votre boîte de réception ainsi que vos courriers indésirables.</>}
                     </p>
                   </div>
                 </div>
@@ -542,13 +510,15 @@ export function Login() {
                   onClick={() => setShowResetModal(false)}
                   className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
                 >
-                  Fermer cette fenêtre
+                  {isEn ? "Close Window" : "Fermer cette fenêtre"}
                 </button>
               </div>
             ) : (
               <form onSubmit={handleSendResetEmail} className="space-y-4">
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Indiquez votre adresse email professionnelle enregistrée. Nous vous transmettrons un lien sécurisé pour redéfinir votre mot de passe.
+                  {isEn 
+                    ? "Enter your registered professional email. We will send you an official secure link to choose a new password."
+                    : "Indiquez votre adresse email professionnelle enregistrée. Nous vous transmettrons un lien sécurisé pour redéfinir votre mot de passe."}
                 </p>
 
                 {resetError && (
@@ -559,35 +529,37 @@ export function Login() {
                 )}
 
                 <div className="space-y-1.5">
-                  <label htmlFor="reset-email" className="text-xs font-bold text-slate-700">Adresse email</label>
+                  <label htmlFor="reset-email" className="text-xs font-bold text-slate-700">
+                    {isEn ? "Email Address" : "Adresse email"}
+                  </label>
                   <div className="relative">
                     <input
                       id="reset-email"
                       type="email"
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
-                      placeholder="contact@votre-agence.com"
+                      placeholder={isEn ? "contact@your-agency.com" : "contact@votre-agence.com"}
                       required
-                      className="w-full h-11 pl-10 pr-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#7B1B38] focus:ring-1 focus:ring-[#7B1B38]"
+                      className="w-full h-11 px-3.5 pl-9 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-[#7B1B38]"
                     />
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex items-center justify-end gap-2.5 pt-2">
                   <button
                     type="button"
                     onClick={() => setShowResetModal(false)}
-                    className="flex-1 h-11 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition-colors cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                   >
-                    Annuler
+                    {isEn ? "Cancel" : "Annuler"}
                   </button>
                   <button
                     type="submit"
                     disabled={resetLoading}
-                    className="flex-1 h-11 bg-[#7B1B38] hover:bg-[#63142c] text-white rounded-xl text-xs font-bold transition-colors shadow-sm disabled:opacity-60 cursor-pointer"
+                    className="px-5 py-2.5 rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white text-xs font-bold shadow-md shadow-[#7B1B38]/20 transition-all disabled:opacity-60"
                   >
-                    {resetLoading ? "Envoi..." : "Envoyer le lien"}
+                    {resetLoading ? (isEn ? "Sending..." : "Envoi en cours...") : (isEn ? "Send Reset Link" : "Envoyer le lien")}
                   </button>
                 </div>
               </form>
@@ -595,6 +567,7 @@ export function Login() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

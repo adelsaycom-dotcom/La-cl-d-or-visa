@@ -48,7 +48,8 @@ const SuspenseFallback = () => (
 
 // Admin Layout
 function AdminLayout() {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
   const { notifications, markNotificationAsRead, markAllNotificationsAsRead } = useAppStore();
   const unreadNotifications = (notifications || []).filter(n => !n.read && n.agencyId === 'admin').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const adminNotifsCount = unreadNotifications.length;
@@ -95,12 +96,12 @@ function AdminLayout() {
           <Link to="/admin" className="flex items-center gap-3">
              <Logo imageClassName="h-8 w-auto" />
              <div className="flex flex-col">
-               <span className="font-bold text-lg tracking-tight text-white leading-none">Administration</span>
-               <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mt-1">Plateforme B2B</span>
+               <span className="font-bold text-lg tracking-tight text-white leading-none">{t("nav.administration")}</span>
+               <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mt-1">{t("nav.b2bPlatform")}</span>
              </div>
           </Link>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-white">
-            <Menu className="w-6 h-6" /> {/* Should be X but reusing Menu for simplicity or adding X if imported */}
+            <Menu className="w-6 h-6" />
           </button>
         </div>
 
@@ -169,7 +170,7 @@ function AdminLayout() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80 p-0 rounded-2xl shadow-xl border-slate-200 overflow-hidden">
                 <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
-                  <span className="font-bold text-slate-800">Alertes Admin</span>
+                  <span className="font-bold text-slate-800">{isEn ? "Admin Alerts" : "Alertes Admin"}</span>
                   {adminNotifsCount > 0 && (
                     <span className="bg-[#7B1B38]/10 text-[#7B1B38] px-2 py-0.5 rounded-full text-xs font-bold">{adminNotifsCount}</span>
                   )}
@@ -178,7 +179,7 @@ function AdminLayout() {
                   {adminNotifsCount === 0 ? (
                     <div className="p-8 text-center text-slate-500">
                        <Bell className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-                       <p className="text-sm">Aucune nouvelle alerte</p>
+                       <p className="text-sm">{isEn ? "No new admin alerts" : "Aucune nouvelle alerte"}</p>
                     </div>
                   ) : (
                     <div className="divide-y divide-slate-100">
@@ -194,7 +195,7 @@ function AdminLayout() {
                 {adminNotifsCount > 0 && (
                   <div className="p-2 border-t border-slate-100 bg-white">
                     <button className="w-full py-2 text-xs font-bold text-[#7B1B38] hover:bg-[#7B1B38]/10 rounded-lg transition-colors" onClick={() => markAllNotificationsAsRead('admin')}>
-                      Tout marquer comme lu
+                      {isEn ? "Mark all as read" : "Tout marquer comme lu"}
                     </button>
                   </div>
                 )}

@@ -13,7 +13,12 @@ import {
   History, CreditCard, ArrowUpRight, ArrowDownRight, Image as ImageIcon
 } from "lucide-react";
 
+import { useLanguage } from "../../src/i18n/LanguageContext";
+
 export function AgencyWallet() {
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
+
   const { agencyBalance, transactions, rechargeRequests, addRechargeRequest, agencies } = useAppStore();
   const agencyId = auth.currentUser?.uid || "mock-id";
   
@@ -107,11 +112,11 @@ export function AgencyWallet() {
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case "approved":
-        return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 shadow-sm"><CheckCircle2 className="w-3 h-3 mr-1"/> Validée</Badge>;
+        return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 shadow-sm"><CheckCircle2 className="w-3 h-3 mr-1"/> {isEn ? "Approved" : "Validée"}</Badge>;
       case "rejected":
-        return <Badge className="bg-red-100 text-red-700 border-red-200 shadow-sm"><XCircle className="w-3 h-3 mr-1"/> Rejetée</Badge>;
+        return <Badge className="bg-red-100 text-red-700 border-red-200 shadow-sm"><XCircle className="w-3 h-3 mr-1"/> {isEn ? "Rejected" : "Rejetée"}</Badge>;
       default:
-        return <Badge className="bg-amber-100 text-amber-700 border-amber-200 shadow-sm"><Clock className="w-3 h-3 mr-1"/> En attente</Badge>;
+        return <Badge className="bg-amber-100 text-amber-700 border-amber-200 shadow-sm"><Clock className="w-3 h-3 mr-1"/> {isEn ? "Pending" : "En attente"}</Badge>;
     }
   };
 
@@ -130,7 +135,7 @@ export function AgencyWallet() {
           <div>
             <div className="flex items-center gap-2 text-slate-300 font-medium mb-2">
               <Wallet className="w-5 h-5" />
-              <span>Solde Disponible</span>
+              <span>{t("wallet.availableBalance")}</span>
             </div>
             <div className="text-5xl font-black font-mono tracking-tight text-white flex items-baseline gap-2">
               {(currentAgency.balance || 0).toLocaleString()} 
@@ -141,32 +146,34 @@ export function AgencyWallet() {
           <Dialog open={rechargeOpen} onOpenChange={setRechargeOpen}>
             <Button onClick={() => setRechargeOpen(true)} className="bg-[#7B1B38] text-white hover:bg-[#63142c] h-14 px-8 font-black text-lg shadow-lg shadow-[#7B1B38]/25 rounded-xl transition-transform active:scale-95">
                 <ArrowUpRight className="w-5 h-5 mr-2" />
-                Recharger le compte
+                {t("wallet.rechargeAccount")}
               </Button>
             <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-white rounded-2xl">
               <div className="bg-slate-900 p-6 text-white text-center relative overflow-hidden">
                  <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white opacity-10 blur-2xl"></div>
-                 <h3 className="text-2xl font-black relative z-10">Nouvelle Recharge</h3>
-                 <p className="text-slate-300 mt-1 relative z-10">Déclarez votre virement pour créditer votre solde.</p>
+                 <h3 className="text-2xl font-black relative z-10">{t("wallet.rechargeModalTitle")}</h3>
+                 <p className="text-slate-300 mt-1 relative z-10">{t("wallet.rechargeModalSubtitle")}</p>
               </div>
               
               <div className="p-6 space-y-6">
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Méthode de paiement</label>
+                  <label className="text-sm font-bold text-slate-700">{t("wallet.rechargeMethod")}</label>
                   <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                     <SelectTrigger className="h-12 bg-slate-50 border-slate-200 font-bold">
-                      <SelectValue placeholder="Choisir une méthode" />
+                      <SelectValue placeholder={isEn ? "Select a method" : "Choisir une méthode"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ccp">Virement CCP / BaridiMob</SelectItem>
-                      <SelectItem value="bank">Virement Bancaire</SelectItem>
-                      <SelectItem value="cash">Dépôt en Espèces (Bureau)</SelectItem>
+                      <SelectItem value="ccp">{isEn ? "Postal CCP / BaridiMob Transfer" : "Virement CCP / BaridiMob"}</SelectItem>
+                      <SelectItem value="bank">{isEn ? "Bank Wire Transfer" : "Virement Bancaire"}</SelectItem>
+                      <SelectItem value="cash">{isEn ? "Cash Deposit (Office)" : "Dépôt en Espèces (Bureau)"}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Montant transféré (DZD)</label>
+                  <label className="text-sm font-bold text-slate-700">
+                    {isEn ? "Transferred Amount (DZD)" : "Montant transféré (DZD)"}
+                  </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <Wallet className="h-5 w-5 text-slate-400" />
@@ -183,8 +190,10 @@ export function AgencyWallet() {
 
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-700 flex justify-between">
-                    <span>Justificatif de paiement</span>
-                    <span className="text-slate-400 text-xs font-normal">Requis pour BaridiMob/CCP</span>
+                    <span>{isEn ? "Proof of Payment / Bank Slip" : "Justificatif de paiement"}</span>
+                    <span className="text-slate-400 text-xs font-normal">
+                      {isEn ? "Required for BaridiMob/CCP" : "Requis pour BaridiMob/CCP"}
+                    </span>
                   </label>
                   
                   <div 
@@ -209,8 +218,12 @@ export function AgencyWallet() {
                             <ImageIcon className="text-white w-6 h-6" />
                           </div>
                         </div>
-                        <p className="text-emerald-700 font-bold text-sm">Image chargée avec succès</p>
-                        <p className="text-emerald-600/70 text-xs font-medium">Cliquez pour modifier</p>
+                        <p className="text-emerald-700 font-bold text-sm">
+                          {isEn ? "Receipt uploaded successfully" : "Image chargée avec succès"}
+                        </p>
+                        <p className="text-emerald-600/70 text-xs font-medium">
+                          {isEn ? "Click to change" : "Cliquez pour modifier"}
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -218,8 +231,12 @@ export function AgencyWallet() {
                           <UploadCloud className="w-6 h-6 text-slate-500" />
                         </div>
                         <div>
-                          <p className="font-bold text-slate-700">Cliquez ou glissez une capture</p>
-                          <p className="text-xs text-slate-500 mt-1">PNG, JPG jusqu'à 2MB</p>
+                          <p className="font-bold text-slate-700">
+                            {isEn ? "Click or drag your receipt screenshot" : "Cliquez ou glissez une capture"}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {isEn ? "PNG, JPG up to 2MB" : "PNG, JPG jusqu'à 2MB"}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -232,7 +249,7 @@ export function AgencyWallet() {
                     disabled={isSubmitting || !amount}
                     className="w-full h-14 bg-[#7B1B38] hover:bg-[#63142c] text-white font-black text-lg rounded-xl shadow-lg shadow-[#7B1B38]/25 transition-all active:scale-[0.98]"
                   >
-                    {isSubmitting ? 'Envoi en cours...' : 'Envoyer la demande'}
+                    {isSubmitting ? (isEn ? 'Submitting...' : 'Envoi en cours...') : (isEn ? 'Submit Top-up Request' : 'Envoyer la demande')}
                   </Button>
                 </div>
               </div>
@@ -249,7 +266,7 @@ export function AgencyWallet() {
             activeTab === 'recharges' ? 'text-[#7B1B38]' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Wallet className="w-4 h-4" /> Suivi des Recharges
+          <Wallet className="w-4 h-4" /> {isEn ? "Top-ups Tracker" : "Suivi des Recharges"}
           {activeTab === 'recharges' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#7B1B38]" />}
         </button>
         <button 
@@ -258,7 +275,7 @@ export function AgencyWallet() {
             activeTab === 'transactions' ? 'text-[#7B1B38]' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <History className="w-4 h-4" /> Historique des Dépenses
+          <History className="w-4 h-4" /> {isEn ? "Expenses & Transactions History" : "Historique des Dépenses"}
           {activeTab === 'transactions' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#7B1B38]" />}
         </button>
       </div>
@@ -273,18 +290,22 @@ export function AgencyWallet() {
               <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
                 <CreditCard className="w-8 h-8 text-slate-300" />
               </div>
-              <h3 className="font-bold text-lg text-slate-900 mb-1">Aucune recharge</h3>
-              <p className="text-slate-500 text-sm">Vos demandes de rechargement de solde apparaîtront ici.</p>
+              <h3 className="font-bold text-lg text-slate-900 mb-1">
+                {isEn ? "No top-up requests" : "Aucune recharge"}
+              </h3>
+              <p className="text-slate-500 text-sm">
+                {isEn ? "Your wallet balance top-up requests will appear here." : "Vos demandes de rechargement de solde apparaîtront ici."}
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow>
-                    <TableHead>Date & Heure</TableHead>
-                    <TableHead>Détails / Justificatif</TableHead>
-                    <TableHead className="text-right">Montant</TableHead>
-                    <TableHead className="text-right">Statut</TableHead>
+                    <TableHead>{isEn ? "Date & Time" : "Date & Heure"}</TableHead>
+                    <TableHead>{isEn ? "Details / Proof" : "Détails / Justificatif"}</TableHead>
+                    <TableHead className="text-right">{isEn ? "Amount" : "Montant"}</TableHead>
+                    <TableHead className="text-right">{isEn ? "Status" : "Statut"}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -300,10 +321,14 @@ export function AgencyWallet() {
                              <div className="w-10 h-10 rounded border border-slate-200 overflow-hidden cursor-pointer hover:opacity-80 transition" onClick={() => window.open(req.note)}>
                                <img src={req.note} alt="Reçu" className="w-full h-full object-cover" />
                              </div>
-                             <span className="text-sm font-medium text-slate-600">Reçu joint</span>
+                             <span className="text-sm font-medium text-slate-600">
+                               {isEn ? "Attached receipt" : "Reçu joint"}
+                             </span>
                            </div>
                          ) : (
-                           <span className="text-sm text-slate-600 max-w-[200px] truncate block" title={req.note}>{req.note || "Demande classique"}</span>
+                           <span className="text-sm text-slate-600 max-w-[200px] truncate block" title={req.note}>
+                             {req.note || (isEn ? "Standard request" : "Demande classique")}
+                           </span>
                          )}
                       </TableCell>
                       <TableCell className="text-right font-mono font-bold text-slate-900">
@@ -327,18 +352,22 @@ export function AgencyWallet() {
               <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
                 <History className="w-8 h-8 text-slate-300" />
               </div>
-              <h3 className="font-bold text-lg text-slate-900 mb-1">Aucune transaction</h3>
-              <p className="text-slate-500 text-sm">Votre historique de paiements et prélèvements apparaîtra ici.</p>
+              <h3 className="font-bold text-lg text-slate-900 mb-1">
+                {isEn ? "No transactions" : "Aucune transaction"}
+              </h3>
+              <p className="text-slate-500 text-sm">
+                {isEn ? "Your payments and debit history will appear here." : "Votre historique de paiements et prélèvements apparaîtra ici."}
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Opération</TableHead>
-                    <TableHead>Détail</TableHead>
-                    <TableHead className="text-right">Montant</TableHead>
+                    <TableHead>{isEn ? "Date" : "Date"}</TableHead>
+                    <TableHead>{isEn ? "Operation" : "Opération"}</TableHead>
+                    <TableHead>{isEn ? "Detail" : "Détail"}</TableHead>
+                    <TableHead className="text-right">{isEn ? "Amount" : "Montant"}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -350,9 +379,9 @@ export function AgencyWallet() {
                       </TableCell>
                       <TableCell>
                         {tx.type === 'credit' ? (
-                           <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 font-bold"><ArrowUpRight className="w-3 h-3 mr-1"/> Crédit</Badge>
+                           <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 font-bold"><ArrowUpRight className="w-3 h-3 mr-1"/> {isEn ? "Credit" : "Crédit"}</Badge>
                         ) : (
-                           <Badge className="bg-red-100 text-red-700 border-red-200 font-bold"><ArrowDownRight className="w-3 h-3 mr-1"/> Débit</Badge>
+                           <Badge className="bg-red-100 text-red-700 border-red-200 font-bold"><ArrowDownRight className="w-3 h-3 mr-1"/> {isEn ? "Debit" : "Débit"}</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-slate-600 max-w-sm truncate" title={tx.description || tx.note || tx.ref}>

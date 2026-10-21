@@ -10,6 +10,7 @@ import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
+import { useLanguage } from '../../src/i18n/LanguageContext';
 
 const DOCUMENT_OPTIONS = [
   "Scan du Passeport",
@@ -24,6 +25,9 @@ const DOCUMENT_OPTIONS = [
 ];
 
 export default function StudyProgramsManagement() {
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
+
   const { studyPrograms, studyApplications, addStudyProgram, updateStudyProgram, deleteStudyProgram, updateStudyApplicationStatus } = useAppStore();
   const [activeTab, setActiveTab] = useState<'programs' | 'applications'>('programs');
   
@@ -171,11 +175,11 @@ export default function StudyProgramsManagement() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Approved': return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100"><CheckCircle className="w-3 h-3 mr-1"/> Approuvé</Badge>;
-      case 'Rejected': return <Badge className="bg-red-100 text-red-800 hover:bg-red-100"><XCircle className="w-3 h-3 mr-1"/> Rejeté</Badge>;
-      case 'Processing': return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100"><Clock className="w-3 h-3 mr-1"/> En traitement</Badge>;
-      case 'ActionRequired': return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Action Requise</Badge>;
-      default: return <Badge className="bg-slate-100 text-slate-800 hover:bg-slate-100">En attente</Badge>;
+      case 'Approved': return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100"><CheckCircle className="w-3 h-3 mr-1"/> {isEn ? "Approved" : "Approuvé"}</Badge>;
+      case 'Rejected': return <Badge className="bg-red-100 text-red-800 hover:bg-red-100"><XCircle className="w-3 h-3 mr-1"/> {isEn ? "Rejected" : "Rejeté"}</Badge>;
+      case 'Processing': return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100"><Clock className="w-3 h-3 mr-1"/> {isEn ? "Processing" : "En traitement"}</Badge>;
+      case 'ActionRequired': return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">{isEn ? "Action Required" : "Action Requise"}</Badge>;
+      default: return <Badge className="bg-slate-100 text-slate-800 hover:bg-slate-100">{isEn ? "Pending" : "En attente"}</Badge>;
     }
   };
 
@@ -183,8 +187,12 @@ export default function StudyProgramsManagement() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Visa Études</h2>
-          <p className="text-slate-500 font-medium">Gérez le catalogue des programmes et les dossiers étudiants.</p>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+            {isEn ? "Study Programs & Student Visas" : "Visa Études"}
+          </h2>
+          <p className="text-slate-500 font-medium">
+            {isEn ? "Manage study catalog and international student applications." : "Gérez le catalogue des programmes et les dossiers étudiants."}
+          </p>
         </div>
       </div>
 
@@ -194,13 +202,13 @@ export default function StudyProgramsManagement() {
           onClick={() => setActiveTab('programs')}
           className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === 'programs' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
         >
-          Programmes d'Études
+          {isEn ? "Study Programs" : "Programmes d'Études"}
         </button>
         <button
           onClick={() => setActiveTab('applications')}
           className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === 'applications' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
         >
-          Dossiers Étudiants ({studyApplications.filter(a => a.status === 'Pending' || a.status === 'Processing').length})
+          {isEn ? "Student Applications" : "Dossiers Étudiants"} ({studyApplications.filter(a => a.status === 'Pending' || a.status === 'Processing').length})
         </button>
       </div>
 
@@ -210,25 +218,31 @@ export default function StudyProgramsManagement() {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input 
-                placeholder="Rechercher un programme..." 
+                placeholder={isEn ? "Search a program..." : "Rechercher un programme..."} 
                 className="pl-9 bg-white"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold" onClick={() => {
+            <Button className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold" onClick={() => {
               setEditingProgId(null);
               setNewProgram({ title: '', country: '', university: '', type: 'Bachelor', description: '', price: 0, requiredDocuments: [], status: 'active', image: '' });
               setIsAddOpen(true);
             }}>
-              <Plus className="w-4 h-4 mr-2" /> Nouveau Programme
+              <Plus className="w-4 h-4 mr-2" /> {isEn ? "New Program" : "Nouveau Programme"}
             </Button>
             <Dialog open={isAddOpen} onOpenChange={(o) => !o && setIsAddOpen(false)}>
               <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden bg-slate-50">
                 <div className="bg-white border-b border-slate-200 p-6 flex justify-between items-center sticky top-0 z-10 shadow-sm">
                   <div>
-                    <h3 className="text-xl font-black text-slate-900">{editingProgId ? "Modifier le programme" : "Nouveau Programme d'Études"}</h3>
-                    <p className="text-sm text-slate-500 mt-1">Définissez l'université, le tarif et les documents requis.</p>
+                    <h3 className="text-xl font-black text-slate-900">
+                      {editingProgId 
+                        ? (isEn ? "Modify Study Program" : "Modifier le programme") 
+                        : (isEn ? "New Study Program" : "Nouveau Programme d'Études")}
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-1">
+                      {isEn ? "Configure university, tuition pricing and required documents." : "Définissez l'université, le tarif et les documents requis."}
+                    </p>
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => setIsAddOpen(false)} className="rounded-full hover:bg-slate-100">
                     <X className="w-5 h-5" />

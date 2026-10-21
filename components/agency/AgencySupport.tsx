@@ -14,8 +14,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAppStore, SupportTicketAttachment, Application } from "../../src/store/useAppStore";
 import { auth } from "../../src/firebase";
 import { uploadFileToServer } from "../../src/utils/fileUpload";
+import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export function AgencySupport() {
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
   const { supportTickets, addSupportTicket, updateSupportTicket, applications, currentAgency } = useAppStore();
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   
@@ -258,17 +261,17 @@ export function AgencySupport() {
             <div className="flex justify-between items-center">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-black tracking-tight text-slate-900">Support Dédié</h2>
+                  <h2 className="text-xl font-black tracking-tight text-slate-900">{isEn ? "Dedicated Support" : "Support Dédié"}</h2>
                   <span className="px-2 py-0.5 text-[10px] font-bold bg-[#7B1B38]/10 text-[#7B1B38] rounded-full">B2B Pro</span>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">Assistance consulaire et technique prioritaire</p>
+                <p className="text-xs text-slate-500 mt-0.5">{isEn ? "Priority consular and technical desk assistance" : "Assistance consulaire et technique prioritaire"}</p>
               </div>
               <Button 
                 onClick={() => setIsNewTicketOpen(true)} 
                 className="bg-[#7B1B38] hover:bg-[#63142c] text-white rounded-xl h-10 px-3.5 shadow-sm shadow-[#7B1B38]/20 font-bold text-xs flex items-center gap-1.5 transition-all"
               >
                 <Plus className="w-4 h-4" />
-                <span>Nouveau ticket</span>
+                <span>{isEn ? "New Ticket" : "Nouveau ticket"}</span>
               </Button>
             </div>
 
@@ -276,7 +279,7 @@ export function AgencySupport() {
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <Input 
-                placeholder="Rechercher sujet, réf dossier, voyageur..." 
+                placeholder={isEn ? "Search subject, dossier ref, traveler..." : "Rechercher sujet, réf dossier, voyageur..."} 
                 className="pl-9 bg-slate-50 border-slate-200 rounded-xl text-xs h-9 focus:bg-white transition-colors" 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -294,25 +297,25 @@ export function AgencySupport() {
                 className={`flex-1 text-[11px] font-bold py-1.5 rounded-lg transition-all ${activeTab === 'active' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-800'}`} 
                 onClick={() => setActiveTab('active')}
               >
-                En cours
+                {isEn ? "Open" : "En cours"}
               </button>
               <button 
                 className={`flex-1 text-[11px] font-bold py-1.5 rounded-lg transition-all ${activeTab === 'urgent' ? 'bg-red-50 text-red-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`} 
                 onClick={() => setActiveTab('urgent')}
               >
-                Urgents
+                {isEn ? "Urgent" : "Urgents"}
               </button>
               <button 
                 className={`flex-1 text-[11px] font-bold py-1.5 rounded-lg transition-all ${activeTab === 'archived' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-800'}`} 
                 onClick={() => setActiveTab('archived')}
               >
-                Résolus
+                {isEn ? "Resolved" : "Résolus"}
               </button>
               <button 
                 className={`flex-1 text-[11px] font-bold py-1.5 rounded-lg transition-all ${activeTab === 'all' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-800'}`} 
                 onClick={() => setActiveTab('all')}
               >
-                Tous
+                {isEn ? "All" : "Tous"}
               </button>
             </div>
           </div>
@@ -324,16 +327,16 @@ export function AgencySupport() {
                 <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center border border-slate-200 mb-3 shadow-sm">
                   <MessageSquare className="w-6 h-6 text-slate-300" />
                 </div>
-                <p className="text-sm font-bold text-slate-800">Aucun ticket correspondant</p>
+                <p className="text-sm font-bold text-slate-800">{isEn ? "No matching ticket" : "Aucun ticket correspondant"}</p>
                 <p className="text-xs text-slate-500 mt-1 max-w-[240px]">
-                  {search ? "Modifiez votre recherche ou réinitialisez les filtres." : "Vous n'avez aucun ticket dans cette catégorie."}
+                  {search ? (isEn ? "Try adjusting your search or filters." : "Modifiez votre recherche ou réinitialisez les filtres.") : (isEn ? "No tickets in this category." : "Vous n'avez aucun ticket dans cette catégorie.")}
                 </p>
                 <Button 
                   onClick={() => setIsNewTicketOpen(true)}
                   variant="outline"
                   className="mt-4 rounded-xl border-slate-300 font-bold text-xs"
                 >
-                  <Plus className="w-3.5 h-3.5 mr-1.5" /> Ouvrir une demande
+                  <Plus className="w-3.5 h-3.5 mr-1.5" /> {isEn ? "Open a Request" : "Ouvrir une demande"}
                 </Button>
               </div>
             ) : (

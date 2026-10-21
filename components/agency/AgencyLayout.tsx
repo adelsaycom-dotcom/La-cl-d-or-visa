@@ -47,7 +47,8 @@ export function AgencyLayout() {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
 
   const navItems = [
     { name: t("nav.dashboard"), path: "/agency", icon: LayoutDashboard },
@@ -170,10 +171,10 @@ export function AgencyLayout() {
                      ? 'bg-white text-slate-900 shadow-sm border border-slate-200' 
                      : 'text-slate-500 hover:text-slate-900'
                  }`}
-                 title="Afficher les prix d'achat B2B nets débités de votre solde"
+                 title={isEn ? "Display net wholesale B2B prices debited from your wallet" : "Afficher les prix d'achat B2B nets débités de votre solde"}
                >
                  <span className="w-2 h-2 rounded-full bg-[#7B1B38]"></span>
-                 <span className="hidden sm:inline">Tarif</span> B2B
+                 <span className="hidden sm:inline">{isEn ? "Rate" : "Tarif"}</span> B2B
                </button>
                <button
                  type="button"
@@ -183,10 +184,10 @@ export function AgencyLayout() {
                      ? 'bg-emerald-600 text-white shadow-sm' 
                      : 'text-slate-500 hover:text-emerald-700'
                  }`}
-                 title="Activer la vue comptoir client avec marge pour présenter l'écran au voyageur"
+                 title={isEn ? "Enable client desk mode with markup to present screen to traveler" : "Activer la vue comptoir client avec marge pour présenter l'écran au voyageur"}
                >
                  <Eye className="w-3.5 h-3.5" />
-                 <span>Comptoir B2C</span>
+                 <span>{isEn ? "Desk B2C" : "Comptoir B2C"}</span>
                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${b2cMode ? 'bg-emerald-800 text-emerald-100' : 'bg-slate-200 text-slate-700'}`}>
                    +{b2cMarginPercent}%
                  </span>
@@ -197,7 +198,7 @@ export function AgencyLayout() {
                  type="button"
                  onClick={() => setShowMarginInput(!showMarginInput)}
                  className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-xl transition-colors"
-                 title="Régler le taux de marge B2C"
+                 title={isEn ? "Configure B2C markup percentage" : "Régler le taux de marge B2C"}
                >
                  <SlidersHorizontal className="w-3.5 h-3.5" />
                </button>
@@ -208,14 +209,14 @@ export function AgencyLayout() {
                <div className="absolute top-18 right-24 bg-white border border-slate-200 rounded-2xl p-4 shadow-2xl z-50 w-72 animate-in fade-in zoom-in-95">
                  <div className="flex items-center justify-between mb-2">
                    <span className="text-xs font-black uppercase text-slate-800 flex items-center gap-1.5">
-                     <Percent className="w-3.5 h-3.5 text-[#7B1B38]" /> Taux de Marge B2C
+                     <Percent className="w-3.5 h-3.5 text-[#7B1B38]" /> {isEn ? "B2C Markup Rate" : "Taux de Marge B2C"}
                    </span>
                    <button onClick={() => setShowMarginInput(false)} className="text-slate-400 hover:text-slate-700">
                      <X className="w-4 h-4" />
                    </button>
                  </div>
                  <p className="text-[11px] text-slate-500 mb-3">
-                   Fixez le pourcentage appliqué automatiquement sur les tarifs publics en vue comptoir.
+                   {isEn ? "Set the automatic markup percentage applied on retail prices in desk view." : "Fixez le pourcentage appliqué automatiquement sur les tarifs publics en vue comptoir."}
                  </p>
                  <div className="flex gap-2 items-center mb-3">
                    {[10, 15, 20, 25, 30].map(pct => (
@@ -261,7 +262,7 @@ export function AgencyLayout() {
                      }}
                      className="px-3 py-1.5 bg-[#7B1B38] hover:bg-[#63142c] text-white text-xs font-bold rounded-xl transition-colors"
                    >
-                     Appliquer
+                     {isEn ? "Apply" : "Appliquer"}
                    </button>
                  </div>
                </div>
@@ -288,7 +289,7 @@ export function AgencyLayout() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80 p-0 rounded-2xl shadow-xl border-slate-200 overflow-hidden">
                 <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
-                  <span className="font-bold text-slate-800">Notifications</span>
+                  <span className="font-bold text-slate-800">{isEn ? "Notifications" : "Notifications"}</span>
                   {notificationsCount > 0 && (
                     <span className="bg-[#7B1B38]/10 text-[#7B1B38] px-2 py-0.5 rounded-full text-xs font-bold">{notificationsCount}</span>
                   )}
@@ -297,7 +298,7 @@ export function AgencyLayout() {
                   {notificationsCount === 0 ? (
                     <div className="p-8 text-center text-slate-500">
                        <Bell className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-                       <p className="text-sm">Aucune nouvelle notification</p>
+                       <p className="text-sm">{isEn ? "No new notifications" : "Aucune nouvelle notification"}</p>
                     </div>
                   ) : (
                     <div className="divide-y divide-slate-100">
@@ -313,7 +314,7 @@ export function AgencyLayout() {
                 {notificationsCount > 0 && (
                   <div className="p-2 border-t border-slate-100 bg-white">
                     <button className="w-full py-2 text-xs font-bold text-[#7B1B38] hover:bg-[#7B1B38]/10 rounded-lg transition-colors" onClick={() => markAllNotificationsAsRead(auth.currentUser?.uid || "")}>
-                      Tout marquer comme lu
+                      {isEn ? "Mark all as read" : "Tout marquer comme lu"}
                     </button>
                   </div>
                 )}
@@ -343,23 +344,23 @@ export function AgencyLayout() {
                     <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                     <div className="text-xs text-red-900 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-black text-sm">Compte Agence Temporairement Suspendu</span>
+                        <span className="font-black text-sm">{isEn ? "Agency Account Temporarily Suspended" : "Compte Agence Temporairement Suspendu"}</span>
                         {currentAgency.bannedUntil && (
                           <span className="bg-red-200 text-red-900 px-2 py-0.5 rounded-full font-bold text-[10px]">
-                            Jusqu'au {new Date(currentAgency.bannedUntil).toLocaleDateString()}
+                            {isEn ? `Until ${new Date(currentAgency.bannedUntil).toLocaleDateString()}` : `Jusqu'au ${new Date(currentAgency.bannedUntil).toLocaleDateString()}`}
                           </span>
                         )}
                       </div>
                       <p className="mt-1 leading-relaxed">
-                        Votre accès aux dépôts de demandes et au solde B2B est restreint par l'administration.
+                        {isEn ? "Your access to applications and B2B wallet is restricted by administration." : "Votre accès aux dépôts de demandes et au solde B2B est restreint par l'administration."}
                         {currentAgency.banReason && (
                           <span className="block mt-1 font-semibold italic text-red-800">
-                            Motif : {currentAgency.banReason}
+                            {isEn ? `Reason: ${currentAgency.banReason}` : `Motif : ${currentAgency.banReason}`}
                           </span>
                         )}
                       </p>
                       <Link to="/agency/support" className="inline-block mt-2 font-bold underline text-red-700 hover:text-red-900">
-                        Contacter le support d'urgence pour régulariser votre compte →
+                        {isEn ? "Contact emergency support to restore your account →" : "Contacter le support d'urgence pour régulariser votre compte →"}
                       </Link>
                     </div>
                   </div>

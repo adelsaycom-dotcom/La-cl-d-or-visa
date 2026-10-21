@@ -3,6 +3,7 @@ import { Search, Globe2, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import WorldMap from "./WorldMap";
+import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export type VisaStatus = "free" | "voa" | "required" | "eta";
 
@@ -16,6 +17,9 @@ interface Destination {
 import { PASSPORT_DATA } from "./passportData";
 
 export function PassportIndex() {
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
+
   const [selectedPassport, setSelectedPassport] = useState("Algérien");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -47,10 +51,10 @@ export function PassportIndex() {
 
   const getStatusText = (status: VisaStatus) => {
     switch (status) {
-      case "free": return "Sans Visa";
-      case "voa": return "Visa à l'arrivée";
-      case "eta": return "eTA / e-Visa";
-      case "required": return "Visa Requis";
+      case "free": return isEn ? "Visa-Free" : "Sans Visa";
+      case "voa": return isEn ? "Visa on Arrival" : "Visa à l'arrivée";
+      case "eta": return isEn ? "eTA / e-Visa" : "eTA / e-Visa";
+      case "required": return isEn ? "Visa Required" : "Visa Requis";
     }
   };
 
@@ -60,39 +64,43 @@ export function PassportIndex() {
         <div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
-            Index des Passeports
+            {isEn ? "Global Passport Index" : "Index des Passeports"}
           </h2>
-          <p className="text-sm text-slate-500 mt-1">Explorez la mobilité mondiale et les exigences en matière de visa.</p>
+          <p className="text-sm text-slate-500 mt-1">
+            {isEn ? "Explore global mobility scores and visa requirements by nationality." : "Explorez la mobilité mondiale et les exigences en matière de visa."}
+          </p>
         </div>
       </div>
 
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div className="flex flex-col md:flex-row gap-6 items-center">
           <div className="flex-1 w-full relative">
-            <div className="text-sm font-medium mb-2 text-slate-500">Sélectionnez un passeport</div>
+            <div className="text-sm font-medium mb-2 text-slate-500">
+              {isEn ? "Select passport nationality" : "Sélectionnez un passeport"}
+            </div>
             <Select value={selectedPassport} onValueChange={setSelectedPassport}>
               <SelectTrigger className="h-14 text-lg bg-slate-50 border-slate-200">
-                <SelectValue placeholder="Choisir un passeport" />
+                <SelectValue placeholder={isEn ? "Choose a passport" : "Choisir un passeport"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Émirati">🇦🇪 Passeport Émirati</SelectItem>
-                <SelectItem value="Français">🇫🇷 Passeport Français</SelectItem>
-                <SelectItem value="Canadien">🇨🇦 Passeport Canadien</SelectItem>
-                <SelectItem value="Algérien">🇩🇿 Passeport Algérien</SelectItem>
-                <SelectItem value="Marocain">🇲🇦 Passeport Marocain</SelectItem>
-                <SelectItem value="Tunisien">🇹🇳 Passeport Tunisien</SelectItem>
-                <SelectItem value="Sénégalais">🇸🇳 Passeport Sénégalais</SelectItem>
+                <SelectItem value="Émirati">🇦🇪 {isEn ? "Emirati Passport" : "Passeport Émirati"}</SelectItem>
+                <SelectItem value="Français">🇫🇷 {isEn ? "French Passport" : "Passeport Français"}</SelectItem>
+                <SelectItem value="Canadien">🇨🇦 {isEn ? "Canadian Passport" : "Passeport Canadien"}</SelectItem>
+                <SelectItem value="Algérien">🇩🇿 {isEn ? "Algerian Passport" : "Passeport Algérien"}</SelectItem>
+                <SelectItem value="Marocain">🇲🇦 {isEn ? "Moroccan Passport" : "Passeport Marocain"}</SelectItem>
+                <SelectItem value="Tunisien">🇹🇳 {isEn ? "Tunisian Passport" : "Passeport Tunisien"}</SelectItem>
+                <SelectItem value="Sénégalais">🇸🇳 {isEn ? "Senegalese Passport" : "Passeport Sénégalais"}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
           <div className="flex gap-8 w-full md:w-auto mt-4 md:mt-0 justify-between md:justify-start">
             <div className="text-center px-4">
-              <div className="text-sm font-medium text-slate-500 mb-1">Rang Mondial</div>
+              <div className="text-sm font-medium text-slate-500 mb-1">{isEn ? "Global Rank" : "Rang Mondial"}</div>
               <div className="text-5xl font-black text-slate-900">#{data.rank}</div>
             </div>
             <div className="text-center px-4 border-l border-slate-100">
-              <div className="text-sm font-medium text-slate-500 mb-1">Score de Mobilité</div>
+              <div className="text-sm font-medium text-slate-500 mb-1">{isEn ? "Mobility Score" : "Score de Mobilité"}</div>
               <div className="text-5xl font-black text-[#7B1B38]">{data.score}</div>
             </div>
           </div>
@@ -101,19 +109,19 @@ export function PassportIndex() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-8 border-t border-gray-100">
           <div className="bg-emerald-50/50 rounded-xl p-4 flex flex-col justify-center items-center border border-emerald-100 shadow-sm hover:shadow transition-shadow">
             <div className="text-4xl font-black text-emerald-600 mb-1">{data.stats.free}</div>
-            <div className="text-[10px] uppercase tracking-wider text-emerald-600 font-bold flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>Sans Visa</div>
+            <div className="text-[10px] uppercase tracking-wider text-emerald-600 font-bold flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>{isEn ? "Visa-Free" : "Sans Visa"}</div>
           </div>
           <div className="bg-blue-50/50 rounded-xl p-4 flex flex-col justify-center items-center border border-blue-100 shadow-sm hover:shadow transition-shadow">
             <div className="text-4xl font-black text-blue-600 mb-1">{data.stats.voa}</div>
-            <div className="text-[10px] uppercase tracking-wider text-blue-600 font-bold flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>Visa à l'arrivée</div>
+            <div className="text-[10px] uppercase tracking-wider text-blue-600 font-bold flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>{isEn ? "Visa on Arrival" : "Visa à l'arrivée"}</div>
           </div>
           <div className="bg-purple-50/50 rounded-xl p-4 flex flex-col justify-center items-center border border-purple-100 shadow-sm hover:shadow transition-shadow">
             <div className="text-4xl font-black text-purple-600 mb-1">{data.stats.eta}</div>
-            <div className="text-[10px] uppercase tracking-wider text-purple-600 font-bold flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>eTA / e-Visa</div>
+            <div className="text-[10px] uppercase tracking-wider text-purple-600 font-bold flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>{isEn ? "eTA / e-Visa" : "eTA / e-Visa"}</div>
           </div>
           <div className="bg-rose-50/50 rounded-xl p-4 flex flex-col justify-center items-center border border-rose-100 shadow-sm hover:shadow transition-shadow">
             <div className="text-4xl font-black text-rose-600 mb-1">{data.stats.required}</div>
-            <div className="text-[10px] uppercase tracking-wider text-rose-600 font-bold flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>Requis</div>
+            <div className="text-[10px] uppercase tracking-wider text-rose-600 font-bold flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>{isEn ? "Required" : "Requis"}</div>
           </div>
         </div>
       </div>
@@ -122,11 +130,11 @@ export function PassportIndex() {
 
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <h3 className="text-lg font-bold">Détails des Destinations ({data.destinations.length})</h3>
+          <h3 className="text-lg font-bold">{isEn ? `Destinations Details (${data.destinations.length})` : `Détails des Destinations (${data.destinations.length})`}</h3>
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input 
-              placeholder="Rechercher un pays..." 
+              placeholder={isEn ? "Search destination country..." : "Rechercher un pays..."} 
               className="pl-9 bg-white"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -159,7 +167,7 @@ export function PassportIndex() {
 
           {filteredDestinations.length === 0 && (
             <div className="col-span-full py-12 text-center text-gray-500 bg-white rounded-xl border border-dashed">
-              Aucune destination trouvée pour votre recherche.
+              {isEn ? "No destination found matching your search." : "Aucune destination trouvée pour votre recherche."}
             </div>
           )}
         </div>
