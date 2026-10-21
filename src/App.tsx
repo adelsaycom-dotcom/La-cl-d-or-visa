@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useFirebaseSync } from "./hooks/useFirebaseSync";
 import { BrowserRouter as Router, Routes, Route, Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { Globe2, LayoutDashboard, Earth, FileText, Users, DollarSign, HelpCircle, Bell, Menu, LogOut, Settings, MapPin, GraduationCap } from "lucide-react";
+import { Globe2, LayoutDashboard, Earth, FileText, Users, DollarSign, HelpCircle, Bell, Menu, LogOut, Settings, MapPin, GraduationCap, X, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -89,52 +89,53 @@ function AdminLayout() {
       </AnimatePresence>
 
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-950 text-white transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:shrink-0 flex flex-col shadow-2xl ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white text-slate-900 border-r border-slate-200/80 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:shrink-0 flex flex-col shadow-xl lg:shadow-xs ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         
         {/* Logo Area */}
-        <div className="h-20 flex items-center justify-between px-6 border-b border-slate-800/50 shrink-0">
+        <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100 shrink-0">
           <Link to="/admin" className="flex items-center gap-3">
              <Logo imageClassName="h-8 w-auto" />
              <div className="flex flex-col">
-               <span className="font-bold text-lg tracking-tight text-white leading-none">{t("nav.administration")}</span>
-               <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mt-1">{t("nav.b2bPlatform")}</span>
+               <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none">{t("nav.administration")}</span>
+               <span className="text-[10px] text-[#7B1B38] font-bold uppercase tracking-wider mt-1">{isEn ? "Admin Console" : "Console Centrale"}</span>
              </div>
           </Link>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-white">
-            <Menu className="w-6 h-6" />
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-800 p-1 rounded-lg">
+            <X className="w-6 h-6" />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1.5 custom-scrollbar">
+        <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-1 custom-scrollbar">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path));
             return (
               <Link 
                 key={item.path} 
                 to={item.path}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${
+                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 group ${
                   isActive 
-                    ? 'bg-[#7B1B38] text-white shadow-md shadow-[#7B1B38]/25' 
+                    ? 'bg-[#7B1B38] text-white shadow-sm shadow-[#7B1B38]/25 font-bold' 
                     : item.highlight
-                      ? 'bg-[#7B1B38]/20 text-[#f59e0b] hover:bg-slate-900 hover:text-white'
-                      : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+                      ? 'bg-amber-50 text-amber-900 border border-amber-200/80 hover:bg-amber-100/70 font-semibold'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950 font-medium'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : item.highlight ? 'text-[#f59e0b]' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
-                  <span className="font-semibold text-sm">{item.name}</span>
+                  <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : item.highlight ? 'text-amber-600' : 'text-slate-500 group-hover:text-slate-800'} transition-colors`} />
+                  <span className="text-sm">{item.name}</span>
                 </div>
+                {isActive && <ChevronRight className="w-4 h-4 text-white/80" />}
               </Link>
             )
           })}
         </nav>
 
         {/* Bottom Actions */}
-        <div className="p-4 border-t border-slate-800/50 shrink-0">
-          <Link to="/login" className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors group">
-            <LogOut className="w-5 h-5 text-slate-500 group-hover:text-red-400" />
-            <span className="font-semibold text-sm">{t("nav.logout")}</span>
+        <div className="p-3 border-t border-slate-100 shrink-0">
+          <Link to="/login" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-600 hover:bg-rose-50 hover:text-rose-700 transition-colors group font-semibold text-sm">
+            <LogOut className="w-5 h-5 text-slate-400 group-hover:text-rose-600 transition-colors" />
+            <span>{t("nav.logout")}</span>
           </Link>
         </div>
       </aside>
