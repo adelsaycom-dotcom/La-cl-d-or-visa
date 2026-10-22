@@ -5,6 +5,7 @@
  */
 
 import { createWorker } from "tesseract.js";
+import { convertPdfPageToImage } from "./pdfToImage";
 
 export interface PassportScanResult {
   firstName: string;
@@ -271,9 +272,28 @@ export function parseVisualFields(text: string): Partial<PassportScanResult> {
 }
 
 /**
- * Prétraite l'image via HTML5 Canvas pour rehausser le contraste sans dégradation destructive
+ * Prétraite l'image via HTML5 Canvas pour rehausser le contraste sans dégradation destructive.
+ * Si la source est un fichier ou scan PDF, convertit la première page en image haute définition.
  */
 async function preprocessPassportImage(imageSource: string | File, cropMrzOnly = false): Promise<string> {
+  let effectiveSource = imageSource;
+
+  // Détection et conversion automatique de PDF en image HD
+  const isPdf = 
+    (imageSource instanceof File && (imageSource.type.includes("pdf") || imageSource.name.toLowerCase().endsWith(".pdf"))) ||
+    (typeof imageSource === "string" && (imageSource.startsWith("data:application/pdf") || imageSource.toLowerCase().includes(".pdf")));
+
+  if (isPdf) {
+    try {
+      const converted = await convertPdfPageToImage(imageSource);
+      if (converted && converted.dataUrl) {
+        effectiveSource = converted.dataUrl;
+      }
+    } catch (e) {
+      console.warn("Échec conversion PDF lors du prétraitement:", e);
+    }
+  }
+
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -303,7 +323,7 @@ async function preprocessPassportImage(imageSource: string | File, cropMrzOnly =
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
       if (!ctx) {
-        resolve(typeof imageSource === "string" ? imageSource : URL.createObjectURL(imageSource));
+        resolve(typeof effectiveSource === "string" ? effectiveSource : URL.createObjectURL(effectiveSource));
         return;
       }
 
@@ -338,17 +358,17 @@ async function preprocessPassportImage(imageSource: string | File, cropMrzOnly =
     };
 
     img.onerror = () => {
-      resolve(typeof imageSource === "string" ? imageSource : URL.createObjectURL(imageSource));
+      resolve(typeof effectiveSource === "string" ? effectiveSource : URL.createObjectURL(effectiveSource));
     };
 
-    if (typeof imageSource === "string") {
-      img.src = imageSource;
+    if (typeof effectiveSource === "string") {
+      img.src = effectiveSource;
     } else {
       const reader = new FileReader();
       reader.onload = (e) => {
         img.src = e.target?.result as string;
       };
-      reader.readAsDataURL(imageSource);
+      reader.readAsDataURL(effectiveSource);
     }
   });
 }

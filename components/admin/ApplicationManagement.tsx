@@ -11,6 +11,7 @@ import {
 import { uploadFileToServer, downloadFileSafe, resolveAttachmentData } from "../../src/utils/fileUpload";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { AttachmentThumbnail } from "../common/AttachmentThumbnail";
+import { DocumentPreviewModal, PreviewDocData } from "../common/DocumentPreviewModal";
 
 export function ApplicationManagement() {
   const { language, t } = useLanguage();
@@ -24,7 +25,7 @@ export function ApplicationManagement() {
   const [replyMessage, setReplyMessage] = useState("");
   const [finalDocUrl, setFinalDocUrl] = useState("");
   const [finalDocFile, setFinalDocFile] = useState<File | null>(null);
-  const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<PreviewDocData | null>(null);
 
   const selectedApp = applications.find((a) => a.id === selectedAppId);
 
@@ -135,7 +136,11 @@ export function ApplicationManagement() {
 
   const handleOpenPreview = async (att: any) => {
     const data = await resolveAttachmentData(att);
-    setPreviewImage({ src: data || att.dataUrl || att.url, title: att.category || att.name });
+    setPreviewDoc({ 
+      src: data || att.dataUrl || att.url, 
+      title: att.category || att.name,
+      type: att.type || (att.name?.toLowerCase().endsWith(".pdf") ? "application/pdf" : undefined)
+    });
   };
 
   const isImageBase64 = (str: any) => typeof str === 'string' && (str.startsWith('data:image/') || str.endsWith('.png') || str.endsWith('.jpg') || str.endsWith('.jpeg'));
@@ -199,37 +204,8 @@ export function ApplicationManagement() {
 
   return (
     <div className="space-y-6 h-[calc(100vh-140px)] flex flex-col">
-      {/* Modal Zoom Image */}
-      {previewImage && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
-          onClick={() => setPreviewImage(null)}
-        >
-          <div className="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-3xl p-4 overflow-hidden flex flex-col items-center" onClick={e => e.stopPropagation()}>
-            <div className="w-full flex justify-between items-center mb-3 px-2">
-              <span className="font-bold text-white text-sm">{previewImage.title}</span>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => setPreviewImage(null)} 
-                className="text-white hover:bg-white/20 rounded-full h-8 w-8"
-              >
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
-            <img src={previewImage.src} alt={previewImage.title} className="max-w-full max-h-[75vh] object-contain rounded-xl" />
-            <div className="mt-3">
-              <Button 
-                size="sm" 
-                onClick={() => triggerDownload(previewImage.src, `${previewImage.title}.jpg`)}
-                className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold rounded-xl text-xs gap-1.5"
-              >
-                <Download className="w-4 h-4" /> Télécharger l'image
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal Universelle de Prévisualisation (Images & PDF) */}
+      <DocumentPreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />
 
       {/* Header */}
       <div className="flex justify-between items-center shrink-0">
@@ -393,13 +369,27 @@ export function ApplicationManagement() {
                               </p>
                             </div>
                           </div>
-                          <Button 
-                            size="sm"
-                            onClick={() => triggerDownload(selectedApp.finalDocument!, selectedApp.finalDocumentName || "Visa_Officiel.pdf")}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg gap-1"
-                          >
-                            <Download className="w-3.5 h-3.5" /> Télécharger
-                          </Button>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setPreviewDoc({ 
+                                src: selectedApp.finalDocument!, 
+                                title: selectedApp.finalDocumentName || "Visa_Officiel.pdf",
+                                type: "application/pdf"
+                              })}
+                              className="border-emerald-300 text-emerald-800 hover:bg-emerald-100 font-bold text-xs rounded-lg gap-1"
+                            >
+                              <Eye className="w-3.5 h-3.5" /> Aperçu
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => triggerDownload(selectedApp.finalDocument!, selectedApp.finalDocumentName || "Visa_Officiel.pdf")}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg gap-1"
+                            >
+                              <Download className="w-3.5 h-3.5" /> Télécharger
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ) : null}
@@ -542,7 +532,7 @@ export function ApplicationManagement() {
                                 <AttachmentThumbnail 
                                   attachment={att} 
                                   size="md"
-                                  onOpenPreview={(src, title) => setPreviewImage({ src, title })}
+                                  onOpenPreview={(src, title, type) => setPreviewDoc({ src, title, type: type || att.type })}
                                 />
 
                                 <div className="overflow-hidden min-w-0 flex-1">

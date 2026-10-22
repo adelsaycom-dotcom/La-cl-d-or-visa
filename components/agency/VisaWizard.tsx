@@ -15,6 +15,7 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { uploadFileToServer, compressImageIfPossible, fileToBase64 } from "../../src/utils/fileUpload";
 import { scanPassportSmart } from "../../src/utils/passportScanner";
+import { convertPdfPageToImage } from "../../src/utils/pdfToImage";
 
 export interface AttachmentItem {
   id: string;
@@ -169,12 +170,25 @@ export function VisaWizard() {
       setScanProgress(15);
       setScanStatusText("Téléversement et optimisation du document...");
 
-      // 1. Compression et préparation de l'aperçu
-      const base64Data = file.type.startsWith("image/")
-        ? await compressImageIfPossible(file)
-        : await fileToBase64(file);
+      // 1. Compression et préparation de l'aperçu HD (avec support complet des PDF)
+      let previewData = "";
+      const isPdfFile = file.type.includes("pdf") || file.name.toLowerCase().endsWith(".pdf");
 
-      setPassportPreview(base64Data);
+      if (isPdfFile) {
+        setScanStatusText("Extraction de la page d'identité du PDF...");
+        const converted = await convertPdfPageToImage(file);
+        if (converted && converted.dataUrl) {
+          previewData = converted.dataUrl;
+        }
+      }
+
+      if (!previewData) {
+        previewData = file.type.startsWith("image/")
+          ? await compressImageIfPossible(file)
+          : await fileToBase64(file);
+      }
+
+      setPassportPreview(previewData);
 
       // 2. Sauvegarde universelle (Cloud Firestore 'attachments' + local)
       const uploadRes = await uploadFileToServer(file, "Passeport");
@@ -183,22 +197,22 @@ export function VisaWizard() {
         id: uploadRes.storageId || `pass_${Date.now()}`,
         name: file.name,
         category: "Passeport",
-        type: file.type || "image/jpeg",
+        type: file.type || (isPdfFile ? "application/pdf" : "image/jpeg"),
         size: uploadRes.size,
         dataUrl: uploadRes.dataUrl,
         url: uploadRes.url,
-        previewUrl: uploadRes.dataUrl,
+        previewUrl: previewData || uploadRes.dataUrl,
         uploadedAt: new Date().toISOString(),
         uploadedBy: "Agency"
       };
 
       setPassportFile(passportItem);
 
-      // 3. Scan universel : IA Gemini si disponible, basculement automatique vers l'OCR MRZ autonome sur Hostinger
+      // 3. Scan universel : passer l'image convertie (previewData) pour que l'OCR lise le scan du PDF directement !
       setScanProgress(35);
       setScanStatusText("Détection de la zone biométrique du passeport...");
 
-      const scanResult = await scanPassportSmart(file, (status, prog) => {
+      const scanResult = await scanPassportSmart(previewData || file, (status, prog) => {
         setScanStatusText(status);
         setScanProgress(prog);
       });

@@ -16,7 +16,7 @@ export interface AttachmentItem {
 interface AttachmentThumbnailProps {
   attachment: AttachmentItem;
   size?: "sm" | "md" | "lg";
-  onOpenPreview?: (src: string, title: string) => void;
+  onOpenPreview?: (src: string, title: string, type?: string) => void;
 }
 
 export function AttachmentThumbnail({
@@ -94,10 +94,21 @@ export function AttachmentThumbnail({
   }[size];
 
   if (isPdf) {
+    const handlePdfClick = async () => {
+      if (!onOpenPreview) return;
+      if (attachment.dataUrl) {
+        onOpenPreview(attachment.dataUrl, attachment.category || attachment.name, "application/pdf");
+      } else {
+        const resolved = await resolveAttachmentData(attachment);
+        onOpenPreview(resolved || attachment.url || "", attachment.category || attachment.name, "application/pdf");
+      }
+    };
+
     return (
       <div 
-        className={`${sizeClasses} rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center shrink-0 border border-rose-100 shadow-sm`}
-        title={attachment.name}
+        onClick={handlePdfClick}
+        className={`${sizeClasses} rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 border border-rose-200 shadow-sm transition-colors ${onOpenPreview ? 'cursor-pointer hover:border-rose-400' : ''}`}
+        title={`${attachment.name} (Cliquer pour prévisualiser le PDF)`}
       >
         <FileText className="w-5 h-5 text-rose-600" />
       </div>

@@ -250,28 +250,47 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
 }
 
 /**
- * Convertit un Data URL ou Base64 en Blob binaire pur
+ * Convertit un Data URL ou Base64 en Blob binaire pur de manière infaillible.
+ * Utilise l'API native fetch() du navigateur pour éviter toute altération de bits dans les PDF.
  */
-export function base64ToBlob(base64DataUrl: string, defaultMime = "application/pdf"): Blob {
+export async function base64ToBlob(base64DataUrl: string, defaultMime = "application/pdf"): Promise<Blob> {
+  if (!base64DataUrl) {
+    return new Blob([], { type: defaultMime });
+  }
+
+  // 1. Méthode native ultra-rapide et respectueuse de la norme MIME / binaire
+  if (base64DataUrl.startsWith("data:")) {
+    try {
+      const res = await fetch(base64DataUrl);
+      const blob = await res.blob();
+      if (blob && blob.size > 0) {
+        return blob;
+      }
+    } catch {
+      // Poursuivre vers décodage manuel en cas de restriction
+    }
+  }
+
+  // 2. Décodage Uint8Array sécurisé avec nettoyage des espaces et padding
   try {
     const parts = base64DataUrl.split(",");
-    const mimeMatch = parts[0].match(/:(.*?);/);
+    const header = parts.length > 1 ? parts[0] : "";
+    const rawData = parts.length > 1 ? parts[1] : parts[0];
+
+    const mimeMatch = header.match(/:(.*?);/);
     const mimeType = mimeMatch ? mimeMatch[1] : defaultMime;
-    const base64Str = parts.length > 1 ? parts[1] : parts[0];
 
-    const byteCharacters = atob(base64Str);
-    const byteArrays: Uint8Array[] = [];
+    const sanitized = rawData.replace(/[\s\r\n]+/g, "").trim();
+    const padded = sanitized.padEnd(sanitized.length + (4 - (sanitized.length % 4)) % 4, "=");
 
-    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-      const slice = byteCharacters.slice(offset, offset + 512);
-      const byteNumbers = new Array(slice.length);
-      for (let i = 0; i < slice.length; i++) {
-        byteNumbers[i] = slice.charCodeAt(i);
-      }
-      byteArrays.push(new Uint8Array(byteNumbers));
+    const binaryStr = atob(padded);
+    const len = binaryStr.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
     }
 
-    return new Blob(byteArrays as any, { type: mimeType });
+    return new Blob([bytes], { type: mimeType });
   } catch (err) {
     console.error("Erreur conversion base64ToBlob:", err);
     return new Blob([], { type: defaultMime });
@@ -281,8 +300,8 @@ export function base64ToBlob(base64DataUrl: string, defaultMime = "application/p
 /**
  * Téléchargement infaillible de PDF ou fichiers :
  * 1. Résout les documents hébergés sur Firestore cloud ou serveur
- * 2. Génère un Blob binaire local avec nom de fichier strict
- * 3. Ne plante jamais et résout l'erreur 404 sur Hostinger.
+ * 2. Génère un Blob binaire local avec nom de fichier strict et extension correcte
+ * 3. Ne plante jamais et produit des PDF lisibles à 100%.
  */
 export async function downloadFileSafe(fileSource: any, fileName = "document.pdf"): Promise<void> {
   if (!fileSource) {
@@ -296,44 +315,51 @@ export async function downloadFileSafe(fileSource: any, fileName = "document.pdf
       throw new Error("Impossible de récupérer les données du fichier.");
     }
 
+    const isPdf = 
+      resolvedData.startsWith("data:application/pdf") || 
+      fileName.toLowerCase().endsWith(".pdf") ||
+      (typeof fileSource === "object" && (fileSource.type?.includes("pdf") || fileSource.name?.toLowerCase().endsWith(".pdf")));
+
+    let safeFileName = fileName;
+    if (isPdf && !safeFileName.toLowerCase().endsWith(".pdf")) {
+      safeFileName = `${safeFileName.replace(/\.[^/.]+$/, "")}.pdf`;
+    }
+
     let blob: Blob;
 
     if (resolvedData.startsWith("data:")) {
-      blob = base64ToBlob(
-        resolvedData, 
-        fileName.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/octet-stream"
-      );
+      blob = await base64ToBlob(resolvedData, isPdf ? "application/pdf" : "application/octet-stream");
     } else {
-      // Récupération depuis le serveur
       const response = await fetch(resolvedData);
       if (!response.ok) {
         throw new Error(`Erreur réseau (${response.status}) lors du téléchargement`);
       }
       blob = await response.blob();
-      if (fileName.toLowerCase().endsWith(".pdf") && blob.type !== "application/pdf") {
+      if (isPdf && blob.type !== "application/pdf") {
         blob = new Blob([blob], { type: "application/pdf" });
       }
+    }
+
+    if (!blob || blob.size === 0) {
+      throw new Error("Le fichier extrait est vide.");
     }
 
     const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = blobUrl;
-    link.setAttribute("download", fileName);
+    link.setAttribute("download", safeFileName);
+    link.rel = "noopener noreferrer";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    // Libérer la mémoire après quelques secondes
+    // Libérer la mémoire
     setTimeout(() => {
       URL.revokeObjectURL(blobUrl);
-    }, 15000);
+    }, 30000);
   } catch (err) {
     console.error("Erreur downloadFileSafe:", err);
-    // Si URL directe /uploads/ disponible
-    if (typeof fileSource === "string" && fileSource.startsWith("/uploads/")) {
-      const fileNameOnly = fileSource.replace("/uploads/", "");
-      window.location.href = `/api/download?file=${encodeURIComponent(fileNameOnly)}&filename=${encodeURIComponent(fileName)}`;
-    } else if (typeof fileSource === "string" && fileSource.startsWith("http")) {
+    if (typeof fileSource === "string" && fileSource.startsWith("http")) {
       window.open(fileSource, "_blank");
     }
   }

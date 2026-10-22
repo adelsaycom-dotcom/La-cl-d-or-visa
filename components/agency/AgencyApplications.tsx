@@ -11,6 +11,7 @@ import {
 import { uploadFileToServer, downloadFileSafe, resolveAttachmentData } from "../../src/utils/fileUpload";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { AttachmentThumbnail } from "../common/AttachmentThumbnail";
+import { DocumentPreviewModal, PreviewDocData } from "../common/DocumentPreviewModal";
 
 export function AgencyApplications() {
   const { language, t } = useLanguage();
@@ -21,7 +22,7 @@ export function AgencyApplications() {
   const [filter, setFilter] = useState("ALL");
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [replyMessage, setReplyMessage] = useState("");
-  const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<PreviewDocData | null>(null);
   
   // Action Required Upload State
   const [isUploadingMissingDoc, setIsUploadingMissingDoc] = useState(false);
@@ -78,7 +79,11 @@ export function AgencyApplications() {
 
   const handleOpenPreview = async (att: any) => {
     const data = await resolveAttachmentData(att);
-    setPreviewImage({ src: data || att.dataUrl || att.url, title: att.category || att.name });
+    setPreviewDoc({ 
+      src: data || att.dataUrl || att.url, 
+      title: att.category || att.name,
+      type: att.type || (att.name?.toLowerCase().endsWith(".pdf") ? "application/pdf" : undefined)
+    });
   };
 
   const isImageBase64 = (str: any) => typeof str === 'string' && (str.startsWith('data:image/') || str.endsWith('.png') || str.endsWith('.jpg') || str.endsWith('.jpeg'));
@@ -190,37 +195,8 @@ export function AgencyApplications() {
   if (selectedApp) {
     return (
       <div className="space-y-6 animate-in fade-in duration-300 pb-16">
-        {/* Modal Plein écran Image */}
-        {previewImage && (
-          <div 
-            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
-            onClick={() => setPreviewImage(null)}
-          >
-            <div className="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-3xl p-4 overflow-hidden flex flex-col items-center" onClick={e => e.stopPropagation()}>
-              <div className="w-full flex justify-between items-center mb-3 px-2">
-                <span className="font-bold text-white text-sm">{previewImage.title}</span>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => setPreviewImage(null)} 
-                  className="text-white hover:bg-white/20 rounded-full h-8 w-8"
-                >
-                  <X className="w-5 h-5" />
-                </Button>
-              </div>
-              <img src={previewImage.src} alt={previewImage.title} className="max-w-full max-h-[75vh] object-contain rounded-xl" />
-              <div className="mt-3">
-                <Button 
-                  size="sm" 
-                  onClick={() => triggerDownload(previewImage.src, `${previewImage.title}.jpg`)}
-                  className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold rounded-xl text-xs gap-1.5"
-                >
-                  <Download className="w-4 h-4" /> Télécharger l'image
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Modal de Prévisualisation Universelle (Images et PDF) */}
+        <DocumentPreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />
 
         {/* Barre de retour */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
@@ -276,12 +252,25 @@ export function AgencyApplications() {
               </div>
             </div>
 
-            <Button 
-              onClick={() => triggerDownload(selectedApp.finalDocument!, selectedApp.finalDocumentName || `Visa_${selectedApp.travelerName.replace(/\s+/g, '_')}.pdf`)}
-              className="bg-white hover:bg-emerald-50 text-emerald-800 font-black text-sm h-14 px-8 rounded-2xl shadow-lg relative z-10 shrink-0 gap-2 w-full md:w-auto"
-            >
-              <Download className="w-5 h-5 text-emerald-700" /> {isEn ? "Download Official Visa" : "Télécharger le Visa Officiel"}
-            </Button>
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto relative z-10 shrink-0">
+              <Button 
+                variant="secondary"
+                onClick={() => setPreviewDoc({ 
+                  src: selectedApp.finalDocument!, 
+                  title: selectedApp.finalDocumentName || "Visa_Officiel.pdf",
+                  type: "application/pdf"
+                })}
+                className="bg-white/20 hover:bg-white/30 text-white font-bold text-xs h-12 sm:h-14 px-6 rounded-2xl gap-2 w-full sm:w-auto border border-white/30 backdrop-blur-sm"
+              >
+                <Eye className="w-4 h-4" /> {isEn ? "Preview Visa" : "Visualiser le Visa"}
+              </Button>
+              <Button 
+                onClick={() => triggerDownload(selectedApp.finalDocument!, selectedApp.finalDocumentName || `Visa_${selectedApp.travelerName.replace(/\s+/g, '_')}.pdf`)}
+                className="bg-white hover:bg-emerald-50 text-emerald-800 font-black text-xs sm:text-sm h-12 sm:h-14 px-7 rounded-2xl shadow-lg gap-2 w-full sm:w-auto"
+              >
+                <Download className="w-5 h-5 text-emerald-700" /> {isEn ? "Download Official Visa" : "Télécharger le Visa"}
+              </Button>
+            </div>
           </div>
         )}
 
@@ -477,7 +466,7 @@ export function AgencyApplications() {
                           <AttachmentThumbnail 
                             attachment={att} 
                             size="md"
-                            onOpenPreview={(src, title) => setPreviewImage({ src, title })}
+                            onOpenPreview={(src, title, type) => setPreviewDoc({ src, title, type: type || att.type })}
                           />
                           <div className="overflow-hidden min-w-0 flex-1">
                             <span className="text-[10px] font-bold text-[#7B1B38] block truncate">{att.category || "Document"}</span>
