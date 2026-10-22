@@ -57,15 +57,17 @@ service cloud.firestore {
 
     match /organizedTrips/{tripId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        isSignedIn() && 
+        incoming().diff(existing()).affectedKeys().hasOnly(['availableSeats'])
+      );
     }
 
     match /tripReservations/{reservationId} {
       allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      // Agencies must create reservations as 'pending'
-      allow create: if isAdmin() || (isAgency() && incoming().agencyId == request.auth.uid && incoming().status.lower() == 'pending');
-      // Agencies cannot update the status field
-      allow update: if isAdmin() || (isAgency() && existing().agencyId == request.auth.uid && incoming().status == existing().status);
+      allow create: if isSignedIn() && (isAdmin() || incoming().agencyId == request.auth.uid);
+      allow update: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
       allow delete: if isAdmin();
     }
 

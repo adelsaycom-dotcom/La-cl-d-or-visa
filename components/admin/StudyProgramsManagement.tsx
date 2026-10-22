@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppStore, StudyProgram, StudyApplication } from '../../src/store/useAppStore';
-import { Plus, Edit, Trash2, MapPin, DollarSign, Search, Image as ImageIcon, GraduationCap, FileText, CheckCircle, Clock, XCircle, File, Settings, CreditCard, List, CheckCircle2, Save, X } from 'lucide-react';
+import { Plus, Edit, Trash2, MapPin, DollarSign, Search, Image as ImageIcon, GraduationCap, FileText, CheckCircle, Clock, XCircle, File, Settings, CreditCard, List, CheckCircle2, Save, X, Eye, Download } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -11,6 +11,8 @@ import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { useLanguage } from '../../src/i18n/LanguageContext';
+import { DocumentPreviewModal, PreviewDocData } from '../common/DocumentPreviewModal';
+import { resolveAttachmentData, downloadFileSafe } from '../../src/utils/fileUpload';
 
 const DOCUMENT_OPTIONS = [
   "Scan du Passeport",
@@ -47,6 +49,39 @@ export default function StudyProgramsManagement() {
   const [appSearchTerm, setAppSearchTerm] = useState('');
   const [selectedApp, setSelectedApp] = useState<StudyApplication | null>(null);
   const [isAppDetailsOpen, setIsAppDetailsOpen] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<PreviewDocData | null>(null);
+  const [resolvingDocName, setResolvingDocName] = useState<string | null>(null);
+
+  const handleOpenDoc = async (docName: string, rawUrl: string) => {
+    setResolvingDocName(docName);
+    try {
+      const resolved = await resolveAttachmentData(rawUrl);
+      const isPdf = resolved.startsWith('data:application/pdf') || docName.toLowerCase().endsWith('.pdf');
+      setPreviewDoc({
+        src: resolved,
+        title: docName,
+        type: isPdf ? 'application/pdf' : 'image/jpeg'
+      });
+    } catch (e) {
+      console.error("Erreur ouverture doc:", e);
+    } finally {
+      setResolvingDocName(null);
+    }
+  };
+
+  const handleDownloadDoc = async (docName: string, rawUrl: string) => {
+    setResolvingDocName(docName);
+    try {
+      const resolved = await resolveAttachmentData(rawUrl);
+      const ext = (resolved.startsWith('data:application/pdf') || docName.toLowerCase().endsWith('.pdf')) ? '.pdf' : '.jpg';
+      const safeName = docName.endsWith(ext) ? docName : `${docName}${ext}`;
+      downloadFileSafe(resolved, safeName);
+    } catch (e) {
+      console.error("Erreur téléchargement doc:", e);
+    } finally {
+      setResolvingDocName(null);
+    }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -577,18 +612,43 @@ export default function StudyProgramsManagement() {
                   <div>
                     <h4 className="font-bold text-slate-800 border-b border-slate-100 pb-2 mb-4">Documents Fournis</h4>
                     <div className="space-y-3">
-                      {Object.entries(selectedApp.documents || {}).map(([docName, docUrl]) => (
-                        <div key={docName} className="flex justify-between items-center p-3 rounded-lg border border-slate-200 bg-slate-50">
-                          <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                            <File className="w-4 h-4 text-blue-500" /> {docName}
+                      {Object.entries(selectedApp.documents || {}).map(([docName, docUrl]) => {
+                        const isResolving = resolvingDocName === docName;
+                        return (
+                          <div key={docName} className="flex justify-between items-center p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white transition-colors">
+                            <div className="flex items-center gap-2 text-sm font-bold text-slate-700 min-w-0 pr-2">
+                              <File className="w-4 h-4 text-blue-600 shrink-0" />
+                              <span className="truncate">{docName}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={isResolving}
+                                onClick={() => handleOpenDoc(docName, docUrl)}
+                                className="h-8 px-2.5 text-xs font-bold text-blue-700 border-blue-200 bg-blue-50/50 hover:bg-blue-100"
+                              >
+                                <Eye className="w-3.5 h-3.5 mr-1" />
+                                {isResolving ? "..." : "Aperçu"}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                disabled={isResolving}
+                                onClick={() => handleDownloadDoc(docName, docUrl)}
+                                className="h-8 w-8 p-0 text-slate-600 hover:text-slate-900 hover:bg-slate-200"
+                                title="Télécharger le fichier"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
                           </div>
-                          <a href={docUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-blue-600 hover:underline">
-                            Voir
-                          </a>
-                        </div>
-                      ))}
+                        );
+                      })}
                       {(!selectedApp.documents || Object.keys(selectedApp.documents).length === 0) && (
-                        <div className="text-sm text-slate-500 italic">Aucun document téléversé.</div>
+                        <div className="text-sm text-slate-500 italic p-3 bg-slate-50 rounded-xl">Aucun document téléversé.</div>
                       )}
                     </div>
                   </div>
@@ -598,6 +658,12 @@ export default function StudyProgramsManagement() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Modal universel de prévisualisation PDF / Image */}
+      <DocumentPreviewModal 
+        doc={previewDoc} 
+        onClose={() => setPreviewDoc(null)} 
+      />
 
     </div>
   );

@@ -364,3 +364,31 @@ export async function downloadFileSafe(fileSource: any, fileName = "document.pdf
     }
   }
 }
+
+/**
+ * Ouvre un document PDF ou image en plein écran dans un nouvel onglet
+ * en créant un Blob URL natif propre.
+ */
+export async function openPdfInNewTab(fileSource: any, fileName = "document.pdf"): Promise<void> {
+  try {
+    const resolvedData = await resolveAttachmentData(fileSource);
+    if (!resolvedData) {
+      throw new Error("Impossible de récupérer les données du document.");
+    }
+
+    if (resolvedData.startsWith("data:")) {
+      const isPdf = resolvedData.startsWith("data:application/pdf") || fileName.toLowerCase().endsWith(".pdf");
+      const blob = await base64ToBlob(resolvedData, isPdf ? "application/pdf" : "application/octet-stream");
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } else if (resolvedData.startsWith("http")) {
+      window.open(resolvedData, "_blank", "noopener,noreferrer");
+    } else {
+      await downloadFileSafe(fileSource, fileName);
+    }
+  } catch (err) {
+    console.error("Erreur ouverture document:", err);
+    await downloadFileSafe(fileSource, fileName);
+  }
+}

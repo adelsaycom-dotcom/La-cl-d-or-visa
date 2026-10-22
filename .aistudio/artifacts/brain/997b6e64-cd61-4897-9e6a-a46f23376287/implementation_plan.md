@@ -1,104 +1,58 @@
-# Plan d'Implémentation : Traduction Intégrale & Scanner Passeport Autonome Hostinger
+# Plan d'implémentation : Correction PDF, Réservations Voyages Organisés et Visa Études
 
-Ce projet apporte une traduction bilingue (FR / EN) parfaite et exhaustive sur l'ensemble de la plateforme (en particulier le tableau de bord agence et le wizard de nouvelle demande de visa étape par étape), la mémorisation de la langue préférée via `localStorage`, ainsi qu'une refonte complète du scanner de passeports biométriques pour garantir un fonctionnement à 100% côté navigateur sans dépendance externe ni clé API sur l'hébergement Hostinger.
-
----
-
-### Décisions Validées avec l'Utilisateur
-
-> [!IMPORTANT]
-> - **Environnement de déploiement** : Hébergement Hostinger (nécessitant un fonctionnement résilient et autonome).
-> - **Moteur de scan de passeport** : Scanner 100% exécuté dans le navigateur, sans dépendance externe bloquante ni obligation de clé API serveur.
-> - **Règle de langue** : Mémorisation persistante dans le navigateur (`localStorage`) de la dernière langue choisie (FR ou EN) avec français par défaut.
+Ce plan détaille la résolution module par module des 3 problématiques soulevées.
 
 ---
 
-## 1. Vue d'Ensemble & Périmètre Fonctionnel
+## Module 1 : Résolution définitive de la prévisualisation et du téléchargement des PDF
 
-### A. Traduction Exhaustive & Parfaite
-1. **Tableau de Bord Agence (`components/agency/Dashboard.tsx`)** :
-   - Cartes de statistiques (Dossiers en cours, validés, complétés, solde disponible).
-   - Graphiques d'activité et historiques de demandes.
-   - Section des services rapides (Visas touristiques, d'affaires, études, voyages organisés).
-   - Tableau des dernières demandes avec statuts traduits en temps réel.
-2. **Formulaire de Nouvelle Demande / Wizard Visa (`components/agency/VisaWizard.tsx`)** :
-   - Traduction méticuleuse des 4 étapes du processus :
-     - *Étape 1* : Choix du pays de destination, formule consulaire, type de démarche, calcul des frais et marge B2C.
-     - *Étape 2* : Import du scan passeport, données du voyageur (nom, prénom, nationalité, sexe, n° passeport, dates de délivrance/expiration, coordonnées).
-     - *Étape 3* : Documents requis personnalisés par pays/consulat (photos conformes, réservations d'hôtel, attestations, formulaires).
-     - *Étape 4* : Récapitulatif global, vérification des données, débit du solde agence et accusé de dépôt.
-3. **Persistance de la Langue (`src/i18n/LanguageContext.tsx`)** :
-   - Sauvegarde automatique dans `localStorage.getItem('app_language')`.
-   - Restauration immédiate au rechargement de la page pour une expérience fluide.
+### Problème constaté
+Lors de la consultation du visa officiel délivré ou des justificatifs PDF, certains navigateurs bloquent l'affichage dans l'iframe ou corrompent le binaire téléchargé lorsque le flux Base64 provient de sessions ou de Firestore.
 
-### B. Scanner de Passeport 100% Navigateur pour Hostinger
-1. **Élimination des blocages réseau Hostinger** :
-   - Suppression du timeout d'attente vers `/api/scan-passport` lorsqu'aucun serveur backend n'est présent sur Hostinger.
-   - Intégration d'un parseur MRZ ICAO 9303 TD3 local ultra-robuste avec tolérance aux erreurs de binarisation et aux caractères spéciaux (`<`, chevrons, chiffres).
-2. **Double passe d'analyse d'image locale (Canvas HTML5)** :
-   - Passe 1 : Détection et recadrage de la zone MRZ inférieure (2 lignes de 44 caractères).
-   - Passe 2 : Extraction directe avec expressions régulières adaptées aux passeports algériens, français et internationaux (numéro de passeport, date de naissance, expiration, sexe, nom/prénom).
-3. **Indicateurs visuels et feedback instantané** :
-   - Barre de progression fluide lors du scan de l'image.
-   - Remplissage automatique instantané des champs avec confirmation visuelle sans bloquer l'utilisateur si la photo est floue.
+### Solutions techniques
+1. **Visualiseur PDF universel bimodal (`DocumentPreviewModal.tsx`)** :
+   - Mise à disposition d'un affichage direct par `blob:` URL natif avec headers conformes.
+   - En complément, ajout d'un bouton d'action principale **« Ouvrir dans un nouvel onglet »** (`target="_blank"` avec `URL.createObjectURL(blob)`) pour garantir 100% de compatibilité sur mobile, tablettes et navigateurs stricts bloquant les iframes locales.
+   - Sécurisation du téléchargement avec le type MIME explicite `application/pdf` et contrôle d'intégrité de l'extension de fichier `.pdf`.
+2. **Harmonisation des points d'accès** :
+   - Dans `AgencyApplications.tsx` et `ApplicationManagement.tsx` : affichage systématique des boutons d'aperçu et de téléchargement dédié pour le visa actif final et pour chaque pièce jointe PDF.
+   - Sécurisation de `fileUpload.ts` pour que la conversion binaire gère les encodages URI et les sauts de ligne sans dégradation d'octets.
 
 ---
 
-## 2. Expérience Utilisateur & Design
+## Module 2 : Sécurisation des réservations de Voyages Organisés
 
-### Flux Utilisateur
-```
-┌────────────────────────┐      ┌───────────────────────────┐      ┌─────────────────────────────┐
-│ 1. Choix du Service    │ ───> │ 2. Scan Passeport         │ ───> │ 3. Pièces & Validation      │
-│ Pays, Formule, Tarifs  │      │ Auto-remplissage instant  │      │ Récapitulatif bilingue      │
-└────────────────────────┘      └───────────────────────────┘      └─────────────────────────────┘
-```
+### Problème constaté
+Risque de réservations multiples involontaires (multi-clics) et absence de confirmation formelle avec récapitulatif avant débit du solde agence, ainsi qu'absence de visibilité des réservations existantes pour l'agence.
 
-- **Typographie et Contraste** : Conformité aux règles de design avec typographies sombres (`text-slate-900`) sur fond clair, statuts sans pilules encombrantes et accent bordeaux officiel `#7B1B38`.
-- **Commutateur de Langue** : Reste accessible dans le haut de chaque page avec mise à jour instantanée du texte sans rechargement de page.
-
----
-
-## 3. Architecture Technique
-
-### Diagramme de Flux de Données
-```
-[ Utilisateur importe une image de passeport ]
-                   │
-                   ▼
-[ Canvas HTML5 : Normalisation de contraste & Redimensionnement ]
-                   │
-                   ▼
-[ Détecteur MRZ ICAO Doc 9303 & OCR Client Local ]
-                   │
-                   ▼
-┌────────────────────────────────────────────────────────┐
-│ Données extraites :                                    │
-│ - Nom, Prénom                                          │
-│ - N° Passeport (9 caractères)                          │
-│ - Date de Naissance & Date d'Expiration (YYYY-MM-DD)   │
-│ - Sexe (M/F) & Nationalité                             │
-└────────────────────────────────────────────────────────┘
-                   │
-                   ▼
-[ Auto-remplissage des champs de l'Étape 2 du Wizard ]
-```
+### Solutions techniques
+1. **Dialogue de confirmation d'engagement (`OrganizedTrips.tsx`)** :
+   - Ajout d'une étape de récapitulatif avant validation définitive : récapitule le nom du voyage, la date de départ, le nombre de passagers, le tarif unitaire et le montant total déduit du solde.
+   - Affichage du solde restant après opération pour validation explicite.
+2. **Verrouillage strict anti-doublon** :
+   - Désactivation immédiate du bouton d'action avec état de chargement `isSubmitting` pour empêcher tout envoi répété.
+3. **Onglet « Mes Réservations » & Indication sur le catalogue** :
+   - Intégration d'un système à deux onglets : `Catalogue des départs` / `Mes Réservations`.
+   - L'onglet « Mes Réservations » permet à l'agence de suivre ses réservations (statut, passagers, date de réservation, coût total).
+   - Sur chaque carte du catalogue, ajout d'un badge clair `Déjà réservé (X places)` si l'agence a déjà validé une réservation sur ce circuit.
 
 ---
 
-## 4. Fichiers Concernés
+## Module 3 : Acheminement complet et visibilité des dossiers "Visa Études"
 
-1. `src/i18n/LanguageContext.tsx` : Gestion et mémorisation persistante dans `localStorage`.
-2. `src/i18n/translations.ts` : Enrichissement exhaustif de toutes les clés de traduction pour Dashboard, Wizard, étapes et messages de validation.
-3. `src/utils/passportScanner.ts` : Moteur de scan 100% client autonome, résilient à Hostinger.
-4. `components/agency/Dashboard.tsx` : Traduction intégrale et réactivité à `useLanguage`.
-5. `components/agency/VisaWizard.tsx` : Traduction méticuleuse des 4 étapes, statuts, documents requis et intégration fluide du nouveau scan.
+### Problème constaté
+Lors de la soumission d'une demande de Visa Études dans `StudyPrograms.tsx`, l'enregistrement échouait silencieusement ou n'apparaissait pas dans la liste principale des dossiers, car les pièces jointes (diplômes, relevés, etc.) étaient trop lourdes pour Firestore (> 1 Mo) et les dossiers n'étaient pas synchronisés avec la table centrale `applications`.
 
----
-
-## 5. Plan de Vérification
-
-- Vérification de la compilation sans erreur avec `compile_applet`.
-- Vérification du typage TypeScript avec `lint_applet` (`tsc --noEmit`).
-- Test de la mémorisation de langue et du basculement FR/EN sur le tableau de bord et la page de nouvelle demande.
-- Test de l'analyse automatique d'image de passeport et du pré-remplissage des champs.
+### Solutions techniques
+1. **Traitement et téléversement optimisé des pièces justificatives** :
+   - Remplacement de la lecture brute `FileReader` par l'utilitaire `uploadFileToServer` pour chaque pièce justificative.
+   - Enregistrement des fichiers dans la collection `attachments` pour préserver le document principal sous la limite de 1 Mo.
+2. **Inscription double (Centrale + Spécialisée)** :
+   - Lors de la soumission dans `StudyPrograms.tsx`, création conjointe :
+     - Du document dans la collection `applications` avec `serviceType: "Visa Études"`, destination, tarif, documents attachés et journal de suivi.
+     - Du document dans `studyApplications` pour la gestion spécialisée universitaire.
+3. **Visibilité complète** :
+   - Le dossier apparaît immédiatement dans :
+     - `/agency/applications` (Espace Agence - Tous les dossiers).
+     - `/admin/applications` (Espace Admin - Gestion globale des demandes).
+     - `/admin/study` (Espace Admin - Onglet Candidatures d'études).

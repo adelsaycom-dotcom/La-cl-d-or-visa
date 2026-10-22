@@ -105,14 +105,15 @@ export function DocumentPreviewModal({ doc, onClose }: DocumentPreviewModalProps
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {isPdf && blobUrl && (
+            {isPdf && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleOpenNewTab}
-                className="hidden sm:inline-flex h-9 border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl gap-1.5"
+                className="inline-flex h-9 border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl gap-1.5"
+                title="Ouvrir dans un nouvel onglet"
               >
-                <ExternalLink className="w-3.5 h-3.5" /> Plein écran
+                <ExternalLink className="w-3.5 h-3.5" /> <span className="hidden xs:inline">Plein écran</span>
               </Button>
             )}
 
@@ -121,7 +122,7 @@ export function DocumentPreviewModal({ doc, onClose }: DocumentPreviewModalProps
               onClick={handleDownload}
               className="h-9 bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs rounded-xl gap-1.5 shadow-md shadow-[#7B1B38]/30"
             >
-              <Download className="w-3.5 h-3.5" /> {isPdf ? "Télécharger le PDF" : "Télécharger"}
+              <Download className="w-3.5 h-3.5" /> <span className="hidden xs:inline">{isPdf ? "Télécharger le PDF" : "Télécharger"}</span><span className="xs:hidden">Télécharger</span>
             </Button>
 
             <Button 
@@ -144,11 +145,25 @@ export function DocumentPreviewModal({ doc, onClose }: DocumentPreviewModalProps
                 <span className="text-xs font-semibold">Préparation du document PDF...</span>
               </div>
             ) : blobUrl ? (
-              <iframe 
-                src={`${blobUrl}#toolbar=1&navpanes=0`} 
-                className="w-full h-[72vh] border-0 rounded-2xl bg-white" 
-                title={doc.title} 
-              />
+              <object 
+                data={`${blobUrl}#toolbar=1&navpanes=0`} 
+                type="application/pdf"
+                className="w-full h-[72vh] border-0 rounded-2xl bg-white"
+              >
+                <iframe 
+                  src={`${blobUrl}#toolbar=1&navpanes=0`} 
+                  className="w-full h-[72vh] border-0 rounded-2xl bg-white" 
+                  title={doc.title} 
+                >
+                  <div className="text-center p-8 space-y-3">
+                    <FileText className="w-12 h-12 text-rose-400 mx-auto opacity-70" />
+                    <p className="text-sm font-bold text-slate-900">Visualiseur PDF intégré</p>
+                    <Button onClick={handleOpenNewTab} className="bg-[#7B1B38] text-white font-bold text-xs rounded-xl gap-2">
+                      <ExternalLink className="w-4 h-4" /> Ouvrir dans un nouvel onglet
+                    </Button>
+                  </div>
+                </iframe>
+              </object>
             ) : (
               <div className="text-center p-8 space-y-3">
                 <FileText className="w-12 h-12 text-rose-400 mx-auto opacity-70" />

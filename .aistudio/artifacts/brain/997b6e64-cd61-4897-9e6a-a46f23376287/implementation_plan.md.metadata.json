@@ -1,6 +1,6 @@
 {
-  "summary":  "Plan d'implémentation pour la traduction intégrale de la plateforme (Dashboard, Nouvelle Demande, Wizard étape par étape), la mémorisation de la langue dans le stockage local, et la refonte complète du scanner de passeport biométrique 100% autonome dans le navigateur sans dépendance externe pour Hostinger.",
-  "updatedAt":  "2026-10-21T23:44:55.282070092Z",
+  "summary":  "Plan d'implémentation pour :\n1. Résolution définitive de la prévisualisation et du téléchargement des documents PDF (visas officiels et pièces jointes).\n2. Sécurisation des réservations de voyages organisés (dialogue de confirmation avec récapitulatif financier, protection anti-multiclic, et onglet de suivi 'Mes Réservations').\n3. Correction de l'acheminement des dossiers de Visa Études (optimisation des documents lourds pour Firestore, inscription croisée dans la gestion centrale des dossiers et synchronisation temps réel côté agence et administration).",
+  "updatedAt":  "2026-10-22T11:27:55.174707135Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

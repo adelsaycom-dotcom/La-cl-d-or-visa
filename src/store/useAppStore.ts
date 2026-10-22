@@ -232,7 +232,7 @@ export interface AppState {
   updateOrganizedTrip: (id: string, trip: Partial<OrganizedTrip>) => void;
   deleteOrganizedTrip: (id: string) => void;
 
-  addTripReservation: (reservation: Omit<TripReservation, 'id' | 'createdAt' | 'status' | 'totalPrice'>) => void;
+  addTripReservation: (reservation: Omit<TripReservation, 'id' | 'createdAt' | 'status' | 'totalPrice'>) => Promise<TripReservation>;
   updateTripReservationStatus: (id: string, status: TripReservation['status']) => void;
   updateTripReservationPayment: (id: string, amount: number) => void;
 
@@ -413,22 +413,79 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   addTripReservation: async (resData) => {
     const trip = get().organizedTrips.find(t => t.id === resData.tripId);
-    if (!trip || trip.availableSeats < resData.numberOfPeople) return;
+    if (!trip) {
+      throw new Error("Ce voyage organisé n'est plus disponible.");
+    }
+    if (trip.availableSeats < resData.numberOfPeople) {
+      throw new Error(`Nombre de places insuffisant : seulement ${trip.availableSeats} place(s) disponible(s).`);
+    }
 
-    const resId = doc(collection(db, 'tripReservations')).id;
-    await setDoc(doc(db, 'tripReservations', resId), {
+    const resId = `RES-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const totalPrice = (trip.price || 0) * (resData.numberOfPeople || 1);
+    
+    const newReservation: TripReservation = {
       ...resData,
       id: resId,
       createdAt: new Date().toISOString(),
       status: 'pending',
-      totalPrice: trip.price * resData.numberOfPeople,
+      totalPrice: totalPrice,
       paidAmount: 0
-    });
+    };
 
-    // Deduct seats
-    await updateDoc(doc(db, 'organizedTrips', resData.tripId), {
-      availableSeats: trip.availableSeats - resData.numberOfPeople
-    });
+    const sanitized = sanitizeFirestoreData(newReservation);
+    await setDoc(doc(db, 'tripReservations', resId), sanitized);
+
+    // Mise à jour immédiate du store local
+    set((state) => ({
+      tripReservations: [newReservation, ...state.tripReservations.filter(r => r.id !== resId)],
+      organizedTrips: state.organizedTrips.map(t => 
+        t.id === resData.tripId 
+          ? { ...t, availableSeats: Math.max(0, t.availableSeats - resData.numberOfPeople) }
+          : t
+      )
+    }));
+
+    // Décompter les places disponibles dans Firestore
+    try {
+      const updatedSeats = Math.max(0, trip.availableSeats - resData.numberOfPeople);
+      await updateDoc(doc(db, 'organizedTrips', resData.tripId), {
+        availableSeats: updatedSeats
+      });
+    } catch (seatErr) {
+      console.warn("Avertissement mise à jour places disponibles:", seatErr);
+    }
+
+    // Notification pour l'administrateur
+    try {
+      const notifAdminRef = doc(collection(db, 'notifications'));
+      await setDoc(notifAdminRef, {
+        id: notifAdminRef.id,
+        agencyId: 'admin',
+        title: 'Nouvelle réservation Voyage Organisé',
+        message: `${resData.agencyName || 'Une agence'} a réservé ${resData.numberOfPeople} place(s) pour « ${trip.title} » (Client: ${resData.clientName}).`,
+        type: 'info',
+        read: false,
+        createdAt: new Date().toISOString(),
+        link: '/admin/trips'
+      });
+
+      // Notification pour l'agence
+      const notifAgencyRef = doc(collection(db, 'notifications'));
+      await setDoc(notifAgencyRef, {
+        id: notifAgencyRef.id,
+        agencyId: resData.agencyId,
+        title: 'Réservation Enregistrée avec Succès',
+        message: `Votre réservation pour « ${trip.title} » (${resData.numberOfPeople} personne(s)) est enregistrée sous la référence ${resId}.`,
+        type: 'success',
+        read: false,
+        createdAt: new Date().toISOString(),
+        link: '/agency/trips'
+      });
+    } catch (notifErr) {
+      console.warn("Avertissement notification voyage:", notifErr);
+    }
+
+    return newReservation;
   },
 
   updateTripReservationPayment: async (id, amount) => {
@@ -476,29 +533,63 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   addStudyApplication: async (application) => {
-    const appId = doc(collection(db, 'studyApplications')).id;
-    const userRef = doc(db, 'users', application.agencyId);
+    const appId = (application as any).id || `ETUD-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const agencyId = application.agencyId;
+    const userRef = doc(db, 'users', agencyId);
     
     await runTransaction(db, async (transaction) => {
       const userDoc = await transaction.get(userRef);
-      if (!userDoc.exists()) {
-        throw new Error("Agence introuvable");
-      }
-      
-      const currentBalance = userDoc.data().balance || 0;
       const price = application.price || 0;
-      
-      if (currentBalance < price) {
-        throw new Error("Solde insuffisant pour cette opération.");
+
+      if (userDoc.exists()) {
+        const currentBalance = userDoc.data().balance || 0;
+        if (currentBalance < price) {
+          throw new Error("Solde insuffisant pour cette opération.");
+        }
+        transaction.update(userRef, { balance: currentBalance - price });
       }
-      
-      transaction.update(userRef, { balance: currentBalance - price });
+
+      // 1. Enregistrement dans studyApplications pour l'espace dédié
       transaction.set(doc(db, 'studyApplications', appId), {
         ...application,
         id: appId,
         submissionDate: new Date().toISOString()
       });
-      
+
+      // 2. Inscription conjointe dans applications pour la visibilité globale centrale
+      const mainAppRef = doc(db, 'applications', appId);
+      transaction.set(mainAppRef, {
+        id: appId,
+        agencyId: application.agencyId,
+        agencyName: application.agencyName || 'Mon Agence',
+        serviceType: 'Etude',
+        country: (application as any).country || 'Destination Universitaire',
+        visaType: `Visa Études - ${application.programTitle || 'Admission Universitaire'}`,
+        travelerName: application.studentName,
+        passportNumber: application.passportNumber,
+        status: 'Pending',
+        price: price,
+        submissionDate: new Date().toISOString(),
+        attachments: (application as any).attachments || [],
+        customFormData: {
+          programId: application.programId,
+          programTitle: application.programTitle,
+          email: application.email,
+          phone: application.phone,
+          documents: application.documents || {}
+        },
+        timeline: [
+          {
+            id: `entry_${Date.now()}`,
+            date: new Date().toISOString(),
+            title: "Candidature Études Transmise",
+            message: `Dossier d'admission pour le programme « ${application.programTitle || 'Études'} » déposé par l'agence.`,
+            sender: "Agency"
+          }
+        ]
+      });
+
+      // 3. Enregistrement transaction financière
       const txRef = doc(collection(db, 'transactions'));
       transaction.set(txRef, {
         id: txRef.id,
@@ -510,13 +601,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
         date: new Date().toISOString().split('T')[0],
         description: `Paiement pour programme d'études (${application.studentName || ''})`
       });
-      
+
+      // 4. Notification Admin
       const notifRef = doc(collection(db, 'notifications'));
       transaction.set(notifRef, {
         id: notifRef.id,
         agencyId: 'admin',
-        title: 'Nouveau dossier Études',
-        message: `${application.agencyName} a soumis un dossier d'études pour ${application.studentName}.`,
+        title: 'Nouveau dossier Visa Études',
+        message: `${application.agencyName || 'Une agence'} a soumis un dossier d'études pour ${application.studentName}.`,
         type: 'info',
         read: false,
         createdAt: new Date().toISOString(),
