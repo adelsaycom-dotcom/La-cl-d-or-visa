@@ -1,125 +1,104 @@
-# Plan d'Implémentation : Tableau de Bord Agence Amélioré, Marge B2C, Support Évolué & Refonte Admin (Catalogue & Profil Agence)
+# Plan d'Implémentation : Traduction Intégrale & Scanner Passeport Autonome Hostinger
 
-Ce plan structure la réalisation des nouvelles évolutions demandées pour le volet **Agence** et le volet **Administration**, en intégrant vos choix formulés lors du cadrage.
+Ce projet apporte une traduction bilingue (FR / EN) parfaite et exhaustive sur l'ensemble de la plateforme (en particulier le tableau de bord agence et le wizard de nouvelle demande de visa étape par étape), la mémorisation de la langue préférée via `localStorage`, ainsi qu'une refonte complète du scanner de passeports biométriques pour garantir un fonctionnement à 100% côté navigateur sans dépendance externe ni clé API sur l'hébergement Hostinger.
 
 ---
 
-## 1. Synthèse des Décisions & Choix Validés
+### Décisions Validées avec l'Utilisateur
 
 > [!IMPORTANT]
-> - **Marge B2C & Mode Comptoir** : Intégration d'un commutateur rapide « Tarif B2B » ↔ « Tarif Client B2C » avec taux de marge paramétrable par l'agence, permettant de présenter l'écran au voyageur sans dévoiler les tarifs de gros B2B.
-> - **Catalogue B2B Administrateur** : Organisation en onglets intuitifs par familles complètes de services avec filtres par pays/destination, facilitant la gestion et l'ajout de prestations.
-> - **Fiche Profil Agence Administrateur** : Vue détaillée exhaustive avec informations juridiques complètes (RC, NIF, gérant), historique chronologique de tous les dossiers, relevé des flux de solde, statistiques de performance, édition des données et module de suspension temporaire (durée configurable et motif).
+> - **Environnement de déploiement** : Hébergement Hostinger (nécessitant un fonctionnement résilient et autonome).
+> - **Moteur de scan de passeport** : Scanner 100% exécuté dans le navigateur, sans dépendance externe bloquante ni obligation de clé API serveur.
+> - **Règle de langue** : Mémorisation persistante dans le navigateur (`localStorage`) de la dernière langue choisie (FR ou EN) avec français par défaut.
 
 ---
 
-## 2. Volet Agence : Expérience Utilisateur & Fonctionnalités
+## 1. Vue d'Ensemble & Périmètre Fonctionnel
 
-### A. Personnalisation & En-tête du Tableau de Bord
-- **Nom réel de l'agence** : Remplacement du texte générique *« Bonjour, Mon Agence »* par le nom d'entreprise réel stocké dans le profil Firestore (`users/{uid}.agencyName` ou `companyName`).
-- **Remplacement E-Visa par Invitation** :
-  - Dans la grille des services rapides du tableau de bord agence (`Dashboard.tsx`), remplacer la tuile « E-Visa » par « Invitation » avec son icône dédiée, son descriptif et son lien d'accès rapide.
+### A. Traduction Exhaustive & Parfaite
+1. **Tableau de Bord Agence (`components/agency/Dashboard.tsx`)** :
+   - Cartes de statistiques (Dossiers en cours, validés, complétés, solde disponible).
+   - Graphiques d'activité et historiques de demandes.
+   - Section des services rapides (Visas touristiques, d'affaires, études, voyages organisés).
+   - Tableau des dernières demandes avec statuts traduits en temps réel.
+2. **Formulaire de Nouvelle Demande / Wizard Visa (`components/agency/VisaWizard.tsx`)** :
+   - Traduction méticuleuse des 4 étapes du processus :
+     - *Étape 1* : Choix du pays de destination, formule consulaire, type de démarche, calcul des frais et marge B2C.
+     - *Étape 2* : Import du scan passeport, données du voyageur (nom, prénom, nationalité, sexe, n° passeport, dates de délivrance/expiration, coordonnées).
+     - *Étape 3* : Documents requis personnalisés par pays/consulat (photos conformes, réservations d'hôtel, attestations, formulaires).
+     - *Étape 4* : Récapitulatif global, vérification des données, débit du solde agence et accusé de dépôt.
+3. **Persistance de la Langue (`src/i18n/LanguageContext.tsx`)** :
+   - Sauvegarde automatique dans `localStorage.getItem('app_language')`.
+   - Restauration immédiate au rechargement de la page pour une expérience fluide.
 
-### B. Parcours « Nouvelle Demande » Multi-Services
-- **Sélecteur complet de services** :
-  - Lorsque l'agent clique sur *« Nouvelle Demande »* (bouton principal ou en-tête), il accède d'abord à la vitrine des familles de prestations :
-    1. *Invitations & Affaires*
-    2. *E-Visas & Visas Consulaires*
-    3. *Résidences & Séjours*
-    4. *Permis de Conduire Internationaux*
-    5. *Rendez-vous Consulaires*
-    6. *Constitution de Dossier & Traductions*
-    7. *Voyages Organisés & Omra*
-    8. *Études Universitaires à l'Étranger*
-  - Sélection fluide qui oriente ensuite vers la destination et l'assistant intelligent en 3 étapes.
-
-### C. Mode Marge B2C / Comptoir Voyageur
-- **Configuration dans les paramètres** : Définition d'un taux de marge par défaut en pourcentage (%) ou forfaitaire en DZD.
-- **Bouton bascule « Vue Comptoir B2C »** :
-  - Accessible directement sur la barre supérieure ou les fiches prestations.
-  - En un clic, tous les prix affichés basculent instantanément :
-    - *Mode B2B (par défaut)* : Prix d'achat agence brut débité du solde.
-    - *Mode B2C (Comptoir)* : Prix public final TTC calculé automatiquement avec la marge, masquant tout indice de tarification B2B pour une présentation directe et sereine au client final.
-
-### D. Support Intelligent & Gestion des Tickets
-- **Rattachement à un dossier existant** :
-  - Menu déroulant alimenté dynamiquement avec tous les dossiers de l'agence (ex: `DOSS-M36LOT • Mohamed Benali - Turquie`).
-  - Possibilité de lier un problème à un dossier précis ou de créer une demande générale.
-- **Pièces jointes & Captures d'écran** :
-  - Zone de dépôt de fichiers (images JPG/PNG, PDF) avec le système de stockage serveur sécurisé pour joindre des preuves ou captures d'erreurs.
-- **Catégorisation intelligente** :
-  - Urgence du départ, problème de paiement, document rejeté, question consulaire.
+### B. Scanner de Passeport 100% Navigateur pour Hostinger
+1. **Élimination des blocages réseau Hostinger** :
+   - Suppression du timeout d'attente vers `/api/scan-passport` lorsqu'aucun serveur backend n'est présent sur Hostinger.
+   - Intégration d'un parseur MRZ ICAO 9303 TD3 local ultra-robuste avec tolérance aux erreurs de binarisation et aux caractères spéciaux (`<`, chevrons, chiffres).
+2. **Double passe d'analyse d'image locale (Canvas HTML5)** :
+   - Passe 1 : Détection et recadrage de la zone MRZ inférieure (2 lignes de 44 caractères).
+   - Passe 2 : Extraction directe avec expressions régulières adaptées aux passeports algériens, français et internationaux (numéro de passeport, date de naissance, expiration, sexe, nom/prénom).
+3. **Indicateurs visuels et feedback instantané** :
+   - Barre de progression fluide lors du scan de l'image.
+   - Remplissage automatique instantané des champs avec confirmation visuelle sans bloquer l'utilisateur si la photo est floue.
 
 ---
 
-## 3. Volet Administration : Gestion & Contrôle Centralisé
+## 2. Expérience Utilisateur & Design
 
-### A. Refonte du Catalogue B2B (`AdminCatalog.tsx` / `ServicesManagement.tsx`)
-- **Architecture par familles de services** :
-  - Onglets horizontaux clairs : *Invitations, E-Visas, Résidences, Permis, Rendez-vous, Dossiers, Voyages/Omra, Études*.
-- **Filtres par pays / zone** :
-  - Recherche instantanée par destination (France, Espagne, Turquie, Arabie Saoudite, Chine, etc.).
-- **Gestion simplifiée** :
-  - Ajout rapide d'une nouvelle offre avec titre, destination, tarif B2B en DZD, délai de traitement et conditions.
-  - Bascule actif/inactif en un clic.
-
-### B. Profil Détaillé Agence & Édition Complète (`AgencyManagement.tsx`)
-- **Fiche profil immersive (« Drawer » ou page dédiée)** :
-  1. **Informations Administratives & Juridiques** :
-     - Nom de l'agence, Registre du Commerce (RC), Numéro d'Identification Fiscale (NIF), Gérant, Téléphone, Email, Wilaya/Adresse.
-     - Statut du compte (*Actif*, *En attente*, *Suspendu*).
-  2. **Statistiques & Performances** :
-     - Solde actuel du portefeuille (avec bouton d'ajustement/crédit direct par l'admin).
-     - Nombre total de dossiers soumis, dossiers approuvés, taux de concrétisation.
-     - Volume d'affaires cumulé en DZD.
-  3. **Historique des Dossiers de l'Agence** :
-     - Tableau complet de toutes les demandes de cette agence avec référence, voyageur, destination, date, montant et statut.
-  4. **Historique des Flux Financiers** :
-     - Relevé des recharges approuvées et des débits de commandes.
-  5. **Édition du Compte & Sanctions / Bannissement Temporaire** :
-     - Formulaire d'édition pour rectifier les informations de l'agence.
-     - **Module de suspension / bannissement** : choix de la durée (ex: 7 jours, 15 jours, 30 jours, indéterminé) avec saisie obligatoire d'un motif explicatif visible par l'agence lors de sa tentative de connexion.
-
----
-
-## 4. Architecture Technique & Fichiers Modifiés
-
+### Flux Utilisateur
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        Architecture Évolutions                         │
-└──────────────────────────────────┬─────────────────────────────────────┘
-                                   │
-         ┌─────────────────────────┴─────────────────────────┐
-         ▼                                                   ▼
-┌─────────────────────────────────┐         ┌─────────────────────────────────┐
-│         Espace Agence           │         │        Espace Admin             │
-│ - Dashboard.tsx (Nom réel,      │         │ - AdminCatalog.tsx / Services   │
-│   invitation, raccourcis)       │         │   (Onglets familles complètes,  │
-│ - VisaWizard.tsx (Sélecteur     │         │   filtres pays, création agile) │
-│   tous services, switch B2C)    │         │ - AgencyManagement.tsx          │
-│ - AgencySupport.tsx             │         │   (Fiche agence 360°, stats,    │
-│   (Tickets liés à dossiers,     │         │   historique dossiers, solde,   │
-│   upload captures d'écran)      │         │   édition & bannissement tempo) │
-│ - useAppStore.ts (Marge B2C,    │         │                                 │
-│   ban agence, profils complets) │         │                                 │
-└─────────────────────────────────┘         └─────────────────────────────────┘
+┌────────────────────────┐      ┌───────────────────────────┐      ┌─────────────────────────────┐
+│ 1. Choix du Service    │ ───> │ 2. Scan Passeport         │ ───> │ 3. Pièces & Validation      │
+│ Pays, Formule, Tarifs  │      │ Auto-remplissage instant  │      │ Récapitulatif bilingue      │
+└────────────────────────┘      └───────────────────────────┘      └─────────────────────────────┘
+```
+
+- **Typographie et Contraste** : Conformité aux règles de design avec typographies sombres (`text-slate-900`) sur fond clair, statuts sans pilules encombrantes et accent bordeaux officiel `#7B1B38`.
+- **Commutateur de Langue** : Reste accessible dans le haut de chaque page avec mise à jour instantanée du texte sans rechargement de page.
+
+---
+
+## 3. Architecture Technique
+
+### Diagramme de Flux de Données
+```
+[ Utilisateur importe une image de passeport ]
+                   │
+                   ▼
+[ Canvas HTML5 : Normalisation de contraste & Redimensionnement ]
+                   │
+                   ▼
+[ Détecteur MRZ ICAO Doc 9303 & OCR Client Local ]
+                   │
+                   ▼
+┌────────────────────────────────────────────────────────┐
+│ Données extraites :                                    │
+│ - Nom, Prénom                                          │
+│ - N° Passeport (9 caractères)                          │
+│ - Date de Naissance & Date d'Expiration (YYYY-MM-DD)   │
+│ - Sexe (M/F) & Nationalité                             │
+└────────────────────────────────────────────────────────┘
+                   │
+                   ▼
+[ Auto-remplissage des champs de l'Étape 2 du Wizard ]
 ```
 
 ---
 
-## 5. Plan de Déploiement & Vérification par Étape
+## 4. Fichiers Concernés
 
-1. **Étape 1 : Tableau de bord agence & Nom réel**
-   - Mise à jour du header de bienvenue avec le nom réel de l'agence connectée.
-   - Remplacement de la carte *E-Visa* par *Invitation* sur le dashboard agence.
-2. **Étape 2 : Sélecteur tous services & Mode Marge B2C**
-   - Ajout du hub de choix de familles de services avant le formulaire.
-   - Implémentation du switch B2B/B2C avec marge paramétrable sur les grilles tarifaires.
-3. **Étape 3 : Support intelligent**
-   - Intégration de la sélection de dossier référencé et de la pièce jointe (capture/scan) dans la création de ticket.
-4. **Étape 4 : Catalogue B2B Admin par familles**
-   - Organisation de toutes les familles consulaires et administratives avec filtres pays.
-5. **Étape 5 : Fiche Profil Agence Admin & Suspension**
-   - Création de la vue 360° par agence (juridique, dossiers, solde, stats, suspension temporaire).
-6. **Vérification finale** :
-   - Validation `compile_applet` et `lint_applet` sans régression.
+1. `src/i18n/LanguageContext.tsx` : Gestion et mémorisation persistante dans `localStorage`.
+2. `src/i18n/translations.ts` : Enrichissement exhaustif de toutes les clés de traduction pour Dashboard, Wizard, étapes et messages de validation.
+3. `src/utils/passportScanner.ts` : Moteur de scan 100% client autonome, résilient à Hostinger.
+4. `components/agency/Dashboard.tsx` : Traduction intégrale et réactivité à `useLanguage`.
+5. `components/agency/VisaWizard.tsx` : Traduction méticuleuse des 4 étapes, statuts, documents requis et intégration fluide du nouveau scan.
+
+---
+
+## 5. Plan de Vérification
+
+- Vérification de la compilation sans erreur avec `compile_applet`.
+- Vérification du typage TypeScript avec `lint_applet` (`tsc --noEmit`).
+- Test de la mémorisation de langue et du basculement FR/EN sur le tableau de bord et la page de nouvelle demande.
+- Test de l'analyse automatique d'image de passeport et du pré-remplissage des champs.

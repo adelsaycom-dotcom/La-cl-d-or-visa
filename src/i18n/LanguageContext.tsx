@@ -11,14 +11,25 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => {
-    const saved = localStorage.getItem("b2b_lang");
-    return saved === "en" ? "en" : "fr";
+    try {
+      const saved = localStorage.getItem("b2b_lang") || localStorage.getItem("app_language");
+      return saved === "en" ? "en" : "fr";
+    } catch {
+      return "fr";
+    }
   });
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem("b2b_lang", lang);
-    document.documentElement.lang = lang;
+    try {
+      localStorage.setItem("b2b_lang", lang);
+      localStorage.setItem("app_language", lang);
+    } catch {
+      // Ignorer si localStorage restreint
+    }
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = lang;
+    }
   };
 
   useEffect(() => {

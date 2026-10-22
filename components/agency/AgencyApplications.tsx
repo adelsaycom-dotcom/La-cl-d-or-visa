@@ -235,18 +235,20 @@ export function AgencyApplications() {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-black text-slate-900">
-                  Dossier : {selectedApp.travelerName || (selectedApp as any).applicantName}
+                  {isEn ? "Application: " : "Dossier : "}{selectedApp.travelerName || (selectedApp as any).applicantName}
                 </h2>
                 {getStatusBadge(selectedApp.status)}
               </div>
               <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                Réf : <span className="font-mono text-slate-700 font-bold">{selectedApp.id}</span> • Soumis le {new Date(selectedApp.submissionDate).toLocaleDateString()}
+                {isEn ? "Ref: " : "Réf : "}<span className="font-mono text-slate-700 font-bold">{selectedApp.id}</span> • {isEn ? "Submitted on " : "Soumis le "}{new Date(selectedApp.submissionDate).toLocaleDateString()}
               </p>
             </div>
           </div>
 
           <div className="text-right hidden sm:block">
-            <span className="text-xs font-bold text-slate-400 uppercase">Tarif déduit</span>
+            <span className="text-xs font-bold text-slate-400 uppercase">
+              {isEn ? "Deducted Fee" : "Tarif déduit"}
+            </span>
             <div className="text-lg font-black text-[#7B1B38] font-mono">
               {typeof selectedApp.price === "number" ? selectedApp.price.toLocaleString() : "0"} DZD
             </div>
@@ -262,11 +264,13 @@ export function AgencyApplications() {
               </div>
               <div>
                 <span className="inline-block bg-white/20 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full mb-1">
-                  Document Officiel Validé
+                  {isEn ? "Validated Official Document" : "Document Officiel Validé"}
                 </span>
-                <h3 className="text-xl md:text-2xl font-black">Votre Visa est prêt et délivré !</h3>
+                <h3 className="text-xl md:text-2xl font-black">
+                  {isEn ? "Your Visa is ready and issued!" : "Votre Visa est prêt et délivré !"}
+                </h3>
                 <p className="text-emerald-100 text-xs sm:text-sm mt-0.5">
-                  Fichier : <strong className="text-white font-mono">{selectedApp.finalDocumentName || "Visa_Officiel.pdf"}</strong>
+                  {isEn ? "File: " : "Fichier : "}<strong className="text-white font-mono">{selectedApp.finalDocumentName || "Visa_Officiel.pdf"}</strong>
                 </p>
               </div>
             </div>
@@ -275,7 +279,7 @@ export function AgencyApplications() {
               onClick={() => triggerDownload(selectedApp.finalDocument!, selectedApp.finalDocumentName || `Visa_${selectedApp.travelerName.replace(/\s+/g, '_')}.pdf`)}
               className="bg-white hover:bg-emerald-50 text-emerald-800 font-black text-sm h-14 px-8 rounded-2xl shadow-lg relative z-10 shrink-0 gap-2 w-full md:w-auto"
             >
-              <Download className="w-5 h-5 text-emerald-700" /> Télécharger le Visa Officiel
+              <Download className="w-5 h-5 text-emerald-700" /> {isEn ? "Download Official Visa" : "Télécharger le Visa Officiel"}
             </Button>
           </div>
         )}
@@ -288,9 +292,13 @@ export function AgencyApplications() {
                 <AlertCircle className="w-6 h-6 animate-bounce" />
               </div>
               <div>
-                <h3 className="font-black text-amber-900 text-lg">Action requise par l'administration consulaire</h3>
+                <h3 className="font-black text-amber-900 text-lg">
+                  {isEn ? "Action required by consular administration" : "Action requise par l'administration consulaire"}
+                </h3>
                 <p className="text-amber-800 text-xs sm:text-sm mt-1">
-                  Une précision ou une pièce justificative complémentaire est nécessaire pour continuer le traitement de votre demande. Veuillez vérifier le fil de discussion ci-dessous et transmettre le document requis.
+                  {isEn 
+                    ? "Additional clarification or supporting document is required to proceed with your application. Please check the discussion thread below and provide the requested file."
+                    : "Une précision ou une pièce justificative complémentaire est nécessaire pour continuer le traitement de votre demande. Veuillez vérifier le fil de discussion ci-dessous et transmettre le document requis."}
                 </p>
               </div>
             </div>
@@ -300,7 +308,7 @@ export function AgencyApplications() {
               <Input 
                 value={missingDocCategory}
                 onChange={(e) => setMissingDocCategory(e.target.value)}
-                placeholder="Intitulé du document (ex: Attestation de travail, Relevé...)"
+                placeholder={isEn ? "Document title (e.g. Employment certificate, Bank statement...)" : "Intitulé du document (ex: Attestation de travail, Relevé...)"}
                 className="text-xs h-11 bg-slate-50 rounded-xl"
               />
               <div className="relative w-full sm:w-auto shrink-0">
@@ -316,7 +324,7 @@ export function AgencyApplications() {
                   className="w-full sm:w-auto bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs h-11 px-6 rounded-xl gap-2 pointer-events-none"
                 >
                   {isUploadingMissingDoc ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
-                  Téléverser la pièce demandée
+                  {isEn ? "Upload requested document" : "Téléverser la pièce demandée"}
                 </Button>
               </div>
             </div>
@@ -329,16 +337,16 @@ export function AgencyApplications() {
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[520px]">
               <div className="p-4 border-b border-slate-100 bg-slate-50 font-bold text-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm">
-                  <MessageSquare className="w-4 h-4 text-[#7B1B38]" /> Échanges Directs & Journal d'instruction
+                  <MessageSquare className="w-4 h-4 text-[#7B1B38]" /> {isEn ? "Direct Messages & Instruction Log" : "Échanges Directs & Journal d'instruction"}
                 </div>
-                <span className="text-[11px] font-semibold text-slate-400">Communication chiffrée</span>
+                <span className="text-[11px] font-semibold text-slate-400">{isEn ? "Encrypted communication" : "Communication chiffrée"}</span>
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/40 custom-scrollbar">
                 {(!selectedApp.timeline || selectedApp.timeline.length === 0) ? (
                   <div className="text-center py-16 text-slate-400">
                     <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                    <p className="text-xs">Aucun message pour le moment.</p>
+                    <p className="text-xs">{isEn ? "No messages yet." : "Aucun message pour le moment."}</p>
                   </div>
                 ) : (
                   selectedApp.timeline.map(entry => (
@@ -360,7 +368,7 @@ export function AgencyApplications() {
                           <div className={`text-[10px] font-bold uppercase mb-1 ${
                             entry.sender === 'Agency' ? 'text-rose-200' : 'text-[#7B1B38]'
                           }`}>
-                            {entry.sender === 'Admin' ? 'Administration' : 'Votre Agence'} • {new Date(entry.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            {entry.sender === 'Admin' ? (isEn ? "Administration" : "Administration") : (isEn ? "Your Agency" : "Votre Agence")} • {new Date(entry.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </div>
                         )}
                         <div className="leading-relaxed whitespace-pre-wrap">{entry.message}</div>
@@ -372,7 +380,7 @@ export function AgencyApplications() {
 
               <div className="p-3.5 bg-white border-t border-slate-100 flex gap-2">
                 <Input 
-                  placeholder="Écrire à l'administration consulaire..." 
+                  placeholder={isEn ? "Write to consular administration..." : "Écrire à l'administration consulaire..."} 
                   className="bg-slate-50 h-11 rounded-xl text-xs"
                   value={replyMessage}
                   onChange={(e) => setReplyMessage(e.target.value)}
@@ -396,20 +404,20 @@ export function AgencyApplications() {
             {/* Détails du dossier */}
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
               <h3 className="font-black text-slate-900 flex items-center gap-2 text-sm pb-3 border-b border-slate-100">
-                <FileText className="w-4 h-4 text-[#7B1B38]" /> Informations du Voyageur
+                <FileText className="w-4 h-4 text-[#7B1B38]" /> {isEn ? "Traveler Information" : "Informations du Voyageur"}
               </h3>
               
               <div className="space-y-3 text-xs">
                 <div>
-                  <span className="text-slate-400 font-bold uppercase block mb-0.5">Service</span>
+                  <span className="text-slate-400 font-bold uppercase block mb-0.5">{isEn ? "Service" : "Service"}</span>
                   <span className="font-bold text-slate-800">{selectedApp.serviceType} • {selectedApp.country}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-bold uppercase block mb-0.5">Voyageur</span>
+                  <span className="text-slate-400 font-bold uppercase block mb-0.5">{isEn ? "Traveler" : "Voyageur"}</span>
                   <span className="font-black text-slate-900 text-sm">{selectedApp.travelerName}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-bold uppercase block mb-0.5">Passeport</span>
+                  <span className="text-slate-400 font-bold uppercase block mb-0.5">{isEn ? "Passport" : "Passeport"}</span>
                   <span className="font-mono font-bold text-slate-900">{selectedApp.passportNumber}</span>
                 </div>
 
@@ -417,19 +425,19 @@ export function AgencyApplications() {
                   <>
                     {applicantDetails.nationality && (
                       <div>
-                        <span className="text-slate-400 font-bold uppercase block mb-0.5">Nationalité</span>
+                        <span className="text-slate-400 font-bold uppercase block mb-0.5">{isEn ? "Nationality" : "Nationalité"}</span>
                         <span className="font-bold text-slate-800">{applicantDetails.nationality}</span>
                       </div>
                     )}
                     {applicantDetails.dateOfBirth && (
                       <div>
-                        <span className="text-slate-400 font-bold uppercase block mb-0.5">Date de naissance</span>
+                        <span className="text-slate-400 font-bold uppercase block mb-0.5">{isEn ? "Date of Birth" : "Date de naissance"}</span>
                         <span className="font-bold text-slate-800">{applicantDetails.dateOfBirth}</span>
                       </div>
                     )}
                     {applicantDetails.phone && (
                       <div>
-                        <span className="text-slate-400 font-bold uppercase block mb-0.5">Téléphone</span>
+                        <span className="text-slate-400 font-bold uppercase block mb-0.5">{isEn ? "Phone" : "Téléphone"}</span>
                         <span className="font-bold text-slate-800">{applicantDetails.phone}</span>
                       </div>
                     )}
@@ -437,7 +445,7 @@ export function AgencyApplications() {
                 )}
 
                 <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
-                  <span className="text-slate-400 font-bold uppercase">Coût du service</span>
+                  <span className="text-slate-400 font-bold uppercase">{isEn ? "Service Cost" : "Coût du service"}</span>
                   <span className="text-base font-black text-[#7B1B38] font-mono">
                     {typeof selectedApp.price === "number" ? selectedApp.price.toLocaleString() : "0"} DZD
                   </span>
@@ -449,12 +457,14 @@ export function AgencyApplications() {
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <h3 className="font-black text-slate-900 flex items-center gap-2 text-sm">
-                  <FileCheck className="w-4 h-4 text-[#7B1B38]" /> Pièces Transmises ({appAttachments.length})
+                  <FileCheck className="w-4 h-4 text-[#7B1B38]" /> {isEn ? `Attached Documents (${appAttachments.length})` : `Pièces Transmises (${appAttachments.length})`}
                 </h3>
               </div>
 
               {appAttachments.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-4">Aucune pièce attachée à ce dossier.</p>
+                <p className="text-xs text-slate-400 text-center py-4">
+                  {isEn ? "No documents attached to this application." : "Aucune pièce attachée à ce dossier."}
+                </p>
               ) : (
                 <div className="space-y-2.5">
                   {appAttachments.map((att, idx) => {
@@ -489,7 +499,7 @@ export function AgencyApplications() {
                               variant="ghost" 
                               onClick={() => handleOpenPreview(att)}
                               className="h-7 w-7 p-0 text-slate-500 rounded-lg"
-                              title="Aperçu"
+                              title={isEn ? "Preview" : "Aperçu"}
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </Button>
@@ -499,7 +509,7 @@ export function AgencyApplications() {
                             variant="outline" 
                             onClick={() => triggerDownload(att, att.name || `${att.category}.${isPdf ? 'pdf' : 'jpg'}`)}
                             className="h-7 px-2 text-[10px] font-bold rounded-lg border-slate-300 text-slate-700"
-                            title="Télécharger"
+                            title={isEn ? "Download" : "Télécharger"}
                           >
                             <Download className="w-3 h-3" />
                           </Button>
@@ -589,10 +599,10 @@ export function AgencyApplications() {
 
               <div className="mb-4">
                 <h3 className="text-lg font-black text-slate-900 group-hover:text-[#7B1B38] transition-colors">
-                  {app.travelerName || (app as any).applicantName || "Voyageur"}
+                  {app.travelerName || (app as any).applicantName || (isEn ? "Traveler" : "Voyageur")}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5 font-semibold">
-                  Passeport : <span className="font-mono text-slate-800">{app.passportNumber}</span>
+                  {isEn ? "Passport: " : "Passeport : "}<span className="font-mono text-slate-800">{app.passportNumber}</span>
                 </p>
               </div>
 
@@ -605,7 +615,7 @@ export function AgencyApplications() {
               {app.finalDocument && (
                 <div className="mb-4 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 flex items-center justify-between text-xs text-emerald-800 font-bold">
                   <span className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Visa délivré disponible
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> {isEn ? "Issued visa available" : "Visa délivré disponible"}
                   </span>
                   <Download className="w-3.5 h-3.5 text-emerald-600" />
                 </div>
@@ -614,7 +624,7 @@ export function AgencyApplications() {
               <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                 <span className="text-slate-400 font-medium">{new Date(app.submissionDate).toLocaleDateString()}</span>
                 <span className="font-bold text-[#7B1B38] flex items-center gap-1">
-                  Ouvrir le dossier &rarr;
+                  {isEn ? "Open application" : "Ouvrir le dossier"} &rarr;
                 </span>
               </div>
             </div>

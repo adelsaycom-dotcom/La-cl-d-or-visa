@@ -48,6 +48,7 @@ export function VisaWizard() {
       s.id === p || 
       s.name.toLowerCase() === p ||
       s.name.toLowerCase().includes(p) ||
+      (s.nameEn && (s.nameEn.toLowerCase() === p || s.nameEn.toLowerCase().includes(p))) ||
       s.matchKeys.some(k => k.toLowerCase() === p || p.includes(k.toLowerCase()) || k.toLowerCase().includes(p))
     ) || null;
   }, [urlServiceParam]);
@@ -99,6 +100,7 @@ export function VisaWizard() {
         s.id === p || 
         s.name.toLowerCase() === p ||
         s.name.toLowerCase().includes(p) ||
+        (s.nameEn && (s.nameEn.toLowerCase() === p || s.nameEn.toLowerCase().includes(p))) ||
         s.matchKeys.some(k => k.toLowerCase() === p || p.includes(k.toLowerCase()) || k.toLowerCase().includes(p))
       );
       setSelectedFamily(found || null);
@@ -461,24 +463,28 @@ export function VisaWizard() {
                     <srv.icon className="w-6 h-6" />
                   </div>
                   <Badge className="bg-slate-100 text-slate-700 text-[10px] font-bold tracking-wide uppercase">
-                    {srv.badge}
+                    {isEn ? (srv.badgeEn || srv.badge) : srv.badge}
                   </Badge>
                 </div>
 
                 <h3 className="text-base font-black text-slate-900 group-hover:text-[#7B1B38] transition-colors mb-1.5 leading-tight">
-                  {srv.name}
+                  {isEn ? (srv.nameEn || srv.name) : srv.name}
                 </h3>
                 <p className="text-xs text-slate-500 font-medium leading-relaxed mb-3 line-clamp-2">
-                  {srv.description}
+                  {isEn ? (srv.descriptionEn || srv.description) : srv.description}
                 </p>
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between mt-auto">
                 <span className="text-[11px] font-semibold text-slate-400">
-                  {srv.isExternalLink ? "Accès direct" : matchingCount > 0 ? `${matchingCount} formule(s)` : "Consulter pays"}
+                  {srv.isExternalLink 
+                    ? (isEn ? "Direct Access" : "Accès direct") 
+                    : matchingCount > 0 
+                      ? (isEn ? `${matchingCount} package(s)` : `${matchingCount} formule(s)`) 
+                      : (isEn ? "Browse countries" : "Consulter pays")}
                 </span>
                 <span className="inline-flex items-center gap-1 text-xs font-bold text-[#7B1B38] group-hover:translate-x-1 transition-transform">
-                  Ouvrir <ArrowRight className="w-3.5 h-3.5" />
+                  {isEn ? "Open" : "Ouvrir"} <ArrowRight className="w-3.5 h-3.5" />
                 </span>
               </div>
             </div>
@@ -497,7 +503,9 @@ export function VisaWizard() {
       return renderServiceHub();
     }
 
-    const currentFamilyTitle = selectedFamily?.name || urlServiceParam || "Demande";
+    const currentFamilyTitle = isEn 
+      ? (selectedFamily?.nameEn || selectedFamily?.name || urlServiceParam || "Service")
+      : (selectedFamily?.name || urlServiceParam || "Demande");
 
     return (
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-8">
@@ -516,7 +524,7 @@ export function VisaWizard() {
               }}
               className="rounded-xl border-slate-200 hover:bg-slate-100 text-xs font-bold gap-1.5"
             >
-              <ChevronLeft className="w-4 h-4" /> Toutes les prestations
+              <ChevronLeft className="w-4 h-4" /> {isEn ? "All services" : "Toutes les prestations"}
             </Button>
             <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider">
               {currentFamilyTitle}
@@ -524,7 +532,7 @@ export function VisaWizard() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 font-medium">Affichage :</span>
+            <span className="text-xs text-slate-500 font-medium">{isEn ? "Display:" : "Affichage :"}</span>
             <button
               type="button"
               onClick={() => setB2cMode(!b2cMode)}
@@ -535,7 +543,7 @@ export function VisaWizard() {
               }`}
             >
               <Eye className="w-3.5 h-3.5" />
-              <span>{b2cMode ? `Comptoir B2C (+${b2cMarginPercent}%)` : "Tarifs B2B Bruts"}</span>
+              <span>{b2cMode ? (isEn ? `Client Desk (+${b2cMarginPercent}%)` : `Comptoir B2C (+${b2cMarginPercent}%)`) : (isEn ? "Raw B2B Rates" : "Tarifs B2B Bruts")}</span>
             </button>
           </div>
         </div>
@@ -544,19 +552,28 @@ export function VisaWizard() {
           <div>
             <div className="text-center mb-8">
               <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider mb-2">
-                Étape 1 sur 3 • Destination
+                {isEn ? "Step 1 of 3 • Destination" : "Étape 1 sur 3 • Destination"}
               </Badge>
-              <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Où voyage votre client ?</h2>
+              <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">
+                {isEn ? "Where is your client travelling?" : "Où voyage votre client ?"}
+              </h2>
               <p className="text-slate-500 max-w-xl mx-auto">
-                Sélectionnez le pays de destination pour les demandes de type <strong className="text-[#7B1B38]">{currentFamilyTitle}</strong>.
+                {isEn 
+                  ? `Select destination country for requests of type ` 
+                  : `Sélectionnez le pays de destination pour les demandes de type `}
+                <strong className="text-[#7B1B38]">{currentFamilyTitle}</strong>.
               </p>
             </div>
 
             {availableCountries.length === 0 ? (
               <div className="bg-slate-50 border border-slate-200 rounded-3xl p-12 text-center text-slate-500">
                 <MapPin className="w-12 h-12 mx-auto mb-4 text-slate-300" />
-                <p className="font-semibold text-lg text-slate-700">Aucune destination active pour le moment</p>
-                <p className="text-sm text-slate-500 mt-1">Nos équipes consulaires publient régulièrement de nouvelles formules.</p>
+                <p className="font-semibold text-lg text-slate-700">
+                  {isEn ? "No active destination at this time" : "Aucune destination active pour le moment"}
+                </p>
+                <p className="text-sm text-slate-500 mt-1">
+                  {isEn ? "Our consular teams regularly publish new packages." : "Nos équipes consulaires publient régulièrement de nouvelles formules."}
+                </p>
                 <Button
                   onClick={() => {
                     setSelectedFamily(null);
@@ -564,7 +581,7 @@ export function VisaWizard() {
                   }}
                   className="mt-6 bg-[#7B1B38] hover:bg-[#63142c] text-white rounded-xl text-xs font-bold"
                 >
-                  Voir les autres services disponibles
+                  {isEn ? "View other available services" : "Voir les autres services disponibles"}
                 </Button>
               </div>
             ) : (
@@ -579,7 +596,9 @@ export function VisaWizard() {
                       <MapPin className="w-8 h-8" />
                     </div>
                     <span className="font-black text-slate-900 text-lg group-hover:text-[#7B1B38] transition-colors">{country}</span>
-                    <span className="text-xs text-slate-400 font-medium mt-1">Cliquez pour voir les formules</span>
+                    <span className="text-xs text-slate-400 font-medium mt-1">
+                      {isEn ? "Click to view packages" : "Cliquez pour voir les formules"}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -599,9 +618,11 @@ export function VisaWizard() {
                 </Button>
                 <div>
                   <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider mb-1">
-                    Destination : {selectedCountry}
+                    {isEn ? `Destination: ${selectedCountry}` : `Destination : ${selectedCountry}`}
                   </Badge>
-                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">Choisissez votre formule</h2>
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                    {isEn ? "Choose your package" : "Choisissez votre formule"}
+                  </h2>
                 </div>
               </div>
 
@@ -610,7 +631,7 @@ export function VisaWizard() {
                 onClick={() => setSelectedCountry("")} 
                 className="text-xs text-slate-500 hover:text-[#7B1B38]"
               >
-                Changer de pays
+                {isEn ? "Change country" : "Changer de pays"}
               </Button>
             </div>
 
@@ -636,7 +657,7 @@ export function VisaWizard() {
                         {b2cMode ? (
                           <>
                             <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                              Tarif Public Client
+                              {isEn ? "Client Public Rate" : "Tarif Public Client"}
                             </span>
                             <div className="text-2xl font-black text-emerald-700 font-mono mt-1">
                               {clientPrice.toLocaleString()} <span className="text-xs">DZD</span>
@@ -644,7 +665,9 @@ export function VisaWizard() {
                           </>
                         ) : (
                           <>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tarif B2B</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              {isEn ? "B2B Rate" : "Tarif B2B"}
+                            </span>
                             <div className="text-2xl font-black text-[#7B1B38] font-mono mt-1">
                               {opt.price.toLocaleString()} <span className="text-xs">DZD</span>
                             </div>
@@ -656,7 +679,7 @@ export function VisaWizard() {
                     <h3 className="text-xl font-black text-slate-900 mb-2">{opt.title}</h3>
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 mb-4 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                       <Clock className="w-4 h-4 text-slate-400" />
-                      <span>Délai moyen : <strong>{opt.processingTime || "48h à 72h"}</strong></span>
+                      <span>{isEn ? "Average processing time:" : "Délai moyen :"} <strong>{opt.processingTime || (isEn ? "48h to 72h" : "48h à 72h")}</strong></span>
                     </div>
 
                     {opt.description && (
@@ -678,7 +701,7 @@ export function VisaWizard() {
                         }}
                         className="w-full h-12 text-sm font-black rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white shadow-md shadow-[#7B1B38]/20 flex items-center justify-center gap-2"
                       >
-                        Choisir cette formule <ArrowRight className="w-4 h-4" />
+                        {isEn ? "Select this package" : "Choisir cette formule"} <ArrowRight className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
@@ -709,14 +732,18 @@ export function VisaWizard() {
           </Button>
           <div>
             <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider mb-1">
-              Étape 2 sur 3 • Analyse Intelligente
+              {isEn ? "Step 2 of 3 • Smart Processing" : "Étape 2 sur 3 • Analyse Intelligente"}
             </Badge>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Passeport & Coordonnées du Voyageur</h2>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+              {isEn ? "Passport & Traveler Information" : "Passeport & Coordonnées du Voyageur"}
+            </h2>
           </div>
         </div>
 
         <div className="hidden sm:block text-right">
-          <div className="text-xs text-slate-400 font-bold uppercase">Formule sélectionnée</div>
+          <div className="text-xs text-slate-400 font-bold uppercase">
+            {isEn ? "Selected package" : "Formule sélectionnée"}
+          </div>
           <div className="font-black text-slate-800">{selectedOption?.title} ({selectedCountry})</div>
         </div>
       </div>
@@ -735,16 +762,20 @@ export function VisaWizard() {
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6 relative z-10">
           <div>
             <div className="inline-flex items-center gap-2 bg-[#7B1B38] text-white px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase mb-2 shadow-sm">
-              <Sparkles className="w-3.5 h-3.5" /> Enregistrement Sécurisé & Données Passeport
+              <Sparkles className="w-3.5 h-3.5" /> {isEn ? "Secure Registration & Passport Data" : "Enregistrement Sécurisé & Données Passeport"}
             </div>
-            <h3 className="text-xl md:text-2xl font-black">Déposez ou scannez le passeport</h3>
+            <h3 className="text-xl md:text-2xl font-black">
+              {isEn ? "Upload or scan passport" : "Déposez ou scannez le passeport"}
+            </h3>
             <p className="text-slate-400 text-sm mt-1 max-w-xl">
-              Déposez la page d'identité du passeport (photo nette ou scan PDF). Le document est sauvegardé et rattaché à la demande, vous permettant de vérifier ou compléter les coordonnées ci-dessous.
+              {isEn 
+                ? "Upload the passport identity page (clear photo or PDF scan). The document is saved and attached to the application, allowing you to review or complete the information below."
+                : "Déposez la page d'identité du passeport (photo nette ou scan PDF). Le document est sauvegardé et rattaché à la demande, vous permettant de vérifier ou compléter les coordonnées ci-dessous."}
             </p>
           </div>
 
           <div className="flex items-center gap-2 text-xs font-semibold bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 shrink-0">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" /> Formats autorisés : JPG, PNG, PDF (max 5 Mo)
+            <ShieldCheck className="w-4 h-4 text-emerald-400" /> {isEn ? "Allowed formats: JPG, PNG, PDF (max 5 MB)" : "Formats autorisés : JPG, PNG, PDF (max 5 Mo)"}
           </div>
         </div>
 
@@ -763,10 +794,10 @@ export function VisaWizard() {
                 <Upload className="w-8 h-8" />
               </div>
               <p className="font-bold text-base text-white">
-                Glissez-déposez la photo ou le scan du passeport ici
+                {isEn ? "Drag & drop passport photo or scan here" : "Glissez-déposez la photo ou le scan du passeport ici"}
               </p>
               <p className="text-xs text-slate-400 mt-1">
-                ou cliquez pour parcourir les fichiers de votre ordinateur
+                {isEn ? "or click to browse files from your computer" : "ou cliquez pour parcourir les fichiers de votre ordinateur"}
               </p>
             </div>
           </div>
@@ -778,8 +809,10 @@ export function VisaWizard() {
                   <div className="w-14 h-14 rounded-full border-4 border-[#7B1B38]/30 border-t-[#7B1B38] animate-spin flex items-center justify-center"></div>
                   <Sparkles className="w-6 h-6 text-[#7B1B38] absolute inset-0 m-auto animate-pulse" />
                 </div>
-                <h4 className="font-bold text-base text-white">Analyse biométrique du passeport en cours...</h4>
-                <p className="text-slate-300 text-xs mt-1.5 font-medium">{scanStatusText || "Lecture et extraction automatique des informations..."}</p>
+                <h4 className="font-bold text-base text-white">
+                  {isEn ? "Biometric passport scanning in progress..." : "Analyse biométrique du passeport en cours..."}
+                </h4>
+                <p className="text-slate-300 text-xs mt-1.5 font-medium">{scanStatusText || (isEn ? "Reading and extracting information automatically..." : "Lecture et extraction automatique des informations...")}</p>
                 
                 {/* Barre de progression dynamique */}
                 <div className="w-full bg-slate-700/60 rounded-full h-2 mt-4 overflow-hidden border border-slate-600">
@@ -789,7 +822,7 @@ export function VisaWizard() {
                   />
                 </div>
                 <div className="flex justify-between items-center w-full mt-1.5 text-[10px] text-slate-400">
-                  <span>Moteur universel (Compatible Hostinger)</span>
+                  <span>{isEn ? "Universal engine (Hostinger compatible)" : "Moteur universel (Compatible Hostinger)"}</span>
                   <span className="font-mono font-bold text-white">{scanProgress}%</span>
                 </div>
               </div>
@@ -813,10 +846,10 @@ export function VisaWizard() {
                     <p className="text-xs text-emerald-400 flex items-center gap-1 mt-0.5">
                       <CheckCircle2 className="w-3.5 h-3.5" /> 
                       {scanSource === "ai" 
-                        ? "Passeport analysé par IA • Coordonnées pré-remplies" 
+                        ? (isEn ? "Passport scanned by AI • Details auto-filled" : "Passeport analysé par IA • Coordonnées pré-remplies") 
                         : scanSource === "mrz"
-                        ? "Lecture biométrique MRZ réussie • Coordonnées pré-remplies"
-                        : "Passeport enregistré avec succès • Coordonnées modifiables"}
+                        ? (isEn ? "Biometric MRZ scan successful • Details auto-filled" : "Lecture biométrique MRZ réussie • Coordonnées pré-remplies")
+                        : (isEn ? "Passport saved successfully • Details editable" : "Passeport enregistré avec succès • Coordonnées modifiables")}
                     </p>
                   </div>
                 </div>
@@ -829,7 +862,7 @@ export function VisaWizard() {
                     onClick={removePassport}
                     className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-rose-400 rounded-xl text-xs gap-1"
                   >
-                    <Trash2 className="w-3.5 h-3.5" /> Remplacer
+                    <Trash2 className="w-3.5 h-3.5" /> {isEn ? "Replace" : "Remplacer"}
                   </Button>
                 </div>
               </div>
@@ -846,19 +879,25 @@ export function VisaWizard() {
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="font-bold text-emerald-900 text-sm">Passeport décodé avec succès !</h4>
+              <h4 className="font-bold text-emerald-900 text-sm">
+                {isEn ? "Passport successfully decoded!" : "Passeport décodé avec succès !"}
+              </h4>
               <Badge className="bg-emerald-600 text-white border-none text-[10px] px-2 py-0.5">
-                {scanSource === "ai" ? "Moteur IA Gemini" : "Moteur Optique MRZ ICAO"}
+                {scanSource === "ai" 
+                  ? (isEn ? "Gemini AI Engine" : "Moteur IA Gemini") 
+                  : (isEn ? "ICAO MRZ Optical Engine" : "Moteur Optique MRZ ICAO")}
               </Badge>
             </div>
             <p className="text-xs text-emerald-800 mt-1">
-              Les coordonnées du titulaire (Nom, Prénom, N° Passeport, Dates) ont été extraites et injectées dans le formulaire. Vous pouvez les ajuster à tout moment ci-dessous.
+              {isEn 
+                ? "Holder details (Last name, First name, Passport No, Dates) were extracted and filled in the form. You can adjust them anytime below."
+                : "Les coordonnées du titulaire (Nom, Prénom, N° Passeport, Dates) ont été extraites et injectées dans le formulaire. Vous pouvez les ajuster à tout moment ci-dessous."}
             </p>
             {applicant.passportNumber && (
               <div className="mt-2.5 flex items-center gap-3 text-xs bg-emerald-100/60 p-2 rounded-xl text-emerald-950 font-medium">
-                <span>N° Passeport : <strong className="font-mono font-bold text-emerald-900">{applicant.passportNumber}</strong></span>
+                <span>{isEn ? "Passport No:" : "N° Passeport :"} <strong className="font-mono font-bold text-emerald-900">{applicant.passportNumber}</strong></span>
                 <span>•</span>
-                <span>Titulaire : <strong>{applicant.lastName} {applicant.firstName}</strong></span>
+                <span>{isEn ? "Holder:" : "Titulaire :"} <strong>{applicant.lastName} {applicant.firstName}</strong></span>
               </div>
             )}
           </div>
@@ -869,17 +908,19 @@ export function VisaWizard() {
       <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-            <User className="w-5 h-5 text-[#7B1B38]" /> Informations personnelles du voyageur
+            <User className="w-5 h-5 text-[#7B1B38]" /> {isEn ? "Traveler personal information" : "Informations personnelles du voyageur"}
           </h3>
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            100% Modifiable
+            {isEn ? "100% Editable" : "100% Modifiable"}
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {/* Nom */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700">Nom de famille <span className="text-red-500">*</span></Label>
+            <Label className="text-xs font-bold text-slate-700">
+              {isEn ? "Last Name" : "Nom de famille"} <span className="text-red-500">*</span>
+            </Label>
             <Input 
               value={applicant.lastName} 
               onChange={e => setApplicant({ ...applicant, lastName: e.target.value.toUpperCase() })} 
@@ -890,7 +931,9 @@ export function VisaWizard() {
 
           {/* Prénom */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700">Prénom(s) <span className="text-red-500">*</span></Label>
+            <Label className="text-xs font-bold text-slate-700">
+              {isEn ? "First Name(s)" : "Prénom(s)"} <span className="text-red-500">*</span>
+            </Label>
             <Input 
               value={applicant.firstName} 
               onChange={e => setApplicant({ ...applicant, firstName: e.target.value })} 
@@ -901,7 +944,9 @@ export function VisaWizard() {
 
           {/* Numéro de passeport */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700">Numéro de Passeport <span className="text-red-500">*</span></Label>
+            <Label className="text-xs font-bold text-slate-700">
+              {isEn ? "Passport Number" : "Numéro de Passeport"} <span className="text-red-500">*</span>
+            </Label>
             <Input 
               value={applicant.passportNumber} 
               onChange={e => setApplicant({ ...applicant, passportNumber: e.target.value.toUpperCase().replace(/\s+/g, '') })} 
@@ -913,7 +958,7 @@ export function VisaWizard() {
           {/* Date de naissance */}
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-slate-400" /> Date de naissance
+              <Calendar className="w-3.5 h-3.5 text-slate-400" /> {isEn ? "Date of Birth" : "Date de naissance"}
             </Label>
             <Input 
               type="date"
@@ -926,7 +971,7 @@ export function VisaWizard() {
           {/* Date d'expiration passeport */}
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-slate-400" /> Date d'expiration du passeport
+              <Calendar className="w-3.5 h-3.5 text-slate-400" /> {isEn ? "Passport Expiration Date" : "Date d'expiration du passeport"}
             </Label>
             <Input 
               type="date"
@@ -938,7 +983,7 @@ export function VisaWizard() {
 
           {/* Sexe */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700">Sexe / Genre</Label>
+            <Label className="text-xs font-bold text-slate-700">{isEn ? "Gender" : "Sexe / Genre"}</Label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -949,7 +994,7 @@ export function VisaWizard() {
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
               >
-                Homme (M)
+                {isEn ? "Male (M)" : "Homme (M)"}
               </button>
               <button
                 type="button"
@@ -960,25 +1005,25 @@ export function VisaWizard() {
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
               >
-                Femme (F)
+                {isEn ? "Female (F)" : "Femme (F)"}
               </button>
             </div>
           </div>
 
           {/* Nationalité */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700">Nationalité</Label>
+            <Label className="text-xs font-bold text-slate-700">{isEn ? "Nationality" : "Nationalité"}</Label>
             <Input 
               value={applicant.nationality} 
               onChange={e => setApplicant({ ...applicant, nationality: e.target.value })} 
               className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]" 
-              placeholder="Ex: Algérienne" 
+              placeholder={isEn ? "Ex: Algerian" : "Ex: Algérienne"} 
             />
           </div>
 
           {/* Lieu de naissance */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700">Lieu de naissance</Label>
+            <Label className="text-xs font-bold text-slate-700">{isEn ? "Place of Birth" : "Lieu de naissance"}</Label>
             <Input 
               value={applicant.placeOfBirth} 
               onChange={e => setApplicant({ ...applicant, placeOfBirth: e.target.value })} 
@@ -990,7 +1035,7 @@ export function VisaWizard() {
           {/* Téléphone voyageur */}
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-              <Phone className="w-3.5 h-3.5 text-slate-400" /> Téléphone de contact
+              <Phone className="w-3.5 h-3.5 text-slate-400" /> {isEn ? "Contact Phone" : "Téléphone de contact"}
             </Label>
             <Input 
               value={applicant.phone} 
@@ -1003,7 +1048,7 @@ export function VisaWizard() {
           {/* Email voyageur */}
           <div className="space-y-1.5 md:col-span-2 lg:col-span-1">
             <Label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-              <Mail className="w-3.5 h-3.5 text-slate-400" /> Adresse courriel
+              <Mail className="w-3.5 h-3.5 text-slate-400" /> {isEn ? "Email Address" : "Adresse courriel"}
             </Label>
             <Input 
               type="email"
@@ -1016,7 +1061,7 @@ export function VisaWizard() {
 
           {/* Adresse de résidence */}
           <div className="space-y-1.5 md:col-span-2">
-            <Label className="text-xs font-bold text-slate-700">Adresse / Commune de résidence</Label>
+            <Label className="text-xs font-bold text-slate-700">{isEn ? "Residential Address / City" : "Adresse / Commune de résidence"}</Label>
             <Input 
               value={applicant.address} 
               onChange={e => setApplicant({ ...applicant, address: e.target.value })} 
@@ -1033,7 +1078,7 @@ export function VisaWizard() {
             onClick={() => setStep(1)} 
             className="text-slate-600 hover:text-slate-900"
           >
-            Retour à l'étape 1
+            {isEn ? "Back to Step 1" : "Retour à l'étape 1"}
           </Button>
 
           <Button 
@@ -1041,7 +1086,7 @@ export function VisaWizard() {
             onClick={() => setStep(3)}
             className="h-12 px-8 bg-[#7B1B38] hover:bg-[#63142c] text-white font-black text-sm rounded-xl shadow-md shadow-[#7B1B38]/20 flex items-center gap-2"
           >
-            Continuer vers les Pièces Jointes <ChevronRight className="w-4 h-4" />
+            {isEn ? "Continue to Attachments" : "Continuer vers les Pièces Jointes"} <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -1066,14 +1111,18 @@ export function VisaWizard() {
           </Button>
           <div>
             <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider mb-1">
-              Étape 3 sur 3 • Pièces Jointes & Confirmation
+              {isEn ? "Step 3 of 3 • Attachments & Confirmation" : "Étape 3 sur 3 • Pièces Jointes & Confirmation"}
             </Badge>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Justificatifs requis & Débit portefeuille</h2>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+              {isEn ? "Required Documents & Wallet Debit" : "Justificatifs requis & Débit portefeuille"}
+            </h2>
           </div>
         </div>
 
         <div className="hidden sm:block text-right">
-          <div className="text-xs text-slate-400 font-bold uppercase">Voyageur</div>
+          <div className="text-xs text-slate-400 font-bold uppercase">
+            {isEn ? "Traveler" : "Voyageur"}
+          </div>
           <div className="font-black text-slate-800">{applicant.lastName} {applicant.firstName}</div>
         </div>
       </div>
@@ -1091,10 +1140,12 @@ export function VisaWizard() {
           <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
             <div>
               <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                <FileCheck className="w-5 h-5 text-[#7B1B38]" /> Documents justificatifs à joindre
+                <FileCheck className="w-5 h-5 text-[#7B1B38]" /> {isEn ? "Supporting documents to attach" : "Documents justificatifs à joindre"}
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                Tous les fichiers (scans JPG, PNG ou PDF jusqu'à 5 Mo) sont transmis de manière sécurisée et directement accessibles par l'administration consulaire.
+                {isEn 
+                  ? "All files (JPG, PNG or PDF scans up to 5 MB) are securely transmitted and directly accessible by consular staff."
+                  : "Tous les fichiers (scans JPG, PNG ou PDF jusqu'à 5 Mo) sont transmis de manière sécurisée et directement accessibles par l'administration consulaire."}
               </p>
             </div>
 
@@ -1105,7 +1156,9 @@ export function VisaWizard() {
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-900">Passeport biométrique</p>
+                  <p className="text-sm font-bold text-slate-900">
+                    {isEn ? "Biometric passport" : "Passeport biométrique"}
+                  </p>
                   <p className="text-xs text-slate-500 font-mono">
                     N° {applicant.passportNumber} {passportFile ? `(${formatFileSize(passportFile.size)})` : ""}
                   </p>
@@ -1117,7 +1170,7 @@ export function VisaWizard() {
                 onClick={() => setStep(2)} 
                 className="text-xs text-[#7B1B38] hover:bg-[#7B1B38]/10"
               >
-                Modifier
+                {isEn ? "Edit" : "Modifier"}
               </Button>
             </div>
 
@@ -1125,14 +1178,18 @@ export function VisaWizard() {
             {(!selectedOption?.requiredDocuments || selectedOption.requiredDocuments.length === 0) ? (
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center text-slate-500">
                 <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
-                <p className="text-sm font-semibold text-slate-700">Aucun autre document supplémentaire n'est requis</p>
-                <p className="text-xs text-slate-500">Le passeport enregistré à l'étape précédente suffit pour traiter cette demande.</p>
+                <p className="text-sm font-semibold text-slate-700">
+                  {isEn ? "No additional documents required" : "Aucun autre document supplémentaire n'est requis"}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {isEn ? "The passport registered in the previous step is sufficient to process this request." : "Le passeport enregistré à l'étape précédente suffit pour traiter cette demande."}
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
                 {selectedOption.requiredDocuments.map(req => {
-                  const isTextField = req.toLowerCase().includes("(texte)");
-                  const cleanName = req.replace("(Texte)", "").trim();
+                  const isTextField = req.toLowerCase().includes("(texte)") || req.toLowerCase().includes("(text)");
+                  const cleanName = req.replace(/\((texte|text)\)/i, "").trim();
 
                   if (isTextField) {
                     return (
@@ -1140,7 +1197,7 @@ export function VisaWizard() {
                         <Label className="text-xs font-bold text-slate-800">{cleanName} <span className="text-red-500">*</span></Label>
                         <Input 
                           className="h-11 bg-white rounded-xl border-slate-200" 
-                          placeholder={`Renseigner ${cleanName.toLowerCase()}...`}
+                          placeholder={isEn ? `Enter ${cleanName.toLowerCase()}...` : `Renseigner ${cleanName.toLowerCase()}...`}
                           value={textFields[req] || ""}
                           onChange={(e) => setTextFields(prev => ({ ...prev, [req]: e.target.value }))}
                         />
@@ -1174,11 +1231,11 @@ export function VisaWizard() {
                                 <Upload className="w-4 h-4" />
                               </div>
                               <span className="text-xs font-medium text-slate-600">
-                                Cliquer ou glisser le document ici
+                                {isEn ? "Click or drag document here" : "Cliquer ou glisser le document ici"}
                               </span>
                             </div>
                             <Button type="button" variant="outline" size="sm" className="h-8 text-xs rounded-lg pointer-events-none">
-                              Sélectionner
+                              {isEn ? "Select" : "Sélectionner"}
                             </Button>
                           </div>
                         </div>
@@ -1191,7 +1248,7 @@ export function VisaWizard() {
                             <div className="overflow-hidden">
                               <p className="text-xs font-bold text-slate-900 truncate max-w-[200px] sm:max-w-xs">{uploadedDoc.name}</p>
                               <p className="text-[10px] text-emerald-600 font-medium">
-                                Prêt • {formatFileSize(uploadedDoc.size)}
+                                {isEn ? "Ready" : "Prêt"} • {formatFileSize(uploadedDoc.size)}
                               </p>
                             </div>
                           </div>
@@ -1220,30 +1277,30 @@ export function VisaWizard() {
             <div className="absolute top-0 right-0 w-48 h-48 bg-[#7B1B38]/30 rounded-full blur-2xl pointer-events-none"></div>
 
             <h3 className="text-lg font-black mb-6 border-b border-slate-800 pb-4 flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-[#7B1B38]" /> Récapitulatif Commande
+              <ShieldCheck className="w-5 h-5 text-[#7B1B38]" /> {isEn ? "Order Summary" : "Récapitulatif Commande"}
             </h3>
 
             <div className="space-y-4 text-xs text-slate-300 mb-6">
               <div className="flex justify-between items-center py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Service</span>
+                <span className="text-slate-400">{isEn ? "Service" : "Service"}</span>
                 <span className="font-bold text-white text-right">{selectedOption?.title}</span>
               </div>
               <div className="flex justify-between items-center py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Destination</span>
+                <span className="text-slate-400">{isEn ? "Destination" : "Destination"}</span>
                 <span className="font-bold text-white text-right">{selectedCountry}</span>
               </div>
               <div className="flex justify-between items-center py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Voyageur</span>
+                <span className="text-slate-400">{isEn ? "Traveler" : "Voyageur"}</span>
                 <span className="font-bold text-white uppercase text-right">{applicant.lastName} {applicant.firstName}</span>
               </div>
               <div className="flex justify-between items-center py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Passeport</span>
+                <span className="text-slate-400">{isEn ? "Passport" : "Passeport"}</span>
                 <span className="font-mono font-bold text-white text-right">{applicant.passportNumber}</span>
               </div>
               <div className="flex justify-between items-center py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Pièces jointes</span>
+                <span className="text-slate-400">{isEn ? "Attachments" : "Pièces jointes"}</span>
                 <span className="font-bold text-emerald-400 text-right">
-                  {(passportFile ? 1 : 0) + Object.keys(attachments).length} document(s)
+                  {(passportFile ? 1 : 0) + Object.keys(attachments).length} {isEn ? "document(s)" : "document(s)"}
                 </span>
               </div>
             </div>
@@ -1253,13 +1310,17 @@ export function VisaWizard() {
               {b2cMode && selectedOption && (
                 <div className="p-3 bg-emerald-950/60 rounded-xl border border-emerald-800/80 mb-2 space-y-1.5">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-emerald-300 font-medium">Prix facturé au client (+{b2cMarginPercent}%) :</span>
+                    <span className="text-emerald-300 font-medium">
+                      {isEn ? `Client billed price (+${b2cMarginPercent}%):` : `Prix facturé au client (+${b2cMarginPercent}%) :`}
+                    </span>
                     <span className="font-mono font-bold text-emerald-300">
                       {Math.round(selectedOption.price * (1 + (b2cMarginPercent || 15) / 100)).toLocaleString()} DZD
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-emerald-400 font-medium">Votre marge commerciale nette :</span>
+                    <span className="text-emerald-400 font-medium">
+                      {isEn ? "Your net commercial margin:" : "Votre marge commerciale nette :"}
+                    </span>
                     <span className="font-mono font-bold text-emerald-400">
                       +{Math.round(selectedOption.price * ((b2cMarginPercent || 15) / 100)).toLocaleString()} DZD
                     </span>
@@ -1268,15 +1329,15 @@ export function VisaWizard() {
               )}
 
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400">Solde portefeuille actuel :</span>
+                <span className="text-slate-400">{isEn ? "Current wallet balance:" : "Solde portefeuille actuel :"}</span>
                 <span className="font-mono font-bold text-white">{agencyBalance.toLocaleString()} DZD</span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400">Débit net sur votre solde :</span>
+                <span className="text-slate-400">{isEn ? "Net debit on balance:" : "Débit net sur votre solde :"}</span>
                 <span className="font-mono font-bold text-rose-400">- {selectedOption?.price.toLocaleString()} DZD</span>
               </div>
               <div className="border-t border-slate-800 pt-2 flex justify-between items-center">
-                <span className="text-xs font-bold text-slate-300">Solde restant après validation :</span>
+                <span className="text-xs font-bold text-slate-300">{isEn ? "Remaining balance after debit:" : "Solde restant après validation :"}</span>
                 <span className={`font-mono font-bold text-sm ${agencyBalance >= (selectedOption?.price || 0) ? 'text-emerald-400' : 'text-red-400'}`}>
                   {(agencyBalance - (selectedOption?.price || 0)).toLocaleString()} DZD
                 </span>
@@ -1291,18 +1352,18 @@ export function VisaWizard() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Transmission du dossier...
+                  {isEn ? "Submitting application..." : "Transmission du dossier..."}
                 </>
               ) : (
                 <>
-                  Débiter et Soumettre le dossier <ArrowRight className="w-5 h-5" />
+                  {isEn ? "Debit & Submit Application" : "Débiter et Soumettre le dossier"} <ArrowRight className="w-5 h-5" />
                 </>
               )}
             </Button>
 
             {agencyBalance < (selectedOption?.price || 0) && (
               <p className="text-[11px] text-center text-rose-400 mt-3 font-semibold">
-                Solde insuffisant. Veuillez recharger votre portefeuille agence.
+                {isEn ? "Insufficient balance. Please top up your agency wallet." : "Solde insuffisant. Veuillez recharger votre portefeuille agence."}
               </p>
             )}
           </div>
@@ -1321,22 +1382,26 @@ export function VisaWizard() {
       </div>
 
       <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-mono text-xs uppercase mb-3">
-        Dossier N° {submittedAppId}
+        {isEn ? `Application No. ${submittedAppId}` : `Dossier N° ${submittedAppId}`}
       </Badge>
 
-      <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-3">Dossier Transmis avec Succès !</h2>
+      <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-3">
+        {isEn ? "Application Submitted Successfully!" : "Dossier Transmis avec Succès !"}
+      </h2>
       <p className="text-slate-600 text-base leading-relaxed mb-8">
-        La demande pour <strong className="text-slate-900">{applicant.lastName} {applicant.firstName}</strong> a bien été enregistrée et transmise à notre équipe consulaire. L'ensemble des pièces jointes et des informations passeport sont désormais accessibles pour instruction.
+        {isEn 
+          ? `The application for ${applicant.lastName} ${applicant.firstName} has been registered and transmitted to our consular team. All attached documents and passport data are now accessible for processing.`
+          : `La demande pour ${applicant.lastName} ${applicant.firstName} a bien été enregistrée et transmise à notre équipe consulaire. L'ensemble des pièces jointes et des informations passeport sont désormais accessibles pour instruction.`}
       </p>
 
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-600 mb-8 flex justify-around">
         <div>
-          <span className="text-slate-400 block font-semibold">Montant Débité</span>
+          <span className="text-slate-400 block font-semibold">{isEn ? "Debited Amount" : "Montant Débité"}</span>
           <strong className="text-slate-900 font-mono text-sm">{selectedOption?.price.toLocaleString()} DZD</strong>
         </div>
         <div className="border-r border-slate-200"></div>
         <div>
-          <span className="text-slate-400 block font-semibold">Nouveau Solde</span>
+          <span className="text-slate-400 block font-semibold">{isEn ? "New Balance" : "Nouveau Solde"}</span>
           <strong className="text-[#7B1B38] font-mono text-sm">{agencyBalance.toLocaleString()} DZD</strong>
         </div>
       </div>
@@ -1347,7 +1412,7 @@ export function VisaWizard() {
           variant="outline" 
           className="h-12 px-6 font-bold rounded-xl border-slate-300 hover:bg-slate-100"
         >
-          Accéder au Suivi des Dossiers
+          {isEn ? "Go to Applications Tracking" : "Accéder au Suivi des Dossiers"}
         </Button>
         <Button 
           onClick={() => {
@@ -1373,7 +1438,7 @@ export function VisaWizard() {
           }} 
           className="h-12 px-6 bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold rounded-xl shadow-md shadow-[#7B1B38]/20"
         >
-          Créer un Nouveau Dossier
+          {isEn ? "Create Another Application" : "Créer un Nouveau Dossier"}
         </Button>
       </div>
     </motion.div>

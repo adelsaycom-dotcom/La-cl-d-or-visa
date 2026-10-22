@@ -161,7 +161,7 @@ export function AgencyDashboard() {
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${srv.color} group-hover:scale-110 transition-transform duration-300`}>
                     <srv.icon className="w-6 h-6" />
                   </div>
-                  <span className="font-semibold text-slate-700 text-sm">{srv.name}</span>
+                  <span className="font-bold text-slate-800 text-sm">{isEn ? (srv.nameEn || srv.name) : srv.name}</span>
                 </Link>
               ))}
             </div>
