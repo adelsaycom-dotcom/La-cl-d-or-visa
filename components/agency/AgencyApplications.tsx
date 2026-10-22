@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { uploadFileToServer, downloadFileSafe, resolveAttachmentData } from "../../src/utils/fileUpload";
 import { useLanguage } from "../../src/i18n/LanguageContext";
+import { AttachmentThumbnail } from "../common/AttachmentThumbnail";
 
 export function AgencyApplications() {
   const { language, t } = useLanguage();
@@ -468,50 +469,40 @@ export function AgencyApplications() {
               ) : (
                 <div className="space-y-2.5">
                   {appAttachments.map((att, idx) => {
-                    const isPdf = isPdfBase64(att.dataUrl) || att.type?.includes("pdf");
-                    const isImg = isImageBase64(att.dataUrl) || att.type?.includes("image");
+                    const isPdf = att.type?.includes("pdf") || att.name?.toLowerCase().endsWith(".pdf");
 
                     return (
-                      <div key={att.id || idx} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2.5 overflow-hidden">
-                          {isImg ? (
-                            <div 
-                              onClick={() => setPreviewImage({ src: att.dataUrl, title: att.category || att.name })}
-                              className="w-10 h-10 rounded-lg bg-slate-200 overflow-hidden cursor-pointer shrink-0 border border-slate-300"
-                            >
-                              <img src={att.dataUrl} alt={att.name} className="w-full h-full object-cover" />
-                            </div>
-                          ) : (
-                            <div className="w-10 h-10 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
-                              <FileText className="w-5 h-5" />
-                            </div>
-                          )}
-                          <div className="overflow-hidden">
-                            <span className="text-[10px] font-bold text-[#7B1B38] block">{att.category}</span>
-                            <p className="text-xs font-bold text-slate-800 truncate max-w-[130px]">{att.name}</p>
+                      <div key={att.id || idx} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2.5">
+                        <div className="flex items-center gap-2.5 overflow-hidden min-w-0 flex-1">
+                          <AttachmentThumbnail 
+                            attachment={att} 
+                            size="md"
+                            onOpenPreview={(src, title) => setPreviewImage({ src, title })}
+                          />
+                          <div className="overflow-hidden min-w-0 flex-1">
+                            <span className="text-[10px] font-bold text-[#7B1B38] block truncate">{att.category || "Document"}</span>
+                            <p className="text-xs font-bold text-slate-800 truncate" title={att.name}>{att.name}</p>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-1 shrink-0">
-                          {isImg && (
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={() => handleOpenPreview(att)}
-                              className="h-7 w-7 p-0 text-slate-500 rounded-lg"
-                              title={isEn ? "Preview" : "Aperçu"}
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </Button>
-                          )}
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => handleOpenPreview(att)}
+                            className="h-8 w-8 p-0 text-slate-500 hover:text-slate-900 rounded-lg"
+                            title={isEn ? "Preview" : "Aperçu"}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Button>
                           <Button 
                             size="sm" 
                             variant="outline" 
                             onClick={() => triggerDownload(att, att.name || `${att.category}.${isPdf ? 'pdf' : 'jpg'}`)}
-                            className="h-7 px-2 text-[10px] font-bold rounded-lg border-slate-300 text-slate-700"
+                            className="h-8 px-2.5 text-[11px] font-bold rounded-lg border-slate-300 text-slate-700 hover:bg-slate-200"
                             title={isEn ? "Download" : "Télécharger"}
                           >
-                            <Download className="w-3 h-3" />
+                            <Download className="w-3.5 h-3.5" />
                           </Button>
                         </div>
                       </div>

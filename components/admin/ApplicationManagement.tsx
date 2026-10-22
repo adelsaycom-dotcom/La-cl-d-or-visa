@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { uploadFileToServer, downloadFileSafe, resolveAttachmentData } from "../../src/utils/fileUpload";
 import { useLanguage } from "../../src/i18n/LanguageContext";
+import { AttachmentThumbnail } from "../common/AttachmentThumbnail";
 
 export function ApplicationManagement() {
   const { language, t } = useLanguage();
@@ -95,7 +96,7 @@ export function ApplicationManagement() {
       setFinalDocFile(file);
       try {
         const uploadRes = await uploadFileToServer(file, "Visa");
-        setFinalDocUrl(uploadRes.url);
+        setFinalDocUrl(uploadRes.dataUrl || uploadRes.url);
       } catch (err) {
         console.error("Erreur enregistrement visa:", err);
         alert("Erreur lors de l'enregistrement du document sur le serveur.");
@@ -533,48 +534,38 @@ export function ApplicationManagement() {
                     ) : (
                       <div className="space-y-3">
                         {appAttachments.map((att, idx) => {
-                          const isPdf = isPdfBase64(att.dataUrl) || att.type?.includes("pdf");
-                          const isImg = isImageBase64(att.dataUrl) || att.type?.includes("image");
+                          const isPdf = att.type?.includes("pdf") || att.name?.toLowerCase().endsWith(".pdf");
 
                           return (
                             <div key={att.id || idx} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-3 overflow-hidden">
-                                {isImg ? (
-                                  <div 
-                                    onClick={() => handleOpenPreview(att)}
-                                    className="w-12 h-12 rounded-lg bg-slate-200 overflow-hidden cursor-pointer shrink-0 border border-slate-300 hover:opacity-80 transition-opacity"
-                                  >
-                                    <img src={att.dataUrl || att.url} alt={att.name} className="w-full h-full object-cover" />
-                                  </div>
-                                ) : (
-                                  <div className="w-12 h-12 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
-                                    <FileText className="w-6 h-6" />
-                                  </div>
-                                )}
+                              <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1">
+                                <AttachmentThumbnail 
+                                  attachment={att} 
+                                  size="md"
+                                  onOpenPreview={(src, title) => setPreviewImage({ src, title })}
+                                />
 
-                                <div className="overflow-hidden">
+                                <div className="overflow-hidden min-w-0 flex-1">
                                   <div className="flex items-center gap-2">
                                     <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-[10px] py-0">
                                       {att.category || "Justificatif"}
                                     </Badge>
                                     {isPdf && <Badge variant="outline" className="text-[9px] py-0 text-rose-600 border-rose-300">PDF</Badge>}
                                   </div>
-                                  <p className="text-xs font-bold text-slate-900 truncate mt-1 max-w-[180px] sm:max-w-xs">{att.name}</p>
+                                  <p className="text-xs font-bold text-slate-900 truncate mt-1" title={att.name}>{att.name}</p>
                                 </div>
                               </div>
 
                               <div className="flex items-center gap-1.5 shrink-0">
-                                {isImg && (
-                                  <Button 
-                                    size="sm" 
-                                    variant="ghost" 
-                                    onClick={() => handleOpenPreview(att)}
-                                    className="h-8 w-8 p-0 text-slate-500 hover:text-slate-900 rounded-lg"
-                                    title="Agrandir"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </Button>
-                                )}
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={() => handleOpenPreview(att)}
+                                  className="h-8 w-8 p-0 text-slate-500 hover:text-slate-900 rounded-lg"
+                                  title="Aperçu"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
                                 <Button 
                                   size="sm" 
                                   variant="outline" 

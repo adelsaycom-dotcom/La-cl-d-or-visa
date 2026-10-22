@@ -310,7 +310,7 @@ export function VisaWizard() {
     setFileError("");
 
     try {
-      // Regrouper tous les documents avec références légères
+      // Regrouper tous les documents avec références légères et dataUrl complet
       const allAttachmentsList: any[] = [];
       if (passportFile) {
         allAttachmentsList.push({
@@ -320,10 +320,8 @@ export function VisaWizard() {
           type: passportFile.type,
           size: passportFile.size,
           storageId: passportFile.id,
-          url: passportFile.url,
-          dataUrl: passportFile.dataUrl && passportFile.dataUrl.length < 150000 
-            ? passportFile.dataUrl 
-            : (passportFile.url || `/attachments/${passportFile.id}`),
+          url: passportFile.url || passportFile.dataUrl,
+          dataUrl: passportFile.dataUrl || passportFile.url,
           uploadedAt: passportFile.uploadedAt,
           uploadedBy: "Agency"
         });
@@ -336,10 +334,8 @@ export function VisaWizard() {
           type: att.type,
           size: att.size,
           storageId: att.id,
-          url: att.url,
-          dataUrl: att.dataUrl && att.dataUrl.length < 150000 
-            ? att.dataUrl 
-            : (att.url || `/attachments/${att.id}`),
+          url: att.url || att.dataUrl,
+          dataUrl: att.dataUrl || att.url,
           uploadedAt: att.uploadedAt,
           uploadedBy: "Agency"
         });

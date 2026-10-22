@@ -252,18 +252,22 @@ export function AgencyDashboard() {
             
             <div className="space-y-4">
               {applications.slice(0, 3).map(app => (
-                <div key={app.id} className="flex items-center justify-between group">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border ${app.status === 'Approved' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : app.status === 'Processing' ? 'bg-blue-50 border-blue-100 text-blue-600' : app.status === 'Rejected' ? 'bg-red-50 border-red-100 text-red-600' : 'bg-amber-50 border-amber-100 text-amber-600'}`}>
+                <div key={app.id} className="flex items-center justify-between gap-3 group">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border shrink-0 ${app.status === 'Approved' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : app.status === 'Processing' ? 'bg-blue-50 border-blue-100 text-blue-600' : app.status === 'Rejected' ? 'bg-red-50 border-red-100 text-red-600' : 'bg-amber-50 border-amber-100 text-amber-600'}`}>
                       <FileText className="w-5 h-5" />
                     </div>
-                    <div>
-                      <div className="font-bold text-slate-900 text-sm group-hover:text-[#7B1B38] transition-colors">{app.travelerName}</div>
-                      <div className="text-xs text-slate-500 font-medium">{app.serviceType} • {app.country}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-slate-900 text-sm group-hover:text-[#7B1B38] transition-colors truncate" title={app.travelerName}>
+                        {app.travelerName}
+                      </div>
+                      <div className="text-xs text-slate-500 font-medium truncate">
+                        {app.serviceType} • {app.country}
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm font-bold text-slate-900">{app.price.toLocaleString()} DZD</div>
+                  <div className="text-right shrink-0">
+                    <div className="text-sm font-bold text-slate-900 whitespace-nowrap">{app.price.toLocaleString()} DZD</div>
                   </div>
                 </div>
               ))}

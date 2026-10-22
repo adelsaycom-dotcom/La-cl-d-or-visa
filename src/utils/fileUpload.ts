@@ -31,9 +31,9 @@ export function fileToBase64(file: File): Promise<string> {
  */
 export async function compressImageIfPossible(
   file: File, 
-  maxWidth = 1400, 
-  maxHeight = 1400, 
-  quality = 0.82
+  maxWidth = 1200, 
+  maxHeight = 1200, 
+  quality = 0.80
 ): Promise<string> {
   if (!file.type.startsWith("image/")) {
     return fileToBase64(file);
@@ -80,7 +80,7 @@ export async function compressImageIfPossible(
  * Envoie le fichier vers le stockage universel :
  * 1. Enregistre dans la collection cloud Firestore 'attachments' (accessible partout, y compris Hostinger)
  * 2. Tente en parallèle l'API Node /uploads si disponible
- * 3. Retourne les métadonnées légères pour le dossier sans gonfler le document principal.
+ * 3. Retourne les métadonnées et le dataUrl intact sans URL 404 morte.
  */
 export async function uploadFileToServer(
   file: File, 
@@ -94,7 +94,7 @@ export async function uploadFileToServer(
   type: string;
   category: string;
 }> {
-  // 1. Compression optimisée (< 150 Ko pour les images)
+  // 1. Compression optimisée (< 100 Ko pour les images)
   const base64Data = file.type.startsWith("image/") 
     ? await compressImageIfPossible(file) 
     : await fileToBase64(file);
@@ -154,7 +154,7 @@ export async function uploadFileToServer(
   }
 
   return {
-    url: localServerUrl || `/attachments/${attId}`,
+    url: localServerUrl || base64Data,
     dataUrl: base64Data,
     storageId: attId,
     size: file.size,
@@ -175,7 +175,7 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
   if (typeof attachment === "string") {
     if (attachment.startsWith("data:")) return attachment;
     
-    // Si c'est un identifiant storageId
+    // Si c'est un identifiant storageId ou une URL relative /attachments/att_...
     const match = attachment.match(/att_\d+_[a-z0-9]+/);
     if (match) {
       const attId = match[0];
@@ -197,7 +197,8 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
       }
     }
 
-    return attachment;
+    if (attachment.startsWith("http")) return attachment;
+    return "";
   }
 
   // Cas 2 : Objet pièce jointe
@@ -206,7 +207,22 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
     return attObj.dataUrl;
   }
 
-  const storageId = attObj.storageId || attObj.id;
+  // Si attObj.url est déjà un data:
+  if (attObj.url && typeof attObj.url === "string" && attObj.url.startsWith("data:")) {
+    return attObj.url;
+  }
+
+  // Extraire l'ID du storage depuis storageId, id, ou match d'URL
+  let storageId = attObj.storageId || attObj.id;
+  if (!storageId && typeof attObj.url === "string") {
+    const m = attObj.url.match(/att_\d+_[a-z0-9]+/);
+    if (m) storageId = m[0];
+  }
+  if (!storageId && typeof attObj.dataUrl === "string") {
+    const m = attObj.dataUrl.match(/att_\d+_[a-z0-9]+/);
+    if (m) storageId = m[0];
+  }
+
   if (storageId) {
     if (attachmentMemoryCache.has(storageId)) {
       return attachmentMemoryCache.get(storageId)!;
@@ -229,7 +245,7 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
     }
   }
 
-  if (attObj.url) return attObj.url;
+  if (attObj.url && attObj.url.startsWith("http")) return attObj.url;
   return "";
 }
 
