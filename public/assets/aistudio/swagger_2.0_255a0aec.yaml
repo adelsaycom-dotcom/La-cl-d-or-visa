@@ -1,0 +1,1468 @@
+swagger: '2.0'
+info:
+  description: corps système
+  version: '1.0'
+  title: corps system
+tags:
+  - name: Souscription 
+paths:
+  /api/produit/reduction/filtre:
+    post:
+      tags:
+        - réduction-controller
+      summary: get all réduction  by produit 
+      operationId: get all réduction  by produit 
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: contrat
+          description: contrat
+          required: true
+          schema:
+            $ref: '#/definitions/filtreReduction'
+      responses:
+        '200':
+          description: contrat response
+       
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré"  
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false
+  /api/produit/convention:
+    get:
+      tags:
+        - réduction-controller
+      summary: get all convention 
+      operationId: get all convention
+      consumes:
+        - application/json
+      produces:
+        - application/json
+
+      responses:
+        '200':
+          description: contrat response
+       
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré"  
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false
+    
+  /api/tarification/reduction:
+    post:
+      tags:
+        - réduction-controller
+      summary: tarification réduction 
+      operationId: tarification réduction 
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: contrat
+          description: contrat
+          required: true
+          schema:
+            $ref: '#/definitions/reduction'
+      responses:
+        '200':
+          description: contrat response
+       
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré"  
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false
+  
+  /api/contrat:
+    post:
+      tags:
+        - contrat-controller
+      summary: Create contrat
+      operationId: create contrat
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: contrat
+          description: contrat
+          required: true
+          schema:
+            $ref: '#/definitions/contrat'
+      responses:
+        '200':
+          description: contrat response
+          schema:
+            $ref: '#/definitions/contrat'
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré"  
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false
+  
+  /api/contrat/{id_contrat}:  
+    get:
+      tags:
+        - contrat-controller
+      summary: get contrat by id 
+      operationId: get contrat by id 
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id_contrat
+          required: true
+          type: number
+          minimum: 1  
+
+      responses:
+        '200':
+          description: pack reponse
+
+        
+           
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false  
+
+  /api/contrat/{id_contrat}/groupe/{id_groupe}/risque/{id_risque}:  
+    get:
+      tags:
+        - contrat-controller
+      summary: get param risque by risque 
+      operationId: get param risque by risque 
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id_contrat
+          required: true
+          type: number
+          minimum: 1  
+        - in: path
+          name: id_groupe
+          required: true
+          type: number
+          minimum: 1  
+        - in: path
+          name: id_risque
+          required: true
+          type: number
+          minimum: 1            
+      responses:
+        '200':
+          description: param  reponse
+
+        
+           
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false  
+  
+  /api/contrat/{id_contrat}/pack/risque/{id_risque}:  
+    get:
+      tags:
+        - contrat-controller
+      summary: get prime by risque 
+      operationId: get prime by risque 
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id_contrat
+          required: true
+          type: number
+          minimum: 1  
+        - in: path
+          name: id_risque
+          required: true
+          type: number
+          minimum: 1            
+      responses:
+        '200':
+          description: primes  reponse
+
+        
+           
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false  
+                  
+  /api/devis:
+    post:
+      tags:
+        - devis-controller
+      summary: Create devis
+      operationId: create devis
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: devis
+          description: devis
+          required: true
+          schema:
+            $ref: '#/definitions/devis'
+      responses:
+        '200':
+          description: taxe response
+          schema:
+            $ref: '#/definitions/devis'
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré"  
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false
+  
+  /api/devis/{id_devis}:  
+    get:
+      tags:
+        - devis-controller
+      summary: get devis by id 
+      operationId: get devis by id 
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id_devis
+          required: true
+          type: number
+          minimum: 1  
+
+      responses:
+        '200':
+          description: pack reponse
+
+        
+           
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false  
+
+  /api/devis/{id_devis}/groupe/{id_groupe}/risque/{id_risque}:  
+    get:
+      tags:
+        - devis-controller
+      summary: get param risque by risque 
+      operationId: get param risque by risque 
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id_devis
+          required: true
+          type: number
+          minimum: 1  
+        - in: path
+          name: id_groupe
+          required: true
+          type: number
+          minimum: 1  
+        - in: path
+          name: id_risque
+          required: true
+          type: number
+          minimum: 1            
+      responses:
+        '200':
+          description: param  reponse
+
+        
+           
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false  
+  
+  /api/devis/{id_devis}/risque/{id_risque}:  
+    get:
+      tags:
+        - devis-controller
+      summary: get prime by risque 
+      operationId: get prime by risque 
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id_devis
+          required: true
+          type: number
+          minimum: 1  
+        - in: path
+          name: id_risque
+          required: true
+          type: number
+          minimum: 1            
+      responses:
+        '200':
+          description: primes  reponse
+
+        
+           
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false  
+                  
+  /api/tarification/prime:
+    post:
+      tags:
+        - tarification-auto-controller
+      summary: Calcule de prime 
+      operationId: Calcule de prime 
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: devis
+          description: devis
+          required: true
+          schema:
+            $ref: '#/definitions/devis'
+      responses:
+        '200':
+          description: taxe response
+          schema:
+            $ref: '#/definitions/devis'
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré"  
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false
+            
+  /api/generic/pays:    
+    get:
+      tags:
+        - generic-controller
+      summary: Pays 
+      operationId: Get pays
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: liste pays reponse
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false
+      
+  /api/generic/parametre/dictionnaire/27:    
+    get:
+      tags:
+        - generic-controller
+      summary: Type client  
+      operationId: get type client
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: liste type client reponse
+           
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false
+      
+  /api/generic/pays/wilaya-by-pays/{id_pays}:    
+    get:
+      tags:
+        - generic-controller
+      summary:  wilaya   
+      operationId: get wilaya
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id_pays
+          required: true
+          type: number
+          minimum: 1  
+      responses:
+        '200':
+          description: liste wilaya reponse
+           
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false    
+      
+  /api/produit/reduit: 
+    get:
+      tags:
+        - produit-controller
+      summary:  Get all  produits 
+      operationId: Get all  produits
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: produits reponse
+           
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false
+          
+  /api/produit/{id_produit}:    
+    get:
+      tags:
+        - produit-controller
+      summary: produit by id 
+      operationId: Get produit
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id_produit
+          required: true
+          type: number
+          minimum: 1  
+      responses:
+        '200':
+          description: produit reponse
+           
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false
+
+  /api/produit/ProduitDuree/getProduitDureeByProduit/{id_produit}:  
+   get:
+      tags:
+        - produit-controller
+      summary: duree by produit 
+      operationId: Get duree by produit 
+      consumes:
+        - application/json
+      produces:
+        - application/json
+        
+      parameters:
+        - in: path
+          name: id_produit
+          required: true
+          type: number
+          minimum: 1          
+      responses:
+        '200':
+          description: duree reponse
+           
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false
+    
+  /api/produit/risqueParametre/all/{id_produit}:  
+   get:
+      tags:
+        - produit-controller
+      summary: param risque  by produit 
+      operationId: Get param risque by produit 
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id_produit
+          required: true
+          type: number
+          minimum: 1    
+      responses:
+        '200':
+          description:  param risque reponse
+           
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false
+    
+  /api/produit/risqueParametre/workflow/{id_produit}/45:
+   get:
+      tags:
+        - produit-controller
+      summary: get devis workflow 
+      operationId:  get devis workflow 
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id_produit
+          required: true
+          type: number
+          minimum: 1          
+      responses:
+        '200':
+          description: workflow reponse
+           
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false    
+      
+  /api/agence/all:  
+   get:
+      tags:
+        - agence-controller
+      summary: agences  
+      operationId: Get agences 
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: agence reponse
+           
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false            
+      
+  /api/produit/pack0/produit/{id_produit}:  
+    get:
+      tags:
+        - produit-controller
+      summary: get pack by produit
+      operationId: get pack by produit
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id_produit
+          required: true
+          type: number
+          minimum: 1  
+        - in: body
+          name: packJson
+          description: packJson
+          required: true
+          schema:
+            $ref: '#/definitions/packJson'  
+      responses:
+        '200':
+          description: pack reponse
+           
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false  
+      
+  /api/controle/pack:    
+    post:
+      tags:
+        - controle-controller
+      summary: get pack voyage by zone et destination
+      operationId:  get pack voyage by zone et destination
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: controle pack
+          description: controle pack
+          required: true
+          schema:
+            $ref: '#/definitions/controle-pack'
+      responses:
+        '200':
+          description: pack reponse
+          schema:
+            $ref: '#/definitions/response-pack'        
+        '400':
+          description: syntaxe error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: syntaxe error
+                default: "Probleme de de syntaxe rencontré" 
+        '401':
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/erreurMsg'
+        '407':
+          description: Proxy error
+          schema:
+            type: object
+            properties:
+              ErreurMessage:
+                type: string
+                description: proxy error
+                default: "Probleme de proxy rencontré"  
+      deprecated: false
+    
+definitions:
+
+  devis:
+    type: object 
+    properties:
+      typeClient:
+        type: number
+      dateAssure:  
+        type: string
+      nom:
+        type: string
+      prenom:
+        type: string
+      raisonSocial:
+        type: string
+      telephone:
+        type: string
+      email:
+        type: string
+      produit:
+        type: number
+      duree:
+        type: number
+      agence:
+        type: number
+      canal:
+        type: number
+      auditUser:
+        type: string
+      auditDate:
+        type: string  
+        
+      groupes:
+        type: array
+        items:
+          $ref: '#/definitions/groupes'  
+        
+      primeList:
+        type: array
+        items:
+          $ref: '#/definitions/primeJson'  
+        
+      taxeList:
+        type: array
+        items:
+          $ref: '#/definitions/primeJson'    
+  
+  contrat : 
+    type : object
+    properties:
+      agence : 
+        type: number
+      auditUser:
+        type: number
+      dateEffet:
+        type: string 
+      dateExpiration : 
+        type : string
+      devis :   
+        type: number
+      groupes:
+        type: array
+        items:
+          $ref: '#/definitions/contrat-groupes'      
+      personnes:
+        type: array
+        items:
+          $ref: '#/definitions/personnes'      
+          
+  personnes : 
+    type: object
+    properties: 
+      role : 
+        type: number
+      risqueList : 
+        type: array    
+        items:
+            type: number
+      typeClient : 
+        type: string
+      nom: 
+        type: string  
+      prenom : 
+        type: string  
+            
+      dateNaissance : 
+        type: string       
+      raisonSocial  : 
+        type: string  
+      nif  : 
+        type: string  
+      nin : 
+        type: string  
+      telephone :
+        type: object
+        $ref: '#/definitions/contact'  
+      email:
+        type: object
+        $ref: '#/definitions/contact'  
+      adresse :
+        type: object
+        $ref: '#/definitions/adresse'  
+      genre  : 
+        type: number  
+      situation  : 
+        type: number  
+      profession :
+        type: object
+      rib :
+        type: object
+        $ref: '#/definitions/rib'  
+      permis  :
+        type: object
+        $ref: '#/definitions/permis'  
+        
+  rib:      
+    type: object 
+    properties:
+      idRib:
+        type: number
+      description  :
+        type: string   
+       
+  permis:      
+    type: object 
+    properties:
+      idDocument:
+        type: number
+      dateDelivrance  :
+        type: string   
+      wilayaDelivrance:
+        type: number        
+  contact:      
+    type: object 
+    properties:
+      idContact:
+        type: number
+      description  :
+        type: string     
+  adresse:      
+    type: object 
+    properties:
+      idAdresse:
+        type: number
+      description  :
+        type: string 
+      wilaya  :
+        type: number              
+      commune  :
+        type: number          
+        
+  contrat-groupes:      
+    type: object 
+    properties:
+      groupe:
+        type: object
+        $ref: '#/definitions/groupe-description'  
+      groupeList  :
+        type: array
+        items:
+          $ref: '#/definitions/groupe-details'       
+      
+      
+      
+  groupe-description :    
+    type: object 
+    properties:
+      idGroupe:
+        type: number    
+      description:
+        type: string
+        
+  groupe-details :    
+    type: object 
+    properties:
+      idRisque:
+        type: number    
+      paramList:
+        type: array
+        items:
+          $ref: '#/definitions/paramJson'              
+        
+   
+  controle-pack: 
+    type: object 
+    properties:
+      destination:
+        type: number
+      zone:  
+        type: string
+      auditUser:
+        type: string
+        
+  response-pack: 
+    type: object 
+    properties:
+      description:
+        type: string
+      idPack0:  
+        type: number
+      codePack:
+        type: string
+
+
+  groupes:
+    type: object 
+    properties:
+      description:  
+        type: string
+      groupeList:
+        type: array
+        items:
+          $ref: '#/definitions/groupe' 
+        
+        
+  groupe:
+    type: object 
+    properties:
+      risque:
+        type: object
+        $ref: '#/definitions/risque'      
+
+  risque:
+    type: object 
+    properties:
+      paramList:
+        type: array
+        items:
+          $ref: '#/definitions/paramJson'   
+      packCompletList:
+        type: array
+        items:
+          $ref: '#/definitions/packCompletJson'   
+      primeList:
+        type: array
+        items:
+          $ref: '#/definitions/primeJson'   
+      taxeList:
+        type: array
+        items:
+          $ref: '#/definitions/taxeJson'   
+  packCompletJson:
+    type: object 
+    properties:
+      idPackComplet:
+        type: number
+      prime:  
+        type: string   
+        
+      primeReduction:  
+        type: string        
+        
+      categorieList:
+        type: array
+        items:
+          $ref: '#/definitions/categorieJson'      
+  categorieJson:
+    type: object 
+    properties:
+      idCategoriePackComplet:
+        type: number
+      valeur:  
+        type: string   
+      sousCategorieList:
+        type: object
+        $ref: '#/definitions/sousCategorieJson'        
+  sousCategorieJson:
+    type: object 
+    properties:
+      idSousCategoriePackComplet:
+        type: number
+      valeur:  
+        type: string   
+  paramJson:
+    type: object 
+    properties:
+      idParam:
+        type: number
+      reponse:
+        type: object
+        $ref: '#/definitions/reponseParam'       
+        
+        
+  reponseParam:
+    type: object 
+    properties:
+      idReponse:
+        type: number
+      description:  
+        type: string
+
+        
+  primeJson:
+    type: object 
+    properties:
+      idPrime:
+        type: number
+      description:  
+        type: string
+      prime:
+        type: string
+  packJson:
+    type: object 
+    properties:
+      duree:
+        type: number
+      dateMiseEnCirculation:  
+        type: string
+  
+        
+  taxeJson:
+    type: object 
+    properties:
+      taxe:
+        type: number
+      description:  
+        type: string
+      prime:
+        type: string      
+      
+      
+  
+  erreurMsg:
+    type: object
+    properties:
+      code:
+        type: number
+      message:
+        type: string
+        default: "erreur d'authentification"  
+      HttpStatus:
+        type: string
+      ZonedDateTime:
+        type: string
+
+  filtreReduction : 
+    type: object
+    properties:
+      produit:
+        type: number
+
+        
+  response:
+    type: object
+    properties:
+      idTaxe:
+        type: number
+      idNational:
+        type: string
+      description:
+        type: string
+      valeurType:
+        type: number
+      valeurMin:
+        type: number
+      valeurMax:
+        type: number
+      valeur:
+        type: number
+      dateDebut:
+        type: string
+      dateFin:
+        type: string
+      auditUser:
+        type: string
+      auditDate:
+        type: string
+        
+        
+  reduction :        
+    type: object 
+    properties:
+      idReduction: 
+        type: number
+      idConvention : 
+        type: number
+      typeClient:
+        type: number
+      dateAssure:  
+        type: string
+      nom:
+        type: string
+      prenom:
+        type: string
+      raisonSocial:
+        type: string
+      telephone:
+        type: string
+      email:
+        type: string
+      produit:
+        type: number
+      duree:
+        type: number
+      agence:
+        type: number
+      canal:
+        type: number
+      auditUser:
+        type: string
+      auditDate:
+        type: string  
+        
+      groupes:
+        type: array
+        items:
+          $ref: '#/definitions/groupes'  
+        
+      primeList:
+        type: array
+        items:
+          $ref: '#/definitions/primeJson'  
+        
+      taxeList:
+        type: array
+        items:
+          $ref: '#/definitions/primeJson'       
+ 

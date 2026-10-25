@@ -5,15 +5,18 @@ import { Globe2, LayoutDashboard, Earth, FileText, Users, DollarSign, HelpCircle
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useState, useEffect, lazy, Suspense } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { useAppStore } from "./store/useAppStore";
 import { Logo } from '@/components/Logo';
 import { LanguageProvider, useLanguage } from "./i18n/LanguageContext";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
+import { ToastProvider } from "@/components/ui/toast";
 
-// Eager imports for layout components
+// Eager imports for layout & auth components
 import { VisaEditor } from "@/components/admin/VisaEditor";
 import { LandingPage } from "@/components/LandingPage";
+import { Login } from "@/components/auth/Login";
+import { Register } from "@/components/auth/Register";
 
 // Lazy loaded page components
 const AgencyManagement = lazy(() => import("@/components/admin/AgencyManagement").then(m => ({ default: m.AgencyManagement })));
@@ -37,8 +40,50 @@ const PassportIndex = lazy(() => import("@/components/agency/PassportIndex").the
 const OrganizedTrips = lazy(() => import("@/components/agency/OrganizedTrips"));
 const StudyPrograms = lazy(() => import("@/components/agency/StudyPrograms"));
 
-const Login = lazy(() => import("@/components/auth/Login").then(m => ({ default: m.Login })));
-const Register = lazy(() => import("@/components/auth/Register").then(m => ({ default: m.Register })));
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any) {
+    console.error("ErrorBoundary caught error:", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl max-w-md w-full space-y-4">
+            <h2 className="text-xl font-black text-slate-900">Actualisation requise</h2>
+            <p className="text-xs text-slate-500">
+              Une nouvelle version de la plateforme a été chargée. Veuillez recharger la page.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full h-11 bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs rounded-xl transition-all shadow-md cursor-pointer"
+            >
+              Recharger la page
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const SuspenseFallback = () => (
   <div className="flex justify-center items-center h-full w-full p-8 text-gray-500">
@@ -233,42 +278,46 @@ function AdminLayout() {
 export default function App() {
   useFirebaseSync();
   return (
-    <LanguageProvider>
-      <Router>
-        <Suspense fallback={<SuspenseFallback />}>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            
-            {/* Admin Space */}
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="countries" element={<ServiceCatalog />} />
-              <Route path="agencies" element={<AgencyManagement />} />
-              <Route path="applications" element={<ApplicationManagement />} />
-              <Route path="trips" element={<OrganizedTripsManagement />} />
-              <Route path="study" element={<StudyProgramsManagement />} />
-              <Route path="finances" element={<FinancesManagement />} />
-              <Route path="support" element={<SupportManagement />} />
-              <Route path="settings" element={<AdminSettings />} />
-            </Route>
+    <ErrorBoundary>
+      <LanguageProvider>
+        <ToastProvider>
+          <Router>
+            <Suspense fallback={<SuspenseFallback />}>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              
+              {/* Admin Space */}
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="countries" element={<ServiceCatalog />} />
+                <Route path="agencies" element={<AgencyManagement />} />
+                <Route path="applications" element={<ApplicationManagement />} />
+                <Route path="trips" element={<OrganizedTripsManagement />} />
+                <Route path="study" element={<StudyProgramsManagement />} />
+                <Route path="finances" element={<FinancesManagement />} />
+                <Route path="support" element={<SupportManagement />} />
+                <Route path="settings" element={<AdminSettings />} />
+              </Route>
 
-            {/* Agency Space */}
-            <Route path="/agency" element={<AgencyLayout />}>
-              <Route index element={<AgencyDashboard />} />
-              <Route path="apply" element={<VisaWizard />} />
-              <Route path="applications" element={<AgencyApplications />} />
-              <Route path="trips" element={<OrganizedTrips />} />
-              <Route path="study" element={<StudyPrograms />} />
-              <Route path="wallet" element={<AgencyWallet />} />
-              <Route path="support" element={<AgencySupport />} />
-              <Route path="settings" element={<AgencySettings />} />
-              <Route path="passport-index" element={<PassportIndex />} />
-            </Route>
-          </Routes>
-        </Suspense>
-      </Router>
-    </LanguageProvider>
+              {/* Agency Space */}
+              <Route path="/agency" element={<AgencyLayout />}>
+                <Route index element={<AgencyDashboard />} />
+                <Route path="apply" element={<VisaWizard />} />
+                <Route path="applications" element={<AgencyApplications />} />
+                <Route path="trips" element={<OrganizedTrips />} />
+                <Route path="study" element={<StudyPrograms />} />
+                <Route path="wallet" element={<AgencyWallet />} />
+                <Route path="support" element={<AgencySupport />} />
+                <Route path="settings" element={<AgencySettings />} />
+                <Route path="passport-index" element={<PassportIndex />} />
+              </Route>
+            </Routes>
+          </Suspense>
+          </Router>
+        </ToastProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
   );
 }

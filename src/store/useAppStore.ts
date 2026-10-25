@@ -123,10 +123,18 @@ export interface StudyProgram {
   id: string;
   title: string;
   country: string;
+  countryFlag?: string;
   university: string;
-  type: string; // e.g., 'Bachelor', 'Master', 'Language', 'PhD'
+  city?: string;
+  type: string; // e.g., 'Bachelor', 'Master', 'Language', 'PhD', 'Préparatoire'
   description: string;
-  price: number; // Agency price / Service fee
+  admissionConditions?: string[];
+  conditions?: string;
+  processingTime?: string;
+  intake?: string;
+  languageOfStudy?: string;
+  price: number; // Frais de traitement / service (DZD)
+  tuitionFeeYear?: string;
   requiredDocuments: string[];
   image?: string;
   status: 'active' | 'draft';
@@ -137,6 +145,10 @@ export interface StudyApplication {
   id: string;
   programId: string;
   programTitle?: string;
+  country?: string;
+  countryFlag?: string;
+  university?: string;
+  city?: string;
   agencyId: string;
   agencyName: string;
   studentName: string;
@@ -145,6 +157,18 @@ export interface StudyApplication {
   phone: string;
   status: "Pending" | "Processing" | "ActionRequired" | "Approved" | "Rejected";
   documents: Record<string, string>; // Maps document name to base64 or URL
+  attachments?: Array<{
+    id: string;
+    name: string;
+    category: string;
+    type: string;
+    size: number;
+    dataUrl: string;
+    url?: string;
+    storageId?: string;
+    uploadedAt: string;
+    uploadedBy: "Agency" | "Admin";
+  }>;
   timeline?: {
     id: string;
     date: string;
@@ -154,7 +178,11 @@ export interface StudyApplication {
   }[];
   submissionDate: string;
   price: number;
+  paidAmount?: number;
+  paymentStatus?: 'unpaid' | 'partial' | 'paid';
   finalDocument?: string;
+  finalDocumentName?: string;
+  finalDocumentDate?: string;
   adminNotes?: string;
 }
 
@@ -243,6 +271,7 @@ export interface AppState {
   addStudyApplication: (application: Omit<StudyApplication, 'id' | 'submissionDate'>) => Promise<void>;
   updateStudyApplicationStatus: (id: string, status: StudyApplication['status']) => void;
   updateStudyApplication: (id: string, updates: Partial<StudyApplication>) => void;
+  updateStudyApplicationPayment: (id: string, amount: number) => Promise<void>;
   addStudyTimelineEntry: (id: string, entry: Omit<NonNullable<StudyApplication["timeline"]>[0], "id" | "date">) => Promise<void>;
 
   addCountry: (country: Country) => void;
@@ -283,7 +312,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   updateAgency: async (id, updates) => {
-    await updateDoc(doc(db, "users", id), sanitizeFirestoreData(updates));
+    const sanitized = sanitizeFirestoreData(updates);
+    await updateDoc(doc(db, "users", id), sanitized);
+    set((state) => ({
+      agencies: state.agencies.map(a => a.id === id ? { ...a, ...updates } : a)
+    }));
   },
 
   
@@ -373,7 +406,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
   agencies: [],
   notifications: [],
-  updateAgencyStatus: async (id, status) => { await updateDoc(doc(db, "users", id), { status }); },
+  updateAgencyStatus: async (id, status) => { 
+    await updateDoc(doc(db, "users", id), { status }); 
+    set((state) => ({
+      agencies: state.agencies.map(a => a.id === id ? { ...a, status } : a)
+    }));
+  },
   countries: [],
   services: [],
   applications: [],
@@ -517,53 +555,73 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   addStudyProgram: async (programData) => {
     const progId = doc(collection(db, 'studyPrograms')).id;
-    await setDoc(doc(db, 'studyPrograms', progId), {
+    const newProg: StudyProgram = {
       ...programData,
       id: progId,
       createdAt: new Date().toISOString()
-    });
+    } as StudyProgram;
+    const sanitized = sanitizeFirestoreData(newProg);
+    await setDoc(doc(db, 'studyPrograms', progId), sanitized);
+    set(state => ({
+      studyPrograms: [newProg, ...state.studyPrograms.filter(p => p.id !== progId)]
+    }));
   },
 
   updateStudyProgram: async (id, programData) => {
-    await updateDoc(doc(db, 'studyPrograms', id), programData);
+    const sanitized = sanitizeFirestoreData(programData);
+    await updateDoc(doc(db, 'studyPrograms', id), sanitized);
+    set(state => ({
+      studyPrograms: state.studyPrograms.map(p => p.id === id ? { ...p, ...programData } : p)
+    }));
   },
 
   deleteStudyProgram: async (id) => {
     await deleteDoc(doc(db, 'studyPrograms', id));
+    set(state => ({
+      studyPrograms: state.studyPrograms.filter(p => p.id !== id)
+    }));
   },
 
   addStudyApplication: async (application) => {
     const appId = (application as any).id || `ETUD-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-    const agencyId = application.agencyId;
-    const userRef = doc(db, 'users', agencyId);
-    
-    await runTransaction(db, async (transaction) => {
-      const userDoc = await transaction.get(userRef);
-      const price = application.price || 0;
+    const price = application.price || 0;
 
-      if (userDoc.exists()) {
-        const currentBalance = userDoc.data().balance || 0;
-        if (currentBalance < price) {
-          throw new Error("Solde insuffisant pour cette opération.");
+    const newStudyApp: StudyApplication = {
+      ...application,
+      id: appId,
+      price: price,
+      paidAmount: 0,
+      paymentStatus: 'unpaid',
+      submissionDate: new Date().toISOString(),
+      status: "Pending",
+      timeline: [
+        {
+          id: `entry_${Date.now()}`,
+          date: new Date().toISOString(),
+          title: "Dossier Études Déposé",
+          message: `Dossier d'admission pour « ${application.programTitle || 'Programme Études'} » (${application.university || ''} - ${application.country || ''}) déposé par l'agence.`,
+          sender: "Agency"
         }
-        transaction.update(userRef, { balance: currentBalance - price });
-      }
+      ]
+    };
 
-      // 1. Enregistrement dans studyApplications pour l'espace dédié
-      transaction.set(doc(db, 'studyApplications', appId), {
-        ...application,
-        id: appId,
-        submissionDate: new Date().toISOString()
-      });
+    const sanitized = sanitizeFirestoreData(newStudyApp);
+    await setDoc(doc(db, 'studyApplications', appId), sanitized);
 
-      // 2. Inscription conjointe dans applications pour la visibilité globale centrale
+    // Mise à jour immédiate du store local
+    set((state) => ({
+      studyApplications: [newStudyApp, ...state.studyApplications.filter(a => a.id !== appId)]
+    }));
+
+    // Inscription conjointe dans applications pour la vue globale centrale
+    try {
       const mainAppRef = doc(db, 'applications', appId);
-      transaction.set(mainAppRef, {
+      await setDoc(mainAppRef, sanitizeFirestoreData({
         id: appId,
         agencyId: application.agencyId,
         agencyName: application.agencyName || 'Mon Agence',
         serviceType: 'Etude',
-        country: (application as any).country || 'Destination Universitaire',
+        country: application.country || 'Destination Universitaire',
         visaType: `Visa Études - ${application.programTitle || 'Admission Universitaire'}`,
         travelerName: application.studentName,
         passportNumber: application.passportNumber,
@@ -574,65 +632,85 @@ export const useAppStore = create<AppState>()((set, get) => ({
         customFormData: {
           programId: application.programId,
           programTitle: application.programTitle,
+          university: application.university,
+          country: application.country,
+          city: application.city,
           email: application.email,
           phone: application.phone,
           documents: application.documents || {}
         },
-        timeline: [
-          {
-            id: `entry_${Date.now()}`,
-            date: new Date().toISOString(),
-            title: "Candidature Études Transmise",
-            message: `Dossier d'admission pour le programme « ${application.programTitle || 'Études'} » déposé par l'agence.`,
-            sender: "Agency"
-          }
-        ]
-      });
+        timeline: newStudyApp.timeline
+      }));
+    } catch (mainErr) {
+      console.warn("Avertissement synchronisation globale:", mainErr);
+    }
 
-      // 3. Enregistrement transaction financière
-      const txRef = doc(collection(db, 'transactions'));
-      transaction.set(txRef, {
-        id: txRef.id,
-        agencyId: application.agencyId,
-        agencyName: application.agencyName || '',
-        amount: price,
-        type: 'debit',
-        status: 'completed',
-        date: new Date().toISOString().split('T')[0],
-        description: `Paiement pour programme d'études (${application.studentName || ''})`
-      });
-
-      // 4. Notification Admin
+    // Notification pour l'administrateur
+    try {
       const notifRef = doc(collection(db, 'notifications'));
-      transaction.set(notifRef, {
+      await setDoc(notifRef, {
         id: notifRef.id,
         agencyId: 'admin',
         title: 'Nouveau dossier Visa Études',
-        message: `${application.agencyName || 'Une agence'} a soumis un dossier d'études pour ${application.studentName}.`,
+        message: `${application.agencyName || 'Une agence'} a soumis un dossier d'études pour ${application.studentName} (${application.university || ''} - ${application.country || ''}).`,
         type: 'info',
         read: false,
         createdAt: new Date().toISOString(),
         link: '/admin/study'
       });
-    });
+
+      // Notification de confirmation pour l'agence
+      const notifAgencyRef = doc(collection(db, 'notifications'));
+      await setDoc(notifAgencyRef, {
+        id: notifAgencyRef.id,
+        agencyId: application.agencyId,
+        title: 'Dossier Études Enregistré',
+        message: `Votre dossier pour ${application.studentName} (${application.university || ''}) est bien enregistré sous la référence ${appId}.`,
+        type: 'success',
+        read: false,
+        createdAt: new Date().toISOString(),
+        link: '/agency/study'
+      });
+    } catch (notifErr) {
+      console.warn("Avertissement notification:", notifErr);
+    }
   },
 
   updateStudyApplicationStatus: async (id, status) => {
     await updateDoc(doc(db, 'studyApplications', id), { status });
+    set(state => ({
+      studyApplications: state.studyApplications.map(a => a.id === id ? { ...a, status } : a)
+    }));
     const app = get().studyApplications.find(a => a.id === id);
     if (app) {
       const notifId = doc(collection(db, 'notifications')).id;
       await setDoc(doc(db, 'notifications', notifId), {
         id: notifId,
         agencyId: app.agencyId,
-        title: `Dossier Études ${status}`,
-        message: `Le statut de la demande d'études pour ${app.studentName} est maintenant: ${status}.`,
+        title: `Dossier Études : ${status}`,
+        message: `Le statut du dossier de ${app.studentName} (${app.university || 'Université'}) est maintenant : ${status}.`,
         type: status === 'Approved' ? 'success' : (status === 'Rejected' ? 'error' : 'info'),
         read: false,
         createdAt: new Date().toISOString(),
         link: '/agency/study'
       });
     }
+  },
+
+  updateStudyApplicationPayment: async (id, amount) => {
+    const app = get().studyApplications.find(a => a.id === id);
+    if (!app) return;
+    const newPaidAmount = (app.paidAmount || 0) + amount;
+    const paymentStatus = newPaidAmount >= app.price ? 'paid' : (newPaidAmount > 0 ? 'partial' : 'unpaid');
+    await updateDoc(doc(db, 'studyApplications', id), {
+      paidAmount: newPaidAmount,
+      paymentStatus
+    });
+    set(state => ({
+      studyApplications: state.studyApplications.map(a => 
+        a.id === id ? { ...a, paidAmount: newPaidAmount, paymentStatus } : a
+      )
+    }));
   },
 
   updateStudyApplication: async (id, updates) => {

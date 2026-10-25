@@ -58,6 +58,7 @@ export function AgencyManagement() {
   const [banDurationDays, setBanDurationDays] = useState<string>("15");
   const [banReason, setBanReason] = useState("");
   const [isBanning, setIsBanning] = useState(false);
+  const [actionNotice, setActionNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Synchronisation du formulaire d'édition lorsque l'agence sélectionnée change
   const handleSelectAgency = (agency: Agency, tab: "juridique" | "dossiers" | "finances" | "sanctions" = "juridique") => {
@@ -77,6 +78,7 @@ export function AgencyManagement() {
     setBalanceAdjustAmount(0);
     setBalanceAdjustReason("");
     setBanReason("");
+    setActionNotice(null);
   };
 
   // Filtrage des agences
@@ -149,13 +151,15 @@ export function AgencyManagement() {
   const handleSaveAgencyProfile = async () => {
     if (!selectedAgency) return;
     setIsSavingEdit(true);
+    setActionNotice(null);
     try {
       await updateAgency(selectedAgency.id, editFormData);
       setSelectedAgency(prev => prev ? ({ ...prev, ...editFormData } as Agency) : null);
-      alert("Informations de l'agence mises à jour avec succès.");
+      setActionNotice({ type: "success", text: "Informations de l'agence mises à jour avec succès." });
+      setTimeout(() => setActionNotice(null), 4000);
     } catch (err: any) {
       console.error(err);
-      alert("Erreur lors de la mise à jour: " + err.message);
+      setActionNotice({ type: "error", text: "Erreur lors de la mise à jour: " + (err.message || "Erreur serveur.") });
     } finally {
       setIsSavingEdit(false);
     }
@@ -164,7 +168,7 @@ export function AgencyManagement() {
   // Ajustement direct de solde par l'administrateur
   const handleAdjustBalance = async () => {
     if (!selectedAgency || balanceAdjustAmount <= 0 || !balanceAdjustReason.trim()) {
-      alert("Veuillez renseigner un montant supérieur à 0 et un motif administratif explicatif.");
+      setActionNotice({ type: "error", text: "Veuillez renseigner un montant supérieur à 0 et un motif administratif explicatif." });
       return;
     }
 
@@ -173,6 +177,7 @@ export function AgencyManagement() {
     const newBal = Math.max(0, currentBal + diff);
 
     setIsAdjustingBalance(true);
+    setActionNotice(null);
     try {
       await updateAgency(selectedAgency.id, { balance: newBal });
       await addTransaction({
@@ -188,10 +193,11 @@ export function AgencyManagement() {
       setSelectedAgency(prev => prev ? ({ ...prev, balance: newBal } as Agency) : null);
       setBalanceAdjustAmount(0);
       setBalanceAdjustReason("");
-      alert(`Solde de l'agence mis à jour avec succès. Nouveau solde : ${newBal.toLocaleString()} DZD`);
+      setActionNotice({ type: "success", text: `Solde de l'agence mis à jour avec succès. Nouveau solde : ${newBal.toLocaleString()} DZD` });
+      setTimeout(() => setActionNotice(null), 4000);
     } catch (err: any) {
       console.error(err);
-      alert("Erreur lors de l'ajustement du solde: " + err.message);
+      setActionNotice({ type: "error", text: "Erreur lors de l'ajustement du solde: " + (err.message || "Erreur serveur.") });
     } finally {
       setIsAdjustingBalance(false);
     }
@@ -200,11 +206,11 @@ export function AgencyManagement() {
   // Application de suspension temporaire
   const handleApplySuspension = async () => {
     if (!selectedAgency || !banReason.trim()) {
-      alert("Veuillez préciser le motif administratif de la suspension.");
+      setActionNotice({ type: "error", text: "Veuillez préciser le motif administratif de la suspension." });
       return;
     }
 
-    let bannedUntilDate: string | undefined = undefined;
+    let bannedUntilDate: string = "";
     if (banDurationDays !== "indefinite") {
       const days = parseInt(banDurationDays, 10);
       const targetDate = new Date();
@@ -213,6 +219,7 @@ export function AgencyManagement() {
     }
 
     setIsBanning(true);
+    setActionNotice(null);
     try {
       await updateAgency(selectedAgency.id, {
         status: "SUSPENDED",
@@ -227,39 +234,53 @@ export function AgencyManagement() {
         banReason: banReason.trim() 
       } as Agency) : null);
 
-      alert(`L'agence a été suspendue avec succès. Notification envoyée.`);
+      setActionNotice({ type: "success", text: "L'agence a été suspendue avec succès. Ses accès sont restreints." });
+      setTimeout(() => setActionNotice(null), 5000);
     } catch (err: any) {
-      console.error(err);
-      alert("Erreur lors de la suspension: " + err.message);
+      console.error("Erreur suspension:", err);
+      setActionNotice({ type: "error", text: "Erreur lors de la suspension: " + (err.message || "Erreur serveur.") });
     } finally {
       setIsBanning(false);
     }
   };
 
-  // Réactivation / Levée de suspension
-  const handleLiftSuspension = async () => {
-    if (!selectedAgency) return;
-    if (!confirm("Voulez-vous réactiver immédiatement le compte de cette agence ?")) return;
+  // Réactivation / Levée de suspension (infaillible et instantané)
+  const handleLiftSuspension = async (agencyToReactivate?: Agency | any) => {
+    // Si passé via onClick direct, s'assurer que target est bien un objet Agency avec un id
+    const target = (agencyToReactivate && typeof agencyToReactivate === 'object' && typeof agencyToReactivate.id === 'string' && agencyToReactivate.id)
+      ? (agencyToReactivate as Agency)
+      : selectedAgency;
+    if (!target || !target.id) return;
 
     setIsBanning(true);
+    setActionNotice(null);
     try {
-      await updateAgency(selectedAgency.id, {
+      await updateAgency(target.id, {
         status: "ACTIVE",
-        bannedUntil: undefined,
-        banReason: undefined
+        bannedUntil: "",
+        banReason: ""
       });
 
-      setSelectedAgency(prev => prev ? ({ 
-        ...prev, 
-        status: "ACTIVE", 
-        bannedUntil: undefined, 
-        banReason: undefined 
-      } as Agency) : null);
+      if (selectedAgency && selectedAgency.id === target.id) {
+        setSelectedAgency(prev => prev ? ({ 
+          ...prev, 
+          status: "ACTIVE", 
+          bannedUntil: undefined, 
+          banReason: undefined 
+        } as Agency) : null);
+      }
 
-      alert("Le compte de l'agence a été réactivé avec succès.");
+      setActionNotice({
+        type: "success",
+        text: `La suspension de l'agence « ${target.agencyName || target.name || 'Agence'} » a été levée avec succès. Le compte est maintenant actif.`
+      });
+      setTimeout(() => setActionNotice(null), 5000);
     } catch (err: any) {
-      console.error(err);
-      alert("Erreur lors de la réactivation: " + err.message);
+      console.error("Erreur réactivation:", err);
+      setActionNotice({
+        type: "error",
+        text: "Erreur lors de la levée de suspension: " + (err.message || "Erreur serveur.")
+      });
     } finally {
       setIsBanning(false);
     }
@@ -287,6 +308,30 @@ export function AgencyManagement() {
   return (
     <div className="space-y-6 pb-20 max-w-7xl mx-auto">
       
+      {/* Bannière de notification d'action (Succès / Erreur) */}
+      {actionNotice && (
+        <div className={`p-4 rounded-2xl flex items-center justify-between gap-3 shadow-sm border animate-in fade-in ${
+          actionNotice.type === 'success' 
+            ? 'bg-emerald-50 border-emerald-300 text-emerald-950' 
+            : 'bg-red-50 border-red-300 text-red-950'
+        }`}>
+          <div className="flex items-center gap-2.5">
+            {actionNotice.type === 'success' ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+            )}
+            <span className="text-xs font-bold">{actionNotice.text}</span>
+          </div>
+          <button 
+            onClick={() => setActionNotice(null)}
+            className="text-xs font-bold hover:underline opacity-80 cursor-pointer"
+          >
+            {isEn ? "Dismiss" : "Fermer"}
+          </button>
+        </div>
+      )}
+
       {/* ============================================================ */}
       {/* En-tête Principal                                            */}
       {/* ============================================================ */}
@@ -452,6 +497,20 @@ export function AgencyManagement() {
 
                     <TableCell className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        {isSuspended && (
+                          <Button 
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleLiftSuspension(agency)}
+                            disabled={isBanning}
+                            className="h-8 px-2.5 text-xs font-bold text-emerald-700 bg-emerald-50 border-emerald-300 hover:bg-emerald-100 rounded-lg flex items-center gap-1 shadow-xs cursor-pointer"
+                            title={isEn ? "Lift suspension immediately" : "Lever la suspension immédiatement"}
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>{isBanning ? "..." : (isEn ? "Reactivate" : "Lever suspension")}</span>
+                          </Button>
+                        )}
+
                         <Button 
                           size="sm"
                           variant="outline"
@@ -485,7 +544,7 @@ export function AgencyManagement() {
                             {agency.status === "PENDING" && (
                               <DropdownMenuItem 
                                 onClick={() => updateAgencyStatus(agency.id, "ACTIVE")} 
-                                className="text-emerald-700 font-bold"
+                                className="text-emerald-700 font-bold cursor-pointer"
                               >
                                 <ShieldCheck className="mr-2 h-3.5 w-3.5" /> Approuver l'inscription
                               </DropdownMenuItem>
@@ -493,17 +552,17 @@ export function AgencyManagement() {
                             {agency.status === "ACTIVE" && (
                               <DropdownMenuItem 
                                 onClick={() => handleSelectAgency(agency, "sanctions")} 
-                                className="text-amber-700 font-bold"
+                                className="text-amber-700 font-bold cursor-pointer"
                               >
                                 <ShieldAlert className="mr-2 h-3.5 w-3.5" /> Suspendre temporairement
                               </DropdownMenuItem>
                             )}
                             {isSuspended && (
                               <DropdownMenuItem 
-                                onClick={() => handleSelectAgency(agency, "sanctions")} 
-                                className="text-emerald-700 font-bold"
+                                onClick={() => handleLiftSuspension(agency)} 
+                                className="text-emerald-700 font-bold cursor-pointer"
                               >
-                                <ShieldCheck className="mr-2 h-3.5 w-3.5" /> Réactiver le compte
+                                <ShieldCheck className="mr-2 h-3.5 w-3.5 text-emerald-600" /> Lever la suspension immédiatement
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
@@ -552,6 +611,17 @@ export function AgencyManagement() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {(selectedAgency.status === "SUSPENDED" || selectedAgency.status === "BANNED" || Boolean(selectedAgency.bannedUntil)) && (
+                    <Button
+                      onClick={() => handleLiftSuspension(selectedAgency)}
+                      disabled={isBanning}
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs h-9 px-3.5 rounded-xl shadow-sm flex items-center gap-1.5 cursor-pointer border border-emerald-400"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-emerald-100" />
+                      <span>{isBanning ? "Réactivation..." : "Lever la suspension"}</span>
+                    </Button>
+                  )}
                   <div className="bg-white/10 px-4 py-2 rounded-2xl border border-white/20 text-right">
                     <span className="text-[10px] font-bold text-white/70 uppercase block">Solde Actuel</span>
                     <span className="text-lg font-black font-mono">
@@ -975,12 +1045,12 @@ export function AgencyManagement() {
 
                         <div className="pt-2 border-t border-red-200 flex justify-end">
                           <Button
-                            onClick={handleLiftSuspension}
+                            onClick={() => handleLiftSuspension(selectedAgency)}
                             disabled={isBanning}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-10 px-6 rounded-xl"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-10 px-6 rounded-xl cursor-pointer"
                           >
                             <ShieldCheck className="w-4 h-4 mr-1.5" />
-                            <span>{isBanning ? "Réactivation..." : "Lever la suspension immédiatement"}</span>
+                            <span>{isBanning ? "Réactivation en cours..." : "Lever la suspension immédiatement"}</span>
                           </Button>
                         </div>
                       </div>
