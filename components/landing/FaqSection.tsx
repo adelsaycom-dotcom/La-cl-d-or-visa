@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, HelpCircle, PhoneCall, MessageSquare } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export function FaqSection() {
@@ -59,8 +60,14 @@ export function FaqSection() {
     <section id="faq" className="py-24 bg-white text-slate-900 border-b border-slate-200">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Heading */}
-        <div className="text-center mb-16">
+        {/* Heading with reveal animation */}
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center mb-16"
+        >
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7B1B38]/10 border border-[#7B1B38]/25 text-[#7B1B38] text-xs font-bold uppercase tracking-wider mb-3">
             <HelpCircle className="w-3.5 h-3.5 text-[#7B1B38]" />
             {isEn ? "Clear Answers" : "Réponses Claires"}
@@ -71,15 +78,19 @@ export function FaqSection() {
           <p className="mt-3 text-slate-600 text-base">
             {isEn ? "Everything you need to know about partnering with La Clé d'Or B2B." : "Tout ce que vous devez savoir pour collaborer avec La Clé d'Or B2B."}
           </p>
-        </div>
+        </motion.div>
 
-        {/* Accordion in Light Mode */}
+        {/* Accordion in Light Mode with staggered entrance */}
         <div className="space-y-4">
           {faqs.map((faq, idx) => {
             const isOpen = openIdx === idx;
             return (
-              <div
+              <motion.div
                 key={idx}
+                initial={{ opacity: 0, y: 25 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-30px" }}
+                transition={{ duration: 0.5, delay: idx * 0.07, ease: [0.16, 1, 0.3, 1] }}
                 className={`rounded-2xl border transition-all duration-200 shadow-sm ${
                   isOpen ? "bg-white border-[#7B1B38]/40 ring-1 ring-[#7B1B38]/20" : "bg-slate-50 border-slate-200 hover:border-slate-300"
                 }`}
@@ -96,18 +107,34 @@ export function FaqSection() {
                     }`}
                   />
                 </button>
-                {isOpen && (
-                  <div className="px-5 pb-5 text-sm sm:text-base text-slate-600 leading-relaxed border-t border-slate-100 pt-4 bg-white">
-                    {faq.a}
-                  </div>
-                )}
-              </div>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-5 pb-5 text-sm sm:text-base text-slate-600 leading-relaxed border-t border-slate-100 pt-4 bg-white">
+                        {faq.a}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             );
           })}
         </div>
 
         {/* Still have questions block */}
-        <div className="mt-12 p-6 rounded-2xl bg-[#7B1B38]/5 border border-[#7B1B38]/20 text-center flex flex-col sm:flex-row items-center justify-between gap-4">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="mt-12 p-6 rounded-2xl bg-[#7B1B38]/5 border border-[#7B1B38]/20 text-center flex flex-col sm:flex-row items-center justify-between gap-4"
+        >
           <div className="text-left">
             <div className="font-bold text-slate-900 text-base">
               {isEn ? "Have a specific question for your agency?" : "Une question spécifique pour votre agence ?"}
@@ -119,7 +146,7 @@ export function FaqSection() {
           <div className="flex items-center gap-3">
             <a
               href="tel:0562101719"
-              className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 hover:text-[#7B1B38] text-xs font-bold transition-all border border-slate-200 flex items-center gap-1.5 shadow-sm"
+              className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 hover:text-[#7B1B38] text-xs font-bold transition-all border border-slate-200 flex items-center gap-1.5 shadow-sm hover:scale-105"
             >
               <PhoneCall className="w-4 h-4 text-[#7B1B38]" />
               <span>0562 10 17 19</span>
@@ -128,13 +155,13 @@ export function FaqSection() {
               href="https://whatsapp.com/channel/0029VbBSSDgKGGGQ2mCZwF0z"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+              className="px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm hover:scale-105"
             >
               <MessageSquare className="w-4 h-4" />
               <span>WhatsApp Pro</span>
             </a>
           </div>
-        </div>
+        </motion.div>
 
       </div>
     </section>

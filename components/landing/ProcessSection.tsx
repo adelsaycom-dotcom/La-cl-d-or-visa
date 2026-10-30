@@ -9,6 +9,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export function ProcessSection() {
@@ -85,8 +86,14 @@ export function ProcessSection() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
-        {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16 md:mb-20">
+        {/* Header with reveal animation */}
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center max-w-3xl mx-auto mb-16 md:mb-20"
+        >
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7B1B38]/10 border border-[#7B1B38]/25 text-[#7B1B38] text-xs font-bold uppercase tracking-wider mb-4">
             <Sparkles className="w-3.5 h-3.5 text-[#7B1B38]" />
             {t("landing.process.badge")}
@@ -97,21 +104,26 @@ export function ProcessSection() {
           <p className="mt-4 text-base sm:text-lg text-slate-600 leading-relaxed">
             {t("landing.process.subtitle")}
           </p>
-        </div>
+        </motion.div>
 
-        {/* Step Cards Grid in Light Mode */}
+        {/* Step Cards Grid with Staggered Entrance */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mb-16">
           {steps.map((step, idx) => {
             const Icon = step.icon;
             const isSelected = activeStep === idx + 1;
 
             return (
-              <div
+              <motion.div
                 key={step.num}
+                initial={{ opacity: 0, y: 35 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.55, delay: idx * 0.12, ease: [0.16, 1, 0.3, 1] }}
+                whileHover={{ y: -6, transition: { duration: 0.2 } }}
                 onClick={() => setActiveStep(idx + 1)}
                 className={`relative rounded-3xl p-8 transition-all duration-300 cursor-pointer border ${
                   isSelected 
-                    ? "bg-white border-[#7B1B38] shadow-xl shadow-[#7B1B38]/10 -translate-y-2 ring-1 ring-[#7B1B38]" 
+                    ? "bg-white border-[#7B1B38] shadow-xl shadow-[#7B1B38]/10 ring-1 ring-[#7B1B38]" 
                     : "bg-white border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md"
                 }`}
               >
@@ -141,13 +153,19 @@ export function ProcessSection() {
                     </li>
                   ))}
                 </ul>
-              </div>
+              </motion.div>
             );
           })}
         </div>
 
         {/* Live Workflow Demonstration (Light mode interactive pipeline) */}
-        <div className="rounded-3xl bg-white border border-slate-200 shadow-xl p-6 sm:p-10 relative overflow-hidden">
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="rounded-3xl bg-white border border-slate-200 shadow-xl p-6 sm:p-10 relative overflow-hidden"
+        >
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-slate-100">
             <div>
               <div className="flex items-center gap-3">
@@ -236,7 +254,7 @@ export function ProcessSection() {
               <ArrowRight className="w-3.5 h-3.5 text-white" />
             </Link>
           </div>
-        </div>
+        </motion.div>
 
       </div>
     </section>

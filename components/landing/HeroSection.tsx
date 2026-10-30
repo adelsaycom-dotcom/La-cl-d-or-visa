@@ -10,6 +10,7 @@ import {
   CheckCircle2
 } from "lucide-react";
 import { useLanguage } from "../../src/i18n/LanguageContext";
+import { AnimatedCounter } from "@/components/common/AnimatedCounter";
 
 export function HeroSection() {
   const { t } = useLanguage();
@@ -29,18 +30,30 @@ export function HeroSection() {
         <div className="absolute inset-0 bg-gradient-to-b from-white/75 via-white/35 to-white" />
       </div>
 
-      {/* Warm soft glow with brand color #7B1B38 */}
-      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[650px] h-[350px] bg-[#7B1B38]/10 rounded-full blur-3xl pointer-events-none" />
+      {/* Warm soft glow with animated breathing effect */}
+      <motion.div 
+        animate={{ 
+          scale: [1, 1.15, 1], 
+          opacity: [0.10, 0.22, 0.10] 
+        }} 
+        transition={{ 
+          duration: 7, 
+          repeat: Infinity, 
+          ease: "easeInOut" 
+        }}
+        className="absolute top-10 left-1/2 -translate-x-1/2 w-[650px] h-[350px] bg-[#7B1B38] rounded-full blur-3xl pointer-events-none" 
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
-        {/* Top Badge in #7B1B38 */}
+        {/* Top Badge in #7B1B38 with bouncing reveal */}
         <div className="flex justify-center mb-6">
           <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/95 backdrop-blur-md border border-[#7B1B38]/25 text-[#7B1B38] text-xs sm:text-sm font-bold shadow-sm"
+            initial={{ opacity: 0, y: -20, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            whileHover={{ scale: 1.03, y: -2 }}
+            className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/95 backdrop-blur-md border border-[#7B1B38]/25 text-[#7B1B38] text-xs sm:text-sm font-bold shadow-sm transition-shadow hover:shadow-md cursor-default"
           >
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B1B38] opacity-75"></span>
@@ -54,63 +67,91 @@ export function HeroSection() {
 
         {/* Main Headline */}
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
+          transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
           className="text-center max-w-4xl mx-auto space-y-6"
         >
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[1.1] text-slate-900 drop-shadow-sm">
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[1.1] text-slate-900 drop-shadow-sm"
+          >
             {t("landing.hero.title")}{" "}
-            <span className="text-[#7B1B38]">
+            <span className="text-[#7B1B38] relative inline-block">
               {t("landing.hero.titleHighlight")}
             </span>
-          </h1>
+          </motion.h1>
 
-          <p className="text-base sm:text-lg md:text-xl text-slate-700 font-medium max-w-2xl mx-auto leading-relaxed drop-shadow-sm">
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="text-base sm:text-lg md:text-xl text-slate-700 font-medium max-w-2xl mx-auto leading-relaxed drop-shadow-sm"
+          >
             {t("landing.hero.subtitle")}
-          </p>
+          </motion.p>
 
-          {/* Quick Metrics Bar */}
+          {/* Quick Metrics Bar with Staggered Pop-in & Auto-Counting */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-3xl mx-auto pt-4 pb-4">
-            <div className="p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-md hover:border-[#7B1B38]/50 transition-all">
-              <div className="text-2xl sm:text-3xl font-black text-[#7B1B38]">35+</div>
-              <div className="text-xs text-slate-700 font-bold mt-0.5">{t("landing.hero.metricDestinations")}</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-md hover:border-slate-300 transition-all">
-              <div className="text-2xl sm:text-3xl font-black text-slate-900">1 250+</div>
-              <div className="text-xs text-slate-700 font-bold mt-0.5">{t("landing.hero.metricVolume")}</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-md hover:border-emerald-300 transition-all">
-              <div className="text-2xl sm:text-3xl font-black text-emerald-600">99.2%</div>
-              <div className="text-xs text-slate-700 font-bold mt-0.5">{t("landing.hero.metricCompliance")}</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-md hover:border-[#7B1B38]/40 transition-all">
-              <div className="text-2xl sm:text-3xl font-black text-[#7B1B38]">24/7</div>
-              <div className="text-xs text-slate-700 font-bold mt-0.5">{t("landing.hero.metricSupport")}</div>
-            </div>
+            {[
+              { num: 35, suffix: "+", decimals: 0, label: t("landing.hero.metricDestinations"), color: "text-[#7B1B38]", borderHover: "hover:border-[#7B1B38]/50" },
+              { num: 1250, suffix: "+", decimals: 0, label: t("landing.hero.metricVolume"), color: "text-slate-900", borderHover: "hover:border-slate-400" },
+              { num: 99.2, suffix: "%", decimals: 1, label: t("landing.hero.metricCompliance"), color: "text-emerald-600", borderHover: "hover:border-emerald-400" },
+              { num: 24, suffix: "/7", decimals: 0, label: t("landing.hero.metricSupport"), color: "text-[#7B1B38]", borderHover: "hover:border-[#7B1B38]/50" }
+            ].map((m, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.35 + idx * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                whileHover={{ y: -6, scale: 1.03, boxShadow: "0 12px 25px -8px rgba(123,27,56,0.15)" }}
+                className={`p-4 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-md ${m.borderHover} transition-colors cursor-default`}
+              >
+                <div className={`text-2xl sm:text-3xl font-black ${m.color}`}>
+                  <AnimatedCounter value={m.num} suffix={m.suffix} decimals={m.decimals} duration={2.2} />
+                </div>
+                <div className="text-xs text-slate-700 font-bold mt-0.5">{m.label}</div>
+              </motion.div>
+            ))}
           </div>
 
-          {/* CTA Buttons in #7B1B38 */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Link
-              to="/register"
-              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-base transition-all duration-200 shadow-lg shadow-[#7B1B38]/30 flex items-center justify-center gap-2 group cursor-pointer"
-            >
-              <Building2 className="w-5 h-5 text-white" />
-              <span>{t("landing.hero.ctaRegister")}</span>
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-            </Link>
+          {/* CTA Buttons in #7B1B38 with Micro-Interactions */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.55 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4"
+          >
+            <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.98 }} className="w-full sm:w-auto">
+              <Link
+                to="/register"
+                className="w-full sm:w-auto px-8 py-4 rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-base transition-all duration-200 shadow-lg shadow-[#7B1B38]/30 flex items-center justify-center gap-2 group cursor-pointer"
+              >
+                <Building2 className="w-5 h-5 text-white" />
+                <span>{t("landing.hero.ctaRegister")}</span>
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </motion.div>
 
-            <Link
-              to="/login"
-              className="w-full sm:w-auto px-7 py-4 rounded-xl bg-white/95 hover:bg-slate-50 text-slate-800 hover:text-[#7B1B38] border-2 border-slate-200 hover:border-[#7B1B38]/40 font-bold text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-sm"
-            >
-              <span>{t("landing.hero.ctaLogin")}</span>
-            </Link>
-          </div>
+            <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.98 }} className="w-full sm:w-auto">
+              <Link
+                to="/login"
+                className="w-full sm:w-auto px-7 py-4 rounded-xl bg-white/95 hover:bg-slate-50 text-slate-800 hover:text-[#7B1B38] border-2 border-slate-200 hover:border-[#7B1B38]/40 font-bold text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-sm"
+              >
+                <span>{t("landing.hero.ctaLogin")}</span>
+              </Link>
+            </motion.div>
+          </motion.div>
 
-          {/* Quality highlight pill */}
-          <div className="pt-2 flex items-center justify-center gap-6 text-xs text-slate-600 font-semibold bg-white/70 backdrop-blur-sm py-2 px-4 rounded-full max-w-fit mx-auto border border-white/80">
+          {/* Quality highlight pill with subtle fade */}
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.65 }}
+            className="pt-2 flex items-center justify-center gap-6 text-xs text-slate-600 font-semibold bg-white/70 backdrop-blur-sm py-2 px-4 rounded-full max-w-fit mx-auto border border-white/80"
+          >
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               {t("landing.hero.trustImmediate")}
@@ -120,57 +161,64 @@ export function HeroSection() {
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               {t("landing.hero.trustBilling")}
             </span>
-          </div>
+          </motion.div>
 
         </motion.div>
       </div>
 
-      {/* Trust Bar in Light Mode with #7B1B38 Accents */}
-      <div className="mt-16 sm:mt-20 border-y border-slate-200/90 bg-white/95 backdrop-blur-md py-6 shadow-sm">
+      {/* Trust Bar with Scroll Trigger & Staggered items */}
+      <motion.div 
+        initial={{ opacity: 0, y: 35 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-40px" }}
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        className="mt-16 sm:mt-20 border-y border-slate-200/90 bg-white/95 backdrop-blur-md py-6 shadow-sm"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-slate-700">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#7B1B38]/10 border border-[#7B1B38]/20 flex items-center justify-center text-[#7B1B38] shrink-0">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="font-bold text-sm text-slate-900">{t("landing.hero.pillarAntiReject")}</div>
-                <div className="text-xs text-slate-500">{t("landing.hero.pillarAntiRejectSub")}</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
-                <Clock className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="font-bold text-sm text-slate-900">{t("landing.hero.pillarExpress")}</div>
-                <div className="text-xs text-slate-500">{t("landing.hero.pillarExpressSub")}</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#7B1B38]/10 border border-[#7B1B38]/20 flex items-center justify-center text-[#7B1B38] shrink-0">
-                <FileCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="font-bold text-sm text-slate-900">{t("landing.hero.pillarB2BPrice")}</div>
-                <div className="text-xs text-slate-500">{t("landing.hero.pillarB2BPriceSub")}</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 shrink-0">
-                <Headphones className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="font-bold text-sm text-slate-900">{t("landing.hero.pillarDedicatedSupport")}</div>
-                <div className="text-xs text-slate-500">{t("landing.hero.pillarDedicatedSupportSub")}</div>
-              </div>
-            </div>
+            {[
+              {
+                icon: ShieldCheck,
+                title: t("landing.hero.pillarAntiReject"),
+                sub: t("landing.hero.pillarAntiRejectSub"),
+                bg: "bg-[#7B1B38]/10 text-[#7B1B38] border-[#7B1B38]/20"
+              },
+              {
+                icon: Clock,
+                title: t("landing.hero.pillarExpress"),
+                sub: t("landing.hero.pillarExpressSub"),
+                bg: "bg-emerald-50 text-emerald-600 border-emerald-200"
+              },
+              {
+                icon: FileCheck,
+                title: t("landing.hero.pillarB2BPrice"),
+                sub: t("landing.hero.pillarB2BPriceSub"),
+                bg: "bg-[#7B1B38]/10 text-[#7B1B38] border-[#7B1B38]/20"
+              },
+              {
+                icon: Headphones,
+                title: t("landing.hero.pillarDedicatedSupport"),
+                sub: t("landing.hero.pillarDedicatedSupportSub"),
+                bg: "bg-purple-50 text-purple-600 border-purple-200"
+              }
+            ].map((pillar, idx) => (
+              <motion.div 
+                key={idx}
+                whileHover={{ y: -3, transition: { duration: 0.2 } }}
+                className="flex items-center gap-3 cursor-default"
+              >
+                <div className={`w-10 h-10 rounded-xl ${pillar.bg} border flex items-center justify-center shrink-0 shadow-2xs`}>
+                  <pillar.icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="font-bold text-sm text-slate-900">{pillar.title}</div>
+                  <div className="text-xs text-slate-500">{pillar.sub}</div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }

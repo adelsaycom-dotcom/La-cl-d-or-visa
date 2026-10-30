@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { LogIn, UserPlus, Menu, X, MapPin } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 
@@ -19,7 +20,10 @@ export function LandingNav() {
   }, []);
 
   return (
-    <header
+    <motion.header
+      initial={{ y: -30, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled
           ? "bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm py-3"
@@ -136,6 +140,6 @@ export function LandingNav() {
           </div>
         )}
       </div>
-    </header>
+    </motion.header>
   );
 }

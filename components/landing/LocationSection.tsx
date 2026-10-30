@@ -10,6 +10,7 @@ import {
   Car,
   Compass
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export function LocationSection() {
@@ -39,8 +40,14 @@ export function LocationSection() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
-        {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-14">
+        {/* Section Header with reveal animation */}
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center max-w-3xl mx-auto mb-14"
+        >
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7B1B38]/10 text-[#7B1B38] text-xs font-bold uppercase tracking-wider mb-3.5 border border-[#7B1B38]/20">
             <MapPin className="w-3.5 h-3.5 text-[#7B1B38]" />
             <span>{isEn ? "Headquarters & Partner Reception" : "Siège & Accueil Partenaires"}</span>
@@ -54,13 +61,19 @@ export function LocationSection() {
               ? "Physical passport drop-off, collection of validated visas, and private front-desk reception for partner travel agencies in Algiers."
               : "Dépôt physique des passeports, retrait des visas validés et accueil privilégié de nos agences de voyages partenaires à Alger."}
           </p>
-        </div>
+        </motion.div>
 
-        {/* 2-Columns Card Grid */}
+        {/* 2-Columns Card Grid with Staggered Entrance */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           
           {/* Left Column: Interactive Mini-Map */}
-          <div className="lg:col-span-7 bg-white rounded-3xl p-3 sm:p-4 border border-slate-200/90 shadow-xl shadow-slate-200/50 flex flex-col justify-between overflow-hidden group">
+          <motion.div 
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-7 bg-white rounded-3xl p-3 sm:p-4 border border-slate-200/90 shadow-xl shadow-slate-200/50 flex flex-col justify-between overflow-hidden group"
+          >
             
             <div className="relative w-full h-[340px] sm:h-[400px] rounded-2xl overflow-hidden border border-slate-200 bg-slate-100">
               {/* Google Maps Embed iframe */}
@@ -108,10 +121,16 @@ export function LocationSection() {
                 {isEn ? "Easy Access (Tramway & Highway)" : "Accès rapide Tramway & Rocade"}
               </span>
             </div>
-          </div>
+          </motion.div>
 
           {/* Right Column: Physical Address & Agency Reception Details */}
-          <div className="lg:col-span-5 flex flex-col justify-between gap-6">
+          <motion.div 
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-5 flex flex-col justify-between gap-6"
+          >
             
             {/* Main Details Card */}
             <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/90 shadow-xl shadow-slate-200/50 space-y-6">
@@ -213,7 +232,7 @@ export function LocationSection() {
               </div>
             </a>
 
-          </div>
+          </motion.div>
 
         </div>
 

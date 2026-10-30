@@ -10,6 +10,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAppStore } from "../../src/store/useAppStore";
 import { auth } from "../../src/firebase";
 import { useLanguage } from "../../src/i18n/LanguageContext";
+import { AnimatedCounter } from "@/components/common/AnimatedCounter";
 
 export function AgencyDashboard() {
   const { language, t } = useLanguage();
@@ -212,7 +213,9 @@ export function AgencyDashboard() {
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 block mb-1">
                     {isEn ? "IN PROGRESS" : "EN COURS"}
                   </span>
-                  <span className="text-3xl font-black font-mono text-slate-900">{pendingApps}</span>
+                  <span className="text-3xl font-black font-mono text-slate-900">
+                    <AnimatedCounter value={pendingApps} duration={1.5} />
+                  </span>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-700 flex items-center justify-center shrink-0 shadow-2xs backdrop-blur-md">
                   <Clock className="w-6 h-6" />
@@ -224,7 +227,9 @@ export function AgencyDashboard() {
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 block mb-1">
                     {isEn ? "APPROVED" : "APPROUVÉS"}
                   </span>
-                  <span className="text-3xl font-black font-mono text-slate-900">{approvedApps}</span>
+                  <span className="text-3xl font-black font-mono text-slate-900">
+                    <AnimatedCounter value={approvedApps} duration={1.5} />
+                  </span>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-700 flex items-center justify-center shrink-0 shadow-2xs backdrop-blur-md">
                   <CheckCircle2 className="w-6 h-6" />
@@ -236,7 +241,9 @@ export function AgencyDashboard() {
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 block mb-1">
                     {isEn ? "REJECTED" : "REJETÉS"}
                   </span>
-                  <span className="text-3xl font-black font-mono text-slate-900">{rejectedApps}</span>
+                  <span className="text-3xl font-black font-mono text-slate-900">
+                    <AnimatedCounter value={rejectedApps} duration={1.5} />
+                  </span>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-400/40 text-rose-700 flex items-center justify-center shrink-0 shadow-2xs backdrop-blur-md">
                   <ShieldCheck className="w-6 h-6" />
@@ -313,7 +320,7 @@ export function AgencyDashboard() {
 
               <div className="text-3xl font-black font-mono text-white tracking-tight flex items-center gap-2 relative z-10">
                 <WalletCards className="w-6 h-6 text-slate-300 shrink-0" />
-                <span>{agencyBalance.toLocaleString()} DZD</span>
+                <AnimatedCounter value={agencyBalance} suffix=" DZD" duration={1.8} />
               </div>
             </div>
 
