@@ -4,6 +4,7 @@ import { ProcessSection } from "./landing/ProcessSection";
 import { FeaturesSection } from "./landing/FeaturesSection";
 import { LocationSection } from "./landing/LocationSection";
 import { FaqSection } from "./landing/FaqSection";
+import { AppPromoSection } from "./landing/AppPromoSection";
 import { LandingFooter } from "./landing/LandingFooter";
 import { AirplaneCursor } from "./landing/AirplaneCursor";
 
@@ -32,6 +33,9 @@ export function LandingPage() {
 
         {/* 5. Questions Fréquentes & Support Agences */}
         <FaqSection />
+
+        {/* 6. Section Affiche Application Mobile (Desktop/Mobile x FR/EN) */}
+        <AppPromoSection />
       </main>
 
       {/* Pied de page complet avec contacts officiels et informations légales */}

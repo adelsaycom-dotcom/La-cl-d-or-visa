@@ -2,7 +2,7 @@ import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, WalletCards, Bell, HelpCircle, FileText, 
   Settings, LogOut, Plane, Building2, ShieldCheck, MapPin, Menu, X, ChevronRight, User, Globe2,
-  Eye, EyeOff, SlidersHorizontal, Percent, AlertTriangle
+  Eye, EyeOff, SlidersHorizontal, Percent, AlertTriangle, GraduationCap
 } from "lucide-react";
 import { 
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger 
@@ -56,63 +56,78 @@ export function AgencyLayout() {
     { name: t("nav.newApplication"), path: "/agency/apply", icon: FileText, highlight: true },
     { name: t("nav.myApplications"), path: "/agency/applications", icon: Plane },
     { name: t("nav.organizedTrips"), path: "/agency/trips", icon: MapPin },
-    { name: t("nav.studyVisa"), path: "/agency/study", icon: FileText },
+    { name: t("nav.studyVisa"), path: "/agency/study", icon: GraduationCap },
     { name: t("nav.wallet"), path: "/agency/wallet", icon: WalletCards },
     { name: t("nav.support"), path: "/agency/support", icon: HelpCircle },
     { name: t("nav.settings"), path: "/agency/settings", icon: Settings },
   ];
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
-      
+    <div className="relative flex h-screen overflow-hidden font-sans">
+      {/* Fond d'écran atténué et doux */}
+      <div className="fixed inset-0 pointer-events-none -z-20 bg-gradient-to-br from-slate-100 via-sky-50/40 to-slate-100" />
+      <div 
+        className="fixed inset-0 pointer-events-none -z-10 bg-cover bg-no-repeat opacity-50 transition-opacity duration-300"
+        style={{ 
+          backgroundImage: `url('/assets/dashboard-wing-bg.jpg')`,
+          backgroundPosition: 'right 15% center',
+          backgroundAttachment: 'fixed',
+          backgroundSize: 'cover'
+        }}
+      />
+      {/* Voile très léger et cristallin */}
+      <div className="fixed inset-0 bg-white/5 pointer-events-none -z-10" />
+
       {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden backdrop-blur-sm"
+            className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden backdrop-blur-sm"
           />
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white text-slate-900 border-r border-slate-200/80 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:shrink-0 flex flex-col shadow-xl lg:shadow-xs ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* Sidebar Ultra-Transparente en Verre Dépoli */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white/10 backdrop-blur-2xl text-slate-900 border-r border-white/20 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:shrink-0 flex flex-col shadow-lg lg:shadow-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Logo Area */}
-        <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100 shrink-0">
+        <div className="h-20 flex items-center justify-between px-6 border-b border-white/15 shrink-0 bg-white/5 backdrop-blur-sm">
           <Link to="/agency" className="flex items-center gap-3">
              <Logo imageClassName="h-8 w-auto" />
              <div className="flex flex-col">
                <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none">{t("nav.b2bPlatform")}</span>
-               <span className="text-[10px] text-[#7B1B38] font-bold uppercase tracking-wider mt-1">{isEn ? "Agency Portal" : "Espace Agence"}</span>
+               <span className="text-[10px] text-slate-600 font-bold uppercase tracking-wider mt-1">{isEn ? "Agency Portal" : "Espace Agence"}</span>
              </div>
           </Link>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-800 p-1 rounded-lg">
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-500 hover:text-slate-800 p-1 rounded-lg">
             <X className="w-6 h-6" />
           </button>
         </div>
 
         {/* Agency Info */}
-        <div className="px-5 py-4 border-b border-slate-100 shrink-0 bg-slate-50/70">
+        <div className="px-5 py-4 border-b border-white/15 shrink-0 bg-white/5 backdrop-blur-sm">
            <div className="flex items-center gap-3 mb-3">
-             <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center border border-slate-200/90 shadow-2xs shrink-0">
+             <div className="w-10 h-10 rounded-xl bg-white/40 flex items-center justify-center border border-white/50 shadow-2xs shrink-0 backdrop-blur-md">
                <Building2 className="w-5 h-5 text-[#7B1B38]" />
              </div>
              <div className="min-w-0">
                <div className="font-bold text-sm text-slate-900 leading-tight truncate" title={agencyDisplayName}>
                  {agencyDisplayName}
                </div>
-               <div className="text-xs text-slate-500 font-mono mt-0.5 font-semibold">{agencyCode}</div>
+               <div className="text-xs text-slate-600 font-mono mt-0.5 font-semibold">{agencyCode}</div>
              </div>
            </div>
            
-           <div className="bg-white rounded-xl p-3 border border-slate-200/90 shadow-2xs">
-             <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+           <div className="bg-white/20 backdrop-blur-xl rounded-xl p-3 border border-white/30 shadow-2xs">
+             <div className="text-[10px] text-slate-600 font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
                <span>{t("header.agencyBalance")}</span>
-               <span className="w-2 h-2 rounded-full bg-emerald-500" />
+               <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs" />
              </div>
-             <div className="text-xl font-black text-slate-900 font-mono tracking-tight">
-               {agencyBalance.toLocaleString()} <span className="text-xs font-bold text-slate-500">DZD</span>
+             <div className="text-xl font-black text-slate-900 font-mono tracking-tight flex items-center gap-2">
+               <WalletCards className="w-4 h-4 text-slate-500 shrink-0" />
+               <span>{agencyBalance.toLocaleString()}</span>
+               <span className="text-xs font-bold text-slate-600">DZD</span>
              </div>
            </div>
         </div>
@@ -127,14 +142,14 @@ export function AgencyLayout() {
                 to={item.path}
                 className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 group ${
                   isActive 
-                    ? 'bg-[#7B1B38] text-white shadow-sm shadow-[#7B1B38]/25 font-bold' 
+                    ? 'bg-slate-900/80 text-white shadow-md font-bold backdrop-blur-md' 
                     : item.highlight 
-                      ? 'bg-amber-50 text-amber-900 border border-amber-200/80 hover:bg-amber-100/70 font-semibold'
-                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950 font-medium'
+                      ? 'text-orange-600 hover:bg-white/20 font-bold'
+                      : 'text-slate-800 hover:bg-white/20 hover:text-slate-950 font-medium'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : item.highlight ? 'text-amber-600' : 'text-slate-500 group-hover:text-slate-800'} transition-colors`} />
+                  <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : item.highlight ? 'text-orange-500' : 'text-slate-600 group-hover:text-slate-900'} transition-colors`} />
                   <span className="text-sm">{item.name}</span>
                 </div>
                 {isActive && <ChevronRight className="w-4 h-4 text-white/80" />}
@@ -144,38 +159,38 @@ export function AgencyLayout() {
         </nav>
 
         {/* Bottom Actions */}
-        <div className="p-3 border-t border-slate-100 shrink-0">
-          <Link to="/login" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-600 hover:bg-rose-50 hover:text-rose-700 transition-colors group font-semibold text-sm">
-            <LogOut className="w-5 h-5 text-slate-400 group-hover:text-rose-600 transition-colors" />
+        <div className="p-3 border-t border-white/15 shrink-0">
+          <Link to="/login" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-700 hover:bg-rose-500/10 hover:text-rose-700 transition-colors group font-semibold text-sm">
+            <LogOut className="w-5 h-5 text-slate-500 group-hover:text-rose-600 transition-colors" />
             <span>{t("nav.logout")}</span>
           </Link>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 bg-slate-50">
+      <main className="flex-1 flex flex-col min-w-0 bg-transparent overflow-hidden">
         
-        {/* Top Header */}
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 shrink-0 sticky top-0 z-30">
+        {/* Top Header Ultra-Transparent en Verre Dépoli */}
+        <header className="h-20 bg-white/10 backdrop-blur-2xl border-b border-white/20 flex items-center justify-between px-4 lg:px-8 shrink-0 sticky top-0 z-30 shadow-2xs">
           <div className="flex items-center gap-3 sm:gap-4">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-slate-500 hover:text-slate-900 p-1">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-slate-600 hover:text-slate-900 p-1">
               <Menu className="w-6 h-6" />
             </button>
-            <h1 className="text-lg lg:text-2xl font-bold text-slate-800 hidden sm:block">
+            <h1 className="text-lg lg:text-2xl font-bold text-slate-900 hidden sm:block">
               {navItems.find(i => location.pathname === i.path || (i.path !== '/agency' && location.pathname.startsWith(i.path)))?.name || t("nav.dashboard")}
             </h1>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
              {/* B2B / B2C Counter Mode Switcher */}
-             <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200/80 shadow-inner">
+             <div className="flex items-center bg-white/15 backdrop-blur-md p-1 rounded-2xl border border-white/25 shadow-inner">
                <button
                  type="button"
                  onClick={() => setB2cMode(false)}
                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                    !b2cMode 
-                     ? 'bg-white text-slate-900 shadow-sm border border-slate-200' 
-                     : 'text-slate-500 hover:text-slate-900'
+                     ? 'bg-white/90 text-slate-900 shadow-sm border border-white/60' 
+                     : 'text-slate-600 hover:text-slate-900'
                  }`}
                  title={isEn ? "Display net wholesale B2B prices debited from your wallet" : "Afficher les prix d'achat B2B nets débités de votre solde"}
                >
@@ -187,14 +202,14 @@ export function AgencyLayout() {
                  onClick={() => setB2cMode(true)}
                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                    b2cMode 
-                     ? 'bg-emerald-600 text-white shadow-sm' 
-                     : 'text-slate-500 hover:text-emerald-700'
+                     ? 'bg-emerald-600/90 text-white shadow-sm' 
+                     : 'text-slate-600 hover:text-emerald-700'
                  }`}
                  title={isEn ? "Enable client desk mode with markup to present screen to traveler" : "Activer la vue comptoir client avec marge pour présenter l'écran au voyageur"}
                >
                  <Eye className="w-3.5 h-3.5" />
                  <span>{isEn ? "Desk B2C" : "Comptoir B2C"}</span>
-                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${b2cMode ? 'bg-emerald-800 text-emerald-100' : 'bg-slate-200 text-slate-700'}`}>
+                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${b2cMode ? 'bg-emerald-800 text-emerald-100' : 'bg-slate-200/80 text-slate-700'}`}>
                    +{b2cMarginPercent}%
                  </span>
                </button>
@@ -203,7 +218,7 @@ export function AgencyLayout() {
                <button
                  type="button"
                  onClick={() => setShowMarginInput(!showMarginInput)}
-                 className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-xl transition-colors"
+                 className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-white/20 rounded-xl transition-colors"
                  title={isEn ? "Configure B2C markup percentage" : "Régler le taux de marge B2C"}
                >
                  <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -212,7 +227,7 @@ export function AgencyLayout() {
 
              {/* Popover / Mini-Dialog to adjust margin % */}
              {showMarginInput && (
-               <div className="absolute top-18 right-24 bg-white border border-slate-200 rounded-2xl p-4 shadow-2xl z-50 w-72 animate-in fade-in zoom-in-95">
+               <div className="absolute top-18 right-24 bg-white/90 backdrop-blur-2xl border border-white/40 rounded-2xl p-4 shadow-2xl z-50 w-72 animate-in fade-in zoom-in-95">
                  <div className="flex items-center justify-between mb-2">
                    <span className="text-xs font-black uppercase text-slate-800 flex items-center gap-1.5">
                      <Percent className="w-3.5 h-3.5 text-[#7B1B38]" /> {isEn ? "B2C Markup Rate" : "Taux de Marge B2C"}
@@ -238,7 +253,7 @@ export function AgencyLayout() {
                        className={`flex-1 py-1 rounded-lg text-xs font-bold border ${
                          b2cMarginPercent === pct 
                            ? 'bg-[#7B1B38] text-white border-[#7B1B38]' 
-                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                           : 'bg-white/50 text-slate-700 border-white/60 hover:bg-white/80'
                        }`}
                      >
                        {pct}%
@@ -253,7 +268,7 @@ export function AgencyLayout() {
                        max={100}
                        value={marginTemp}
                        onChange={(e) => setMarginTemp(Number(e.target.value))}
-                       className="w-full text-xs font-bold pl-3 pr-7 py-1.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7B1B38]"
+                       className="w-full text-xs font-bold pl-3 pr-7 py-1.5 rounded-xl border border-slate-200 bg-white/70 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7B1B38]"
                      />
                      <span className="absolute right-2.5 top-1.5 text-xs text-slate-400 font-bold">%</span>
                    </div>
@@ -275,16 +290,16 @@ export function AgencyLayout() {
              )}
 
              {/* Quick Apply Button (Desktop) */}
-             <Link to="/agency/apply" className="hidden md:flex items-center gap-2 bg-[#7B1B38] text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-[#63142c] transition-colors shadow-sm shadow-[#7B1B38]/20 hover:shadow">
+             <Link to="/agency/apply" className="hidden md:flex items-center gap-2 bg-[#7B1B38]/90 hover:bg-[#7B1B38] text-white px-4 py-2 rounded-xl font-bold text-sm transition-colors shadow-sm shadow-[#7B1B38]/20 hover:shadow">
                <FileText className="w-4 h-4" /> {t("nav.newApplication")}
              </Link>
 
              {/* Sélecteur de langue bilingue FR/EN */}
-             <LanguageSwitcher variant="outline" />
+             <LanguageSwitcher variant="glass" />
 
              {/* Notifications */}
              <DropdownMenu>
-              <DropdownMenuTrigger className="relative p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors outline-none">
+              <DropdownMenuTrigger className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-white/20 rounded-full transition-colors outline-none">
                 <Bell className="w-5 h-5" />
                 {notificationsCount > 0 && (
                   <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
@@ -293,8 +308,8 @@ export function AgencyLayout() {
                   </span>
                 )}
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 p-0 rounded-2xl shadow-xl border-slate-200 overflow-hidden">
-                <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+              <DropdownMenuContent align="end" className="w-80 p-0 rounded-2xl shadow-2xl border border-white/40 bg-white/80 backdrop-blur-2xl overflow-hidden">
+                <div className="bg-white/40 px-4 py-3 border-b border-white/20 flex justify-between items-center">
                   <span className="font-bold text-slate-800">{isEn ? "Notifications" : "Notifications"}</span>
                   {notificationsCount > 0 && (
                     <span className="bg-[#7B1B38]/10 text-[#7B1B38] px-2 py-0.5 rounded-full text-xs font-bold">{notificationsCount}</span>
@@ -307,9 +322,9 @@ export function AgencyLayout() {
                        <p className="text-sm">{isEn ? "No new notifications" : "Aucune nouvelle notification"}</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-white/20">
                       {unreadNotifications.map(notif => (
-                        <div key={notif.id} className="p-4 hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => { markNotificationAsRead(notif.id); if(notif.link) navigate(notif.link); }}>
+                        <div key={notif.id} className="p-4 hover:bg-white/30 cursor-pointer transition-colors" onClick={() => { markNotificationAsRead(notif.id); if(notif.link) navigate(notif.link); }}>
                            <p className="text-sm font-bold text-slate-800 mb-1 leading-tight">{notif.title}</p>
                            <p className="text-xs text-slate-500 line-clamp-2">{notif.message}</p>
                         </div>
@@ -318,7 +333,7 @@ export function AgencyLayout() {
                   )}
                 </div>
                 {notificationsCount > 0 && (
-                  <div className="p-2 border-t border-slate-100 bg-white">
+                  <div className="p-2 border-t border-white/20 bg-white/30">
                     <button className="w-full py-2 text-xs font-bold text-[#7B1B38] hover:bg-[#7B1B38]/10 rounded-lg transition-colors" onClick={() => markAllNotificationsAsRead(auth.currentUser?.uid || "")}>
                       {isEn ? "Mark all as read" : "Tout marquer comme lu"}
                     </button>
@@ -328,7 +343,7 @@ export function AgencyLayout() {
             </DropdownMenu>
 
             {/* Profile */}
-            <div className="w-9 h-9 rounded-full bg-[#7B1B38]/10 flex items-center justify-center border border-[#7B1B38]/20 text-[#7B1B38]">
+            <div className="w-9 h-9 rounded-full bg-white/25 border border-white/40 flex items-center justify-center text-[#7B1B38] shadow-2xs backdrop-blur-md">
               <User className="w-5 h-5" />
             </div>
           </div>
@@ -336,7 +351,7 @@ export function AgencyLayout() {
 
         {/* Page Content */}
         <div className="flex-1 overflow-auto p-4 lg:p-8">
-          <div className="mx-auto max-w-7xl">
+          <div className="mx-auto max-w-[1600px]">
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}

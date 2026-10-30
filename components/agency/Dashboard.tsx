@@ -1,24 +1,24 @@
+import React, { useState, useEffect } from "react";
 import { 
   WalletCards, CheckCircle2, Clock, Plane, Building2, Car, ShieldCheck, 
-  GraduationCap, Mail, CalendarDays, FileText, ArrowUpRight, TrendingUp, Globe, Map, FolderOpen
+  GraduationCap, Mail, CalendarDays, FileText, ArrowUpRight, Globe, FolderOpen, 
+  MapPin, Star, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { MapPin, Info, DollarSign, Star } from "lucide-react";
 import { useAppStore } from "../../src/store/useAppStore";
 import { auth } from "../../src/firebase";
-import { AGENCY_SERVICES } from "../../src/constants/servicesConfig";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 
 export function AgencyDashboard() {
   const { language, t } = useLanguage();
   const isEn = language === "en";
 
-  const { agencyBalance, applications, organizedTrips, currentAgency, b2cMode, b2cMarginPercent } = useAppStore();
+  const { agencyBalance, applications, organizedTrips, currentAgency } = useAppStore();
   const agencyDisplayName = currentAgency?.agencyName || currentAgency?.companyName || currentAgency?.name || auth.currentUser?.displayName || (isEn ? "My Agency" : "Mon Agence");
   const navigate = useNavigate();
+
   const [newTripPopupOpen, setNewTripPopupOpen] = useState(false);
   const [popupTrip, setPopupTrip] = useState<any>(null);
 
@@ -26,7 +26,7 @@ export function AgencyDashboard() {
   const activeTrips = organizedTrips.filter(t => t.status === 'active');
 
   useEffect(() => {
-    // Show popup for the most recently added active trip if not seen
+    // Affiche un popup pour le voyage actif le plus récemment ajouté si non encore vu
     if (activeTrips.length > 0) {
       const sortedTrips = [...activeTrips].sort((a, b) => {
         if (a.createdAt && b.createdAt) {
@@ -61,269 +61,373 @@ export function AgencyDashboard() {
   const approvedApps = applications.filter(a => a.status === "Approved").length;
   const rejectedApps = applications.filter(a => a.status === "Rejected").length;
 
-  const services = AGENCY_SERVICES;
+  // 10 services officiels correspondant au mockup exact
+  const quickServices = [
+    {
+      id: "visa",
+      name: isEn ? "B2B Visa" : "Visa B2B",
+      icon: FileText,
+      iconBg: "bg-sky-500/15 text-sky-700 border border-sky-400/30",
+      path: "/agency/apply?service=Visa"
+    },
+    {
+      id: "invitation",
+      name: isEn ? "Invitation Letter" : "Lettre d'Invitation",
+      icon: Mail,
+      iconBg: "bg-teal-500/15 text-teal-700 border border-teal-400/30",
+      path: "/agency/apply?service=Invitation"
+    },
+    {
+      id: "trips",
+      name: isEn ? "Organized Trips" : "Voyages Organisés",
+      icon: Plane,
+      iconBg: "bg-pink-500/15 text-pink-700 border border-pink-400/30",
+      path: "/agency/trips"
+    },
+    {
+      id: "residence",
+      name: isEn ? "Residence Dossier" : "Dossier Résidence",
+      icon: Building2,
+      iconBg: "bg-indigo-500/15 text-indigo-700 border border-indigo-400/30",
+      path: "/agency/apply?service=Dossier Résidence"
+    },
+    {
+      id: "rendezvous",
+      name: isEn ? "Appointment Booking" : "Prise de RDV",
+      icon: CalendarDays,
+      iconBg: "bg-orange-500/15 text-orange-700 border border-orange-400/30",
+      path: "/agency/apply?service=Rendez-vous"
+    },
+    {
+      id: "dossier",
+      name: isEn ? "Dossier Processing" : "Traitement Dossier",
+      icon: FolderOpen,
+      iconBg: "bg-emerald-500/15 text-emerald-700 border border-emerald-400/30",
+      path: "/agency/apply?service=Dossier"
+    },
+    {
+      id: "permis",
+      name: isEn ? "Intl. Driving Permit" : "Permis International",
+      icon: Car,
+      iconBg: "bg-amber-500/15 text-amber-700 border border-amber-400/30",
+      path: "/agency/apply?service=Permis"
+    },
+    {
+      id: "study",
+      name: isEn ? "Student Visa" : "Visa Études",
+      icon: GraduationCap,
+      iconBg: "bg-purple-500/15 text-purple-700 border border-purple-400/30",
+      path: "/agency/study"
+    },
+    {
+      id: "assurance",
+      name: isEn ? "Travel Insurance" : "Assurance Voyage",
+      icon: ShieldCheck,
+      iconBg: "bg-teal-500/15 text-teal-700 border border-teal-400/30",
+      path: "/agency/apply?service=Assurance"
+    },
+    {
+      id: "passport-index",
+      name: isEn ? "Passport Index" : "Index Passeport",
+      icon: Globe,
+      iconBg: "bg-rose-500/15 text-rose-700 border border-rose-400/30",
+      path: "/agency/passport-index"
+    }
+  ];
 
   return (
-    <div className="space-y-8 pb-12 animate-in fade-in duration-500">
-      
-      {/* Header / Welcome */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#7B1B38]/5 rounded-full blur-3xl opacity-70 -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
-        <div className="relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B1B38]/10 border border-[#7B1B38]/20 text-[#7B1B38] text-xs font-bold mb-3">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B1B38] opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#7B1B38]"></span>
-            </span>
+    <div className="relative space-y-6 animate-in fade-in duration-500 pb-10">
+
+      {/* 1. CARTE DE BIENVENUE HERO */}
+      <div className="rounded-3xl border border-white/30 bg-white/15 backdrop-blur-2xl p-6 sm:p-7 shadow-xs relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="space-y-2 max-w-2xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B1B38]/15 border border-[#7B1B38]/25 text-[#7B1B38] text-[11px] font-bold backdrop-blur-sm">
+            <span className="w-2 h-2 rounded-full bg-[#7B1B38]"></span>
             <span>{isEn ? "B2B Partner Portal • La Clé d'Or" : "Portail Agence B2B • La Clé d'Or"}</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-2">
-            {t("agencyDashboard.welcome")}, {agencyDisplayName} 👋
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            {isEn ? "Welcome to your B2B portal" : "Bienvenue sur votre portail B2B"}
           </h1>
-          <p className="text-slate-500 font-medium">{t("agencyDashboard.subtitle")}</p>
+          <p className="text-xs sm:text-sm text-slate-700 font-medium leading-relaxed">
+            {isEn 
+              ? "Manage visa applications, track progress in real time, and scale your travel business." 
+              : "Gérez vos demandes de visa, suivez l'avancement en temps réel et développez votre activité touristique."}
+          </p>
         </div>
-        <div className="relative z-10 flex gap-4 w-full md:w-auto">
-          <Link to="/agency/wallet" className="flex-1 md:flex-none bg-[#7B1B38] text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#63142c] transition-all shadow-md shadow-[#7B1B38]/25 hover:shadow-lg hover:-translate-y-0.5">
-            <WalletCards className="w-5 h-5" /> {t("header.rechargeWallet")}
-          </Link>
-        </div>
+
+        <Link
+          to="/agency/wallet"
+          className="shrink-0 bg-[#7B1B38] hover:bg-[#63142c] text-white px-5 py-3 rounded-2xl font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer"
+        >
+          <WalletCards className="w-4 h-4" />
+          <span>{isEn ? "Top up wallet" : "Recharger le portefeuille"}</span>
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* 2. GRILLE PRINCIPALE (GAUCHE SERVICES & STATS / DROITE SOLDE & RÉCENT) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* Main Content (Left) */}
-        <div className="lg:col-span-8 space-y-8">
-          
-          {/* Featured Trips Carousel */}
+        {/* Colonne Gauche (8 col) */}
+        <div className="lg:col-span-8 space-y-6">
+
+          {/* A. Démarrer une Demande (Start an Application) */}
+          <div>
+            <div className="flex items-center gap-2.5 mb-3.5">
+              <div className="w-1.5 h-5 bg-[#7B1B38] rounded-full shadow-2xs"></div>
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
+                {isEn ? "Start an Application" : "Démarrer une Demande"}
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
+              {quickServices.map((srv) => (
+                <Link
+                  key={srv.id}
+                  to={srv.path}
+                  className="bg-white/15 backdrop-blur-2xl border border-white/25 rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-xs hover:bg-white/30 hover:border-white/50 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-32 group"
+                >
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-2.5 transition-transform group-hover:scale-110 shadow-2xs backdrop-blur-md ${srv.iconBg}`}>
+                    <srv.icon className="w-6 h-6" />
+                  </div>
+                  <span className="font-bold text-slate-900 text-xs sm:text-[13px] leading-tight line-clamp-2">
+                    {srv.name}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* B. Performance & Statistiques (Performance & Statistics) */}
+          <div>
+            <div className="flex items-center gap-2.5 mb-3.5">
+              <div className="w-1.5 h-5 bg-[#7B1B38] rounded-full shadow-2xs"></div>
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
+                {isEn ? "Performance & Statistics" : "Performances & Statistiques"}
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              <div className="bg-white/15 backdrop-blur-2xl rounded-2xl p-5 border border-white/25 shadow-xs flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 block mb-1">
+                    {isEn ? "IN PROGRESS" : "EN COURS"}
+                  </span>
+                  <span className="text-3xl font-black font-mono text-slate-900">{pendingApps}</span>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-700 flex items-center justify-center shrink-0 shadow-2xs backdrop-blur-md">
+                  <Clock className="w-6 h-6" />
+                </div>
+              </div>
+
+              <div className="bg-white/15 backdrop-blur-2xl rounded-2xl p-5 border border-white/25 shadow-xs flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 block mb-1">
+                    {isEn ? "APPROVED" : "APPROUVÉS"}
+                  </span>
+                  <span className="text-3xl font-black font-mono text-slate-900">{approvedApps}</span>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-700 flex items-center justify-center shrink-0 shadow-2xs backdrop-blur-md">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+              </div>
+
+              <div className="bg-white/15 backdrop-blur-2xl rounded-2xl p-5 border border-white/25 shadow-xs flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 block mb-1">
+                    {isEn ? "REJECTED" : "REJETÉS"}
+                  </span>
+                  <span className="text-3xl font-black font-mono text-slate-900">{rejectedApps}</span>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-400/40 text-rose-700 flex items-center justify-center shrink-0 shadow-2xs backdrop-blur-md">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* C. Voyages Organisés en vedette (si disponibles) */}
           {featuredTrips.length > 0 && (
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
-                  {t("agencyDashboard.featuredTripsTitle")}
-                </h2>
-                <Link to="/agency/trips" className="text-sm text-[#7B1B38] font-bold hover:underline">
-                  {t("agencyDashboard.viewAll")}
+            <div>
+              <div className="flex items-center justify-between mb-3.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-1.5 h-5 bg-[#7B1B38] rounded-full shadow-2xs"></div>
+                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
+                    {isEn ? "Featured Group Tours" : "Voyages Organisés à la Une"}
+                  </h2>
+                </div>
+                <Link to="/agency/trips" className="text-xs text-[#7B1B38] font-bold hover:underline">
+                  {isEn ? "View all trips" : "Voir tout"}
                 </Link>
               </div>
-              <div className="flex gap-4 overflow-x-auto pb-4 snap-x hide-scrollbar">
-                {featuredTrips.map(trip => (
-                  <div key={trip.id} className="min-w-[280px] sm:min-w-[320px] bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden snap-start group relative hover:border-[#7B1B38]/30 transition-colors">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {featuredTrips.slice(0, 2).map(trip => (
+                  <div key={trip.id} className="bg-white/15 backdrop-blur-2xl rounded-2xl border border-white/25 shadow-xs overflow-hidden flex flex-col group hover:shadow-md transition-all">
                     <div className="h-32 relative overflow-hidden">
-                      <img src={trip.photoUrl} alt={trip.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent"></div>
+                      <img src={trip.photoUrl} alt={trip.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent"></div>
                       <div className="absolute top-2 left-2">
-                        <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider flex items-center gap-1 shadow-md">
+                        <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
                           <Star className="w-3 h-3 fill-current" /> {isEn ? "Featured" : "À la une"}
                         </span>
                       </div>
-                      <div className="absolute bottom-3 left-3 right-3">
-                        <h3 className="text-white font-bold text-lg leading-tight truncate">{trip.title}</h3>
-                        <p className="text-blue-100 text-xs flex items-center gap-1 mt-0.5 truncate">
-                          <MapPin className="w-3 h-3" /> {trip.destination}
-                        </p>
+                      <div className="absolute bottom-2 left-3 right-3 text-white">
+                        <h4 className="font-bold text-sm leading-tight truncate">{trip.title}</h4>
+                        <span className="text-[11px] text-slate-200 flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-red-400" /> {trip.destination}
+                        </span>
                       </div>
                     </div>
-                    <div className="p-4 flex flex-col gap-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="block text-[10px] uppercase font-bold text-slate-400">
-                            {t("agencyDashboard.b2bPrice")}
-                          </span>
-                          <span className="font-black text-slate-900 text-lg leading-none">{trip.price.toLocaleString()} DZD</span>
-                        </div>
-                        <Link to="/agency/trips" className="bg-[#7B1B38]/10 text-[#7B1B38] hover:bg-[#7B1B38]/15 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
-                          {t("agencyDashboard.viewDetails")}
-                        </Link>
+                    <div className="p-3.5 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-slate-600 block">Tarif Agence B2B</span>
+                        <span className="text-base font-black font-mono text-slate-900">{trip.price.toLocaleString()} DZD</span>
                       </div>
+                      <Link to="/agency/trips" className="px-3 py-1.5 rounded-xl bg-[#7B1B38]/15 text-[#7B1B38] font-bold text-xs hover:bg-[#7B1B38]/25 transition-colors">
+                        {isEn ? "View Details" : "Détails"}
+                      </Link>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
-          
-          {/* Quick Actions / Services */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
-                {t("agencyDashboard.startApplicationTitle")}
-              </h2>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-              {services.map((srv, idx) => (
-                <Link 
-                  key={idx} 
-                  to={srv.path}
-                  className="group flex flex-col items-center justify-center gap-3 p-5 bg-white rounded-2xl border border-slate-200 hover:border-[#7B1B38]/30 hover:shadow-lg hover:shadow-[#7B1B38]/5 transition-all duration-300 hover:-translate-y-1 text-center"
-                >
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${srv.color} group-hover:scale-110 transition-transform duration-300`}>
-                    <srv.icon className="w-6 h-6" />
-                  </div>
-                  <span className="font-bold text-slate-800 text-sm">{isEn ? (srv.nameEn || srv.name) : srv.name}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
 
-          {/* KPI Stats */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
-                {t("agencyDashboard.statsTitle")}
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all">
-                  <Clock className="w-16 h-16 text-amber-500" />
-                </div>
-                <div className="text-sm font-bold text-slate-500 mb-2 uppercase tracking-wider">
-                  {t("agencyDashboard.pending")}
-                </div>
-                <div className="text-4xl font-black text-slate-900">{pendingApps}</div>
-              </div>
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all">
-                  <CheckCircle2 className="w-16 h-16 text-emerald-500" />
-                </div>
-                <div className="text-sm font-bold text-slate-500 mb-2 uppercase tracking-wider">
-                  {t("agencyDashboard.approved")}
-                </div>
-                <div className="text-4xl font-black text-slate-900">{approvedApps}</div>
-              </div>
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all">
-                  <ShieldCheck className="w-16 h-16 text-red-500" />
-                </div>
-                <div className="text-sm font-bold text-slate-500 mb-2 uppercase tracking-wider">
-                  {t("agencyDashboard.rejected")}
-                </div>
-                <div className="text-4xl font-black text-slate-900">{rejectedApps}</div>
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Sidebar Widgets (Right) */}
+        {/* Colonne Droite (4 col) */}
         <div className="lg:col-span-4 space-y-6">
-          
-          {/* Wallet Widget */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 p-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-[#7B1B38]/25 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
-              <div className="flex items-center justify-between mb-2 relative z-10">
-                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">
-                  {t("agencyDashboard.availableBalance")}
-                </h3>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#7B1B38]/30 text-rose-200 border border-[#7B1B38]/40">
-                  {t("agencyDashboard.b2bActive")}
+
+          {/* A. Widget Solde Disponible (Available Balance) */}
+          <div className="rounded-3xl overflow-hidden border border-white/25 shadow-xs bg-white/15 backdrop-blur-2xl">
+            <div className="bg-gradient-to-br from-slate-950/80 via-slate-900/75 to-[#13111C]/80 p-6 text-white relative overflow-hidden backdrop-blur-md">
+              <div className="absolute top-0 right-0 w-36 h-36 bg-[#7B1B38]/30 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+              
+              <div className="flex items-center justify-between mb-3 relative z-10">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">
+                  {isEn ? "AVAILABLE BALANCE" : "SOLDE DISPONIBLE"}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#7B1B38] text-white shadow-2xs">
+                  B2B Active
                 </span>
               </div>
-              <div className="text-3xl font-black text-white relative z-10 flex items-end gap-2">
-                {agencyBalance.toLocaleString()} <span className="text-lg text-slate-400 mb-1">DZD</span>
+
+              <div className="text-3xl font-black font-mono text-white tracking-tight flex items-center gap-2 relative z-10">
+                <WalletCards className="w-6 h-6 text-slate-300 shrink-0" />
+                <span>{agencyBalance.toLocaleString()} DZD</span>
               </div>
             </div>
-            <div className="p-6">
-              <div className="flex items-center justify-between text-sm mb-4 pb-4 border-b border-slate-100">
-                <span className="text-slate-500 font-medium">{t("agencyDashboard.flightBookings")}</span>
-                <span className="font-bold text-slate-900">0 DZD</span>
+
+            <div className="p-5 space-y-3.5 bg-white/10 backdrop-blur-xl border-t border-white/15">
+              <div className="flex items-center justify-between text-xs pb-3 border-b border-white/15">
+                <span className="text-slate-700 font-semibold">{isEn ? "Flight Bookings" : "Réservations Vols"}</span>
+                <span className="font-bold text-slate-900 font-mono">0 DZD</span>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-500 font-medium">{t("agencyDashboard.servicesAndVisas")}</span>
-                <span className="font-bold text-slate-900">{agencyBalance.toLocaleString()} DZD</span>
+              <div className="flex items-center justify-between text-xs pb-3 border-b border-white/15">
+                <span className="text-slate-700 font-semibold">{isEn ? "Services & Visas" : "Services & Visas"}</span>
+                <span className="font-bold text-slate-900 font-mono">0 DZD</span>
               </div>
-              <Link to="/agency/wallet" className="mt-6 w-full flex items-center justify-center gap-2 bg-[#7B1B38]/10 text-[#7B1B38] hover:bg-[#7B1B38]/15 px-4 py-2.5 rounded-xl font-bold transition-colors">
-                {t("agencyDashboard.manageWallet")} <ArrowUpRight className="w-4 h-4" />
+              <Link
+                to="/agency/wallet"
+                className="w-full mt-2 py-3 rounded-2xl bg-white/25 hover:bg-white/40 text-[#7B1B38] border border-white/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer backdrop-blur-md"
+              >
+                <span>{isEn ? "Manage Wallet" : "Gérer le Portefeuille"}</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           </div>
 
-          {/* Recent Applications Mini-List */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-bold text-slate-900">{t("agencyDashboard.recentApplications")}</h3>
-              <Link to="/agency/applications" className="text-sm text-[#7B1B38] font-bold hover:underline">
-                {t("agencyDashboard.viewAll")}
+          {/* B. Widget Demandes Récentes (Recent Applications) */}
+          <div className="rounded-3xl border border-white/25 bg-white/15 backdrop-blur-2xl p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 text-sm">
+                {isEn ? "Recent Applications" : "Demandes Récentes"}
+              </h3>
+              <Link to="/agency/applications" className="text-xs font-bold text-[#7B1B38] hover:underline">
+                {isEn ? "View all" : "Voir tout"}
               </Link>
             </div>
-            
-            <div className="space-y-4">
-              {applications.slice(0, 3).map(app => (
-                <div key={app.id} className="flex items-center justify-between gap-3 group">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border shrink-0 ${app.status === 'Approved' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : app.status === 'Processing' ? 'bg-blue-50 border-blue-100 text-blue-600' : app.status === 'Rejected' ? 'bg-red-50 border-red-100 text-red-600' : 'bg-amber-50 border-amber-100 text-amber-600'}`}>
-                      <FileText className="w-5 h-5" />
+
+            {applications.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-600 font-medium">
+                {isEn ? "No applications created yet." : "Aucune demande créée pour le moment."}
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {applications.slice(0, 4).map(app => (
+                  <div 
+                    key={app.id} 
+                    onClick={() => navigate('/agency/applications')}
+                    className="flex items-center justify-between p-3 rounded-xl bg-white/25 border border-white/30 hover:bg-white/45 hover:shadow-2xs transition-all text-xs cursor-pointer backdrop-blur-md"
+                  >
+                    <div className="min-w-0 pr-2">
+                      <span className="font-bold text-slate-900 block truncate">{app.travelerName}</span>
+                      <span className="text-[10px] text-slate-600 font-medium">{app.country} • {app.serviceType || app.visaType}</span>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-bold text-slate-900 text-sm group-hover:text-[#7B1B38] transition-colors truncate" title={app.travelerName}>
-                        {app.travelerName}
-                      </div>
-                      <div className="text-xs text-slate-500 font-medium truncate">
-                        {app.serviceType} • {app.country}
-                      </div>
+                    <div className="text-right shrink-0">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full block whitespace-nowrap mb-0.5 ${
+                        app.status === 'Approved' ? 'bg-emerald-500/20 text-emerald-800 border border-emerald-400/40' :
+                        app.status === 'Processing' ? 'bg-blue-500/20 text-blue-800 border border-blue-400/40' :
+                        app.status === 'Rejected' ? 'bg-rose-500/20 text-rose-800 border border-rose-400/40' : 
+                        'bg-amber-500/20 text-amber-800 border border-amber-400/40'
+                      }`}>
+                        {app.status === 'Approved' ? 'Validé' : app.status === 'Processing' ? 'En cours' : app.status === 'Rejected' ? 'Rejeté' : 'En attente'}
+                      </span>
+                      <span className="text-[10px] text-slate-700 font-mono font-bold">
+                        {app.price ? `${app.price.toLocaleString()} DZD` : ''}
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-sm font-bold text-slate-900 whitespace-nowrap">{app.price.toLocaleString()} DZD</div>
-                  </div>
-                </div>
-              ))}
-              {applications.length === 0 && (
-                <div className="text-center text-slate-500 text-sm py-4">
-                  {t("agencyDashboard.emptyApplications")}
-                </div>
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>
+
       </div>
-      
-      {/* New Trip Popup */}
+
+      {/* Popup Nouveau Voyage Organisé (Dialog) */}
       <Dialog open={newTripPopupOpen} onOpenChange={(open) => { if(!open) handleDismissPopup(); }}>
-        <DialogContent className="sm:max-w-md bg-white p-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
+        <DialogContent className="sm:max-w-md bg-white p-0 overflow-hidden rounded-3xl border-0 shadow-2xl">
           {popupTrip && (
             <div className="flex flex-col">
               <div className="h-48 relative">
                 <img src={popupTrip.photoUrl} alt={popupTrip.title} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent flex flex-col justify-end p-6">
-                  <div className="inline-flex items-center gap-1.5 bg-[#7B1B38]/20 text-rose-100 border border-[#7B1B38]/40 backdrop-blur-md px-2.5 py-1 rounded-full text-xs font-bold w-fit mb-3">
+                  <div className="inline-flex items-center gap-1.5 bg-[#7B1B38]/30 text-rose-100 border border-[#7B1B38]/40 backdrop-blur-md px-2.5 py-1 rounded-full text-xs font-bold w-fit mb-2">
                     <Star className="w-3.5 h-3.5 fill-current" /> {isEn ? "New offer available!" : "Nouvelle offre disponible"}
                   </div>
-                  <h2 className="text-white font-black text-2xl leading-tight mb-1">{popupTrip.title}</h2>
-                  <p className="text-slate-300 text-sm flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4" /> {popupTrip.destination}
+                  <h2 className="text-white font-black text-xl leading-tight mb-1">{popupTrip.title}</h2>
+                  <p className="text-slate-300 text-xs flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-rose-400" /> {popupTrip.destination}
                   </p>
                 </div>
               </div>
-              <div className="p-6">
-                <p className="text-slate-600 text-sm leading-relaxed mb-6 line-clamp-3">
+              <div className="p-6 space-y-4">
+                <p className="text-slate-600 text-xs leading-relaxed line-clamp-3">
                   {popupTrip.description}
                 </p>
                 
-                <div className="flex items-center justify-between mb-6 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
                    <div>
-                     <span className="block text-[10px] uppercase font-bold text-slate-500 mb-0.5">
+                     <span className="block text-[10px] uppercase font-bold text-slate-400 mb-0.5">
                        {t("agencyDashboard.b2bPrice")}
                      </span>
-                     <span className="font-black text-xl text-slate-900">{popupTrip.price.toLocaleString()} DZD</span>
+                     <span className="font-black text-lg text-slate-900 font-mono">{popupTrip.price.toLocaleString()} DZD</span>
                    </div>
                    <div className="text-right">
-                     <span className="block text-[10px] uppercase font-bold text-slate-500 mb-0.5">
-                       {isEn ? "Seats available" : "Places dispo"}
+                     <span className="block text-[10px] uppercase font-bold text-slate-400 mb-0.5">
+                       {isEn ? "Seats available" : "Places disponibles"}
                      </span>
-                     <span className="font-bold text-slate-700">{popupTrip.availableSeats}</span>
+                     <span className="font-bold text-slate-700 text-sm">{popupTrip.availableSeats}</span>
                    </div>
                 </div>
                 
-                <div className="flex gap-3">
-                  <Button variant="outline" className="flex-1 h-12 rounded-xl font-bold border-slate-200" onClick={handleDismissPopup}>
-                    {isEn ? "Dismiss" : "Retirer"}
+                <div className="flex gap-3 pt-2">
+                  <Button variant="outline" className="flex-1 h-11 rounded-xl font-bold text-xs border-slate-200 cursor-pointer" onClick={handleDismissPopup}>
+                    {isEn ? "Dismiss" : "Fermer"}
                   </Button>
-                  <Button className="flex-1 h-12 rounded-xl font-bold bg-[#7B1B38] hover:bg-[#63142c] text-white shadow-md shadow-[#7B1B38]/20" onClick={handleAccessPopup}>
+                  <Button className="flex-1 h-11 rounded-xl font-bold text-xs bg-[#7B1B38] hover:bg-[#63142c] text-white shadow-md cursor-pointer" onClick={handleAccessPopup}>
                     {isEn ? "Explore" : "Y accéder"}
                   </Button>
                 </div>
@@ -332,6 +436,7 @@ export function AgencyDashboard() {
           )}
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }
