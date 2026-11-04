@@ -193,16 +193,15 @@ export function parseVisualFields(text: string): Partial<PassportScanResult> {
   const cleanText = text.replace(/\r/g, "\n");
   const lines = cleanText.split("\n").map(l => l.trim()).filter(Boolean);
 
-  // 1. Recherche du numéro de passeport :
-  // Passeports algériens : 9 chiffres (ex: 161234567, 190245678, 201234567, 230123456)
-  // Autres formats internationaux : 2 chiffres + 7 lettres/chiffres ou 9 caractères
-  const passRegexAlg = /\b(1[0-9]{8}|2[0-9]{8}|[0-9]{9})\b/g;
+  // 1. Recherche du numéro de passeport ou permis :
+  // Passeports & Permis algériens : 8 à 10 chiffres (ex: 161234567, 190245678, 201234567, 230123456)
+  const passRegexAlg = /\b(1[0-9]{8}|2[0-9]{8}|[0-9]{8,10})\b/g;
   let match = passRegexAlg.exec(cleanText);
   if (match) {
     result.passportNumber = match[1];
   } else {
-    // Format générique avec mot-clé
-    const passLabelRegex = /(?:passeport|passport|n°|no|numéro|number)[\s.:]*([0-9A-Z]{8,10})/i;
+    // Format générique avec mot-clé (Passeport ou Permis)
+    const passLabelRegex = /(?:passeport|passport|permis|permis de conduire|license|licence|driving|n°|no|numéro|number)[\s.:]*([0-9A-Z]{6,12})/i;
     const labelMatch = cleanText.match(passLabelRegex);
     if (labelMatch && labelMatch[1]) {
       result.passportNumber = labelMatch[1].replace(/O/g, "0").trim();

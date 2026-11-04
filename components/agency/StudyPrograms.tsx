@@ -146,6 +146,8 @@ export default function StudyPrograms() {
   // Candidature sélectionnée & Modal
   const [selectedProgram, setSelectedProgram] = useState<StudyProgram | null>(null);
   const [isApplyOpen, setIsApplyOpen] = useState(false);
+  const [detailedProgram, setDetailedProgram] = useState<StudyProgram | null>(null);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
 
   // État du formulaire avec validation temps réel
   const [formData, setFormData] = useState({
@@ -911,8 +913,8 @@ export default function StudyPrograms() {
                       </div>
                     </div>
 
-                    {/* Pied de Carte : Prix & Bouton Dépôt */}
-                    <div className="p-5 pt-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    {/* Pied de Carte : Prix & Boutons Détails + Dépôt */}
+                    <div className="p-5 pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-50/50">
                       <div>
                         <span className="text-[10px] font-bold text-slate-400 uppercase block">Frais Traitement</span>
                         <span className="text-base font-black font-mono text-slate-900">
@@ -923,22 +925,36 @@ export default function StudyPrograms() {
                         </span>
                       </div>
 
-                      <Button
-                        onClick={() => {
-                          setSelectedProgram(prog);
-                          setSubmittedAppRef(null);
-                          setDocuments({});
-                          setUploadedAttachments({});
-                          setFormData({ studentName: '', passportNumber: '', email: '', phone: '', notes: '' });
-                          setTouched({});
-                          setHighlightMissing(false);
-                          setIsApplyOpen(true);
-                        }}
-                        className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs h-9 px-4 rounded-xl shadow-sm cursor-pointer"
-                      >
-                        <span>Déposer Dossier</span>
-                        <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                      </Button>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setDetailedProgram(prog);
+                            setIsProductModalOpen(true);
+                          }}
+                          className="flex-1 sm:flex-initial h-9 px-3 text-xs font-bold rounded-xl border-slate-200 hover:bg-slate-100 text-slate-700 cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5 mr-1 text-slate-500" />
+                          <span>Détails de l'offre</span>
+                        </Button>
+
+                        <Button
+                          onClick={() => {
+                            setSelectedProgram(prog);
+                            setSubmittedAppRef(null);
+                            setDocuments({});
+                            setUploadedAttachments({});
+                            setFormData({ studentName: '', passportNumber: '', email: '', phone: '', notes: '' });
+                            setTouched({});
+                            setHighlightMissing(false);
+                            setIsApplyOpen(true);
+                          }}
+                          className="flex-1 sm:flex-initial bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs h-9 px-4 rounded-xl shadow-sm cursor-pointer"
+                        >
+                          <span>Déposer</span>
+                          <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1121,6 +1137,158 @@ export default function StudyPrograms() {
           </div>
         </div>
       )}
+
+      {/* ======================================================== */}
+      {/* MODAL : FICHE PRODUIT DÉTAILLÉE DE L'OFFRE ÉTUDE         */}
+      {/* ======================================================== */}
+      <Dialog open={isProductModalOpen} onOpenChange={setIsProductModalOpen}>
+        <DialogContent className="sm:max-w-3xl w-[96vw] max-h-[92vh] p-0 overflow-hidden rounded-3xl bg-white flex flex-col shadow-2xl border-0">
+          {detailedProgram && (
+            <div className="flex flex-col h-full overflow-hidden">
+              {/* Image d'en-tête et présentation */}
+              <div className="relative h-60 w-full overflow-hidden shrink-0 bg-slate-900">
+                <img
+                  src={detailedProgram.image || "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80"}
+                  alt={detailedProgram.university}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent"></div>
+
+                <div className="absolute top-4 left-4 flex items-center gap-2">
+                  <span className="bg-black/60 backdrop-blur-md text-white text-xs font-bold px-3 py-1 rounded-xl flex items-center gap-1.5 shadow-sm">
+                    <span className="text-base">{detailedProgram.countryFlag || "🎓"}</span>
+                    <span>{detailedProgram.country}</span>
+                    {detailedProgram.city && <span>• {detailedProgram.city}</span>}
+                  </span>
+                  <span className="bg-[#7B1B38] text-white text-[11px] font-black uppercase px-3 py-1 rounded-xl shadow-sm">
+                    {detailedProgram.type}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => setIsProductModalOpen(false)}
+                  className="absolute top-4 right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/80 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div className="absolute bottom-4 left-5 right-5 text-white">
+                  <span className="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-1">
+                    {detailedProgram.languageOfStudy || "Programme Certifié"}
+                  </span>
+                  <h3 className="text-2xl font-black leading-tight text-white drop-shadow-sm">
+                    {detailedProgram.university}
+                  </h3>
+                  <p className="text-sm text-slate-200 font-medium mt-0.5 line-clamp-1">
+                    {detailedProgram.title}
+                  </p>
+                </div>
+              </div>
+
+              {/* Contenu défilant */}
+              <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-800">
+                {/* Description complète */}
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+                    <BookOpen className="w-4 h-4 text-[#7B1B38]" /> Présentation du Programme & Campus
+                  </h4>
+                  <p className="text-sm text-slate-600 leading-relaxed font-normal bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    {detailedProgram.description || "Formation universitaire d'excellence dispensée selon les standards académiques internationaux. Accompagnement complet pour l'obtention de l'invitation officielle et du visa d'études."}
+                  </p>
+                </div>
+
+                {/* Métriques clés */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Délai Invitation</span>
+                    <span className="text-xs font-black text-slate-900 mt-1 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-[#7B1B38]" /> {detailedProgram.processingTime || "20 à 35 jours"}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Période Rentrée</span>
+                    <span className="text-xs font-black text-slate-900 mt-1 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-[#7B1B38]" /> {detailedProgram.intake || "Septembre 2025"}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 col-span-2 sm:col-span-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Scolarité Indicative</span>
+                    <span className="text-xs font-black text-slate-900 mt-1 font-mono">
+                      {detailedProgram.tuitionFeeYear || "Selon faculté"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Conditions d'admission */}
+                <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200/80 space-y-2">
+                  <div className="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider">
+                    <Sparkles className="w-4 h-4 text-amber-600" />
+                    <span>Critères & Conditions d'Admission :</span>
+                  </div>
+                  <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                    {detailedProgram.conditions || "Admission ouverte aux titulaires du Baccalauréat. Validation sur étude du dossier académique par la commission d'admission universitaire."}
+                  </p>
+                </div>
+
+                {/* Liste des documents obligatoires */}
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-emerald-600" /> Dossier & Pièces Justificatives Requises ({detailedProgram.requiredDocuments?.length || 0})
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {(detailedProgram.requiredDocuments || []).map((docItem, idx) => (
+                      <div key={idx} className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs font-medium text-slate-700">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                        <span className="truncate">{docItem}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Pied de modal avec CTA Déposer */}
+              <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Frais Traitement Agence B2B</span>
+                  <div className="text-xl font-black font-mono text-[#7B1B38]">
+                    {(detailedProgram.price || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">DZD</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsProductModalOpen(false)}
+                    className="h-10 text-xs font-bold rounded-xl border-slate-200"
+                  >
+                    Fermer
+                  </Button>
+
+                  <Button
+                    onClick={() => {
+                      setIsProductModalOpen(false);
+                      setSelectedProgram(detailedProgram);
+                      setSubmittedAppRef(null);
+                      setDocuments({});
+                      setUploadedAttachments({});
+                      setFormData({ studentName: '', passportNumber: '', email: '', phone: '', notes: '' });
+                      setTouched({});
+                      setHighlightMissing(false);
+                      setIsApplyOpen(true);
+                    }}
+                    className="h-10 px-6 bg-[#7B1B38] hover:bg-[#63142c] text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Déposer un dossier pour cette offre</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* ======================================================== */}
       {/* MODAL : DÉPÔT DE CANDIDATURE ÉTUDIANT (INTELLIGENT)      */}

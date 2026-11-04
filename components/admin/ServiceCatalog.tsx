@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { AGENCY_SERVICES, AgencyServiceConfig } from "../../src/constants/servicesConfig";
+import { getCountryFlag } from "../../src/utils/flags";
 
 // Référentiel des onglets du Catalogue Admin, calqué à 100% sur le Dashboard Agence
 const CATALOG_TABS = [
@@ -107,11 +108,24 @@ export function ServiceCatalog() {
     if (!target) return true;
     
     const sType = (s.type || "").toLowerCase().trim();
-    const sTitle = (s.title || "").toLowerCase().trim();
     const targetName = target.name.toLowerCase().trim();
+    const targetId = target.id.toLowerCase().trim();
 
-    if (sType === targetName || sType === target.id) return true;
-    return target.matchKeys.some(k => sType.includes(k.toLowerCase()) || sTitle.includes(k.toLowerCase()));
+    // 1. Correspondance prioritaire et exacte sur le type sélectionné par l'admin
+    if (sType === targetName || sType === targetId) return true;
+
+    // 2. Correspondance sur les matchKeys du type
+    if (target.matchKeys.some(k => sType === k.toLowerCase() || sType.includes(k.toLowerCase()))) {
+      return true;
+    }
+
+    // 3. Fallback sur le titre UNIQUEMENT si le type est vide ou indéfini
+    if (!sType || sType === "service" || sType === "demande") {
+      const sTitle = (s.title || "").toLowerCase().trim();
+      return target.matchKeys.some(k => sTitle.includes(k.toLowerCase()));
+    }
+
+    return false;
   };
 
   // Compteurs par famille pour les badges d'onglets
@@ -274,22 +288,51 @@ export function ServiceCatalog() {
   // Trouver les métadonnées exactes de la famille selon le Dashboard
   const getCategoryMeta = (type: string, title?: string) => {
     const typeLower = (type || "").toLowerCase().trim();
-    const titleLower = (title || "").toLowerCase().trim();
 
-    const found = AGENCY_SERVICES.find(srv => 
+    // 1. Recherche par nom ou id exact
+    const exact = AGENCY_SERVICES.find(srv => 
       srv.id === typeLower ||
-      srv.name.toLowerCase() === typeLower ||
-      srv.matchKeys.some(k => typeLower.includes(k.toLowerCase()) || titleLower.includes(k.toLowerCase()))
+      srv.name.toLowerCase() === typeLower
     );
-
-    if (found) {
+    if (exact) {
       return {
-        name: found.name,
-        icon: found.icon,
-        badgeBg: found.bgColor,
-        badgeText: found.textColor,
-        badge: found.badge
+        name: exact.name,
+        icon: exact.icon,
+        badgeBg: exact.bgColor,
+        badgeText: exact.textColor,
+        badge: exact.badge
       };
+    }
+
+    // 2. Recherche par matchKeys dans le type
+    const matchType = AGENCY_SERVICES.find(srv => 
+      srv.matchKeys.some(k => typeLower === k.toLowerCase() || typeLower.includes(k.toLowerCase()))
+    );
+    if (matchType) {
+      return {
+        name: matchType.name,
+        icon: matchType.icon,
+        badgeBg: matchType.bgColor,
+        badgeText: matchType.textColor,
+        badge: matchType.badge
+      };
+    }
+
+    // 3. Fallback sur le titre UNIQUEMENT si le type est vide ou indéfini
+    if (!typeLower || typeLower === "service" || typeLower === "demande") {
+      const titleLower = (title || "").toLowerCase().trim();
+      const matchTitle = AGENCY_SERVICES.find(srv => 
+        srv.matchKeys.some(k => titleLower.includes(k.toLowerCase()))
+      );
+      if (matchTitle) {
+        return {
+          name: matchTitle.name,
+          icon: matchTitle.icon,
+          badgeBg: matchTitle.bgColor,
+          badgeText: matchTitle.textColor,
+          badge: matchTitle.badge
+        };
+      }
     }
 
     return {
@@ -546,7 +589,7 @@ export function ServiceCatalog() {
                     </h3>
 
                     <div className="flex items-center gap-1.5 text-slate-500 mt-2 text-xs font-bold">
-                      <MapPin className="w-3.5 h-3.5 text-[#7B1B38]" /> 
+                      <span className="text-base">{getCountryFlag(srv.destination)}</span>
                       <span className="text-slate-800">{srv.destination}</span>
                     </div>
                   </div>
@@ -663,7 +706,10 @@ export function ServiceCatalog() {
                       </td>
 
                       <td className="py-3.5 px-4 font-bold text-slate-800">
-                        {srv.destination}
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="text-base">{getCountryFlag(srv.destination)}</span>
+                          <span>{srv.destination}</span>
+                        </span>
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-black font-mono text-slate-900">

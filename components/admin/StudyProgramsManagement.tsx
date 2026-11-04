@@ -1,11 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useAppStore, StudyProgram, StudyApplication } from '../../src/store/useAppStore';
 import { 
   Plus, Edit, Trash2, MapPin, Search, GraduationCap, 
   FileText, CheckCircle, Clock, XCircle, File, Settings, 
   CreditCard, List, CheckCircle2, X, Eye, Download, 
   Globe2, Building2, Calendar, Award, ArrowLeft, Upload,
-  DollarSign, AlertCircle, Sparkles, Filter, ChevronRight
+  DollarSign, AlertCircle, Sparkles, Filter, ChevronRight,
+  Image as ImageIcon, Loader2
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -19,6 +20,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { DocumentPreviewModal, PreviewDocData } from '../common/DocumentPreviewModal';
 import { resolveAttachmentData, downloadFileSafe, uploadFileToServer } from '../../src/utils/fileUpload';
+import { getCountryFlag } from '../../src/utils/flags';
 import { useToast } from '../ui/toast';
 
 // Documents types fréquemment demandés par les universités
@@ -193,6 +195,37 @@ export default function StudyProgramsManagement() {
   const [formError, setFormError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Format invalide", "Veuillez choisir un fichier image (JPG, PNG, WEBP).");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Fichier trop volumineux", "L'image ne doit pas dépasser 5 Mo.");
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    try {
+      const res = await uploadFileToServer(file, `photo_campus_${Date.now()}`);
+      const finalUrl = res.url || res.dataUrl;
+      setNewProgram(prev => ({ ...prev, image: finalUrl }));
+      toast.success("Photo enregistrée", "L'image du campus a été téléversée avec succès.");
+    } catch (err: any) {
+      console.error("Erreur upload photo campus:", err);
+      toast.error("Erreur", "Impossible de téléverser la photo sur le serveur.");
+    } finally {
+      setIsUploadingPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  };
 
   // Filtres Candidatures
   const [appSearchTerm, setAppSearchTerm] = useState('');
@@ -1067,7 +1100,14 @@ export default function StudyProgramsManagement() {
                       <Input
                         placeholder="Ex: Russie, France, Malaisie, Roumanie..."
                         value={newProgram.country}
-                        onChange={e => setNewProgram({ ...newProgram, country: e.target.value })}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setNewProgram(prev => ({
+                            ...prev,
+                            country: val,
+                            countryFlag: getCountryFlag(val) !== "🌍" ? getCountryFlag(val) : (prev.countryFlag || "🎓")
+                          }));
+                        }}
                         className="h-11 text-xs bg-slate-50 border-slate-200 rounded-xl font-bold focus:bg-white"
                       />
                     </div>
@@ -1206,14 +1246,67 @@ export default function StudyProgramsManagement() {
                       />
                     </div>
 
-                    <div className="space-y-1.5 sm:col-span-2">
-                      <Label className="text-xs font-bold text-slate-700">URL Photo du Campus</Label>
-                      <Input
-                        placeholder="https://images.unsplash.com/..."
-                        value={newProgram.image}
-                        onChange={e => setNewProgram({ ...newProgram, image: e.target.value })}
-                        className="h-11 text-xs bg-slate-50 border-slate-200 rounded-xl font-mono focus:bg-white"
-                      />
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                        <span>Photo du Campus / Université</span>
+                        {isUploadingPhoto && (
+                          <span className="text-[10px] text-amber-600 flex items-center gap-1 font-normal">
+                            <Loader2 className="w-3 h-3 animate-spin" /> Téléversement en cours...
+                          </span>
+                        )}
+                      </Label>
+
+                      {/* Zone de prévisualisation et upload */}
+                      <div className="flex flex-col sm:flex-row gap-3 items-center">
+                        {newProgram.image ? (
+                          <div className="relative w-full sm:w-36 h-24 rounded-2xl overflow-hidden border border-slate-200 shrink-0 bg-slate-100 group">
+                            <img 
+                              src={newProgram.image} 
+                              alt="Aperçu du campus" 
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setNewProgram({ ...newProgram, image: '' })}
+                              className="absolute top-1 right-1 p-1 bg-red-600/90 text-white rounded-full opacity-80 hover:opacity-100 transition-opacity"
+                              title="Retirer la photo"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="w-full sm:w-36 h-24 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 shrink-0 bg-slate-50/50">
+                            <ImageIcon className="w-6 h-6 mb-1 text-slate-300" />
+                            <span className="text-[10px] font-bold">Aucune photo</span>
+                          </div>
+                        )}
+
+                        <div className="flex-1 w-full space-y-2">
+                          <input
+                            ref={photoInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/jpg"
+                            onChange={handlePhotoUpload}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => photoInputRef.current?.click()}
+                            disabled={isUploadingPhoto}
+                            variant="outline"
+                            className="w-full h-10 border-slate-200 hover:bg-slate-100 text-xs font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            <Upload className="w-3.5 h-3.5 text-[#7B1B38]" />
+                            <span>{newProgram.image ? "Changer la photo" : "Téléverser une photo (fichier)"}</span>
+                          </Button>
+                          <Input
+                            placeholder="Ou collez un lien d'image web..."
+                            value={newProgram.image || ''}
+                            onChange={e => setNewProgram({ ...newProgram, image: e.target.value })}
+                            className="h-9 text-[11px] bg-slate-50 border-slate-200 rounded-xl font-mono focus:bg-white"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

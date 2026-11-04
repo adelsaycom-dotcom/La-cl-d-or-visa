@@ -69,19 +69,21 @@ async function startServer() {
 
       if (process.env.GEMINI_API_KEY) {
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const prompt = `Tu es un système expert de reconnaissance optique et d'analyse de passeports biométriques internationaux (norme ICAO Doc 9303 / MRZ).
-Analyse l'image ou le scan de ce passeport et extrais avec une rigueur absolue les informations personnelles du titulaire en format JSON STRICT :
+        const prompt = `Tu es un système expert de reconnaissance optique et d'analyse de documents d'identité officiels (passeports biométriques internationaux et permis de conduire algériens ou internationaux, formats carte ou livret).
+Analyse l'image ou le scan de ce document (passeport ou permis de conduire) et extrais avec une rigueur absolue les informations personnelles du titulaire en format JSON STRICT :
 {
   "firstName": "Prénom(s) du titulaire en majuscules",
   "lastName": "Nom de famille en majuscules",
-  "passportNumber": "Numéro de passeport sans espaces",
+  "passportNumber": "Numéro de document (numéro de passeport ou numéro du permis de conduire) sans espaces",
   "dateOfBirth": "Date de naissance au format YYYY-MM-DD",
-  "expiryDate": "Date d'expiration au format YYYY-MM-DD",
+  "expiryDate": "Date d'expiration ou de validité au format YYYY-MM-DD",
   "issueDate": "Date de délivrance au format YYYY-MM-DD",
-  "nationality": "Nationalité (ex: Algérienne, Française, etc.)",
+  "nationality": "Nationalité (ex: Algérienne)",
   "gender": "M ou F",
   "issuingCountry": "Pays d'émission (ex: Algérie)",
-  "placeOfBirth": "Lieu de naissance"
+  "placeOfBirth": "Lieu de naissance / Wilaya",
+  "licenseType": "Catégorie de permis si visible (ex: B, A, C)",
+  "documentType": "passport ou driving_license"
 }
 Si un champ est absent ou illisible, renvoie une chaîne vide "". Réponds UNIQUEMENT avec l'objet JSON valide, sans texte d'introduction ni balises markdown additionnelles.`;
 

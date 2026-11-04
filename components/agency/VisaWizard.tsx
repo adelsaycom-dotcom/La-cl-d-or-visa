@@ -5,17 +5,19 @@ import {
   ChevronRight, ChevronLeft, MapPin, Clock, 
   FileText, CheckCircle2, AlertCircle, Upload, User, 
   Sparkles, Loader2, Trash2, Calendar, ShieldCheck, 
-  Phone, Mail, FileCheck, ArrowRight, Building2, Car, CalendarDays, FolderOpen, Plane, GraduationCap, Globe, Eye, EyeOff, Percent, HelpCircle
+  Phone, Mail, FileCheck, ArrowRight, Building2, Car, CalendarDays, FolderOpen, Plane, GraduationCap, Globe, Eye, EyeOff, Percent, HelpCircle, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { uploadFileToServer, compressImageIfPossible, fileToBase64 } from "../../src/utils/fileUpload";
 import { scanPassportSmart } from "../../src/utils/passportScanner";
 import { convertPdfPageToImage } from "../../src/utils/pdfToImage";
+import { getCountryFlag } from "../../src/utils/flags";
 
 export interface AttachmentItem {
   id: string;
@@ -60,6 +62,25 @@ export function VisaWizard() {
   const [step, setStep] = useState<number>(1);
   const [selectedCountry, setSelectedCountry] = useState<string>("");
   const [selectedOption, setSelectedOption] = useState<PrestationService | null>(null);
+  const [detailedServiceOption, setDetailedServiceOption] = useState<PrestationService | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  // Détecter si le service sélectionné correspond au Permis International
+  const isPermisService = useMemo(() => {
+    const famId = selectedFamily?.id || "";
+    const famName = (selectedFamily?.name || "").toLowerCase();
+    const optType = (selectedOption?.type || "").toLowerCase();
+    const optTitle = (selectedOption?.title || "").toLowerCase();
+    const urlParam = (urlServiceParam || "").toLowerCase();
+
+    return (
+      famId === "permis" ||
+      famName.includes("permis") ||
+      optType.includes("permis") ||
+      optTitle.includes("permis") ||
+      urlParam.includes("permis")
+    );
+  }, [selectedFamily, selectedOption, urlServiceParam]);
 
   // Étape 2: Passeport & Données Voyageur
   const [passportFile, setPassportFile] = useState<AttachmentItem | null>(null);
@@ -123,17 +144,31 @@ export function VisaWizard() {
     return services.filter(s => {
       if (!s.active) return false;
       const sType = (s.type || "").toLowerCase().trim();
-      const sTitle = (s.title || "").toLowerCase().trim();
+      
       if (selectedFamily) {
-        return selectedFamily.matchKeys.some(key => 
-          sType === key.toLowerCase() || 
-          sType.includes(key.toLowerCase()) || 
-          sTitle.includes(key.toLowerCase())
-        );
+        const targetName = selectedFamily.name.toLowerCase().trim();
+        const targetId = selectedFamily.id.toLowerCase().trim();
+
+        // 1. Correspondance exacte sur le nom de la famille ou son ID
+        if (sType === targetName || sType === targetId) return true;
+
+        // 2. Correspondance sur les matchKeys dans le type
+        if (selectedFamily.matchKeys.some(k => sType === k.toLowerCase() || sType.includes(k.toLowerCase()))) {
+          return true;
+        }
+
+        // 3. Fallback sur le titre UNIQUEMENT si le type est vide ou indéfini
+        if (!sType || sType === "service" || sType === "demande") {
+          const sTitle = (s.title || "").toLowerCase().trim();
+          return selectedFamily.matchKeys.some(k => sTitle.includes(k.toLowerCase()));
+        }
+
+        return false;
       }
+
       if (urlServiceParam) {
-        const p = urlServiceParam.toLowerCase();
-        return sType === p || sType.includes(p) || sTitle.includes(p);
+        const p = urlServiceParam.toLowerCase().trim();
+        return sType === p || sType.includes(p);
       }
       return true;
     });
@@ -191,12 +226,13 @@ export function VisaWizard() {
       setPassportPreview(previewData);
 
       // 2. Sauvegarde universelle (Cloud Firestore 'attachments' + local)
-      const uploadRes = await uploadFileToServer(file, "Passeport");
+      const docLabel = isPermisService ? "Permis de Conduire" : "Passeport";
+      const uploadRes = await uploadFileToServer(file, docLabel);
 
       const passportItem: AttachmentItem = {
-        id: uploadRes.storageId || `pass_${Date.now()}`,
+        id: uploadRes.storageId || `doc_${Date.now()}`,
         name: file.name,
-        category: "Passeport",
+        category: docLabel,
         type: file.type || (isPdfFile ? "application/pdf" : "image/jpeg"),
         size: uploadRes.size,
         dataUrl: uploadRes.dataUrl,
@@ -210,7 +246,7 @@ export function VisaWizard() {
 
       // 3. Scan universel : passer l'image convertie (previewData) pour que l'OCR lise le scan du PDF directement !
       setScanProgress(35);
-      setScanStatusText("Détection de la zone biométrique du passeport...");
+      setScanStatusText(isPermisService ? "Détection des données du permis de conduire..." : "Détection de la zone biométrique du passeport...");
 
       const scanResult = await scanPassportSmart(previewData || file, (status, prog) => {
         setScanStatusText(status);
@@ -602,8 +638,8 @@ export function VisaWizard() {
                     onClick={() => setSelectedCountry(country)}
                     className="group flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-2xl hover:border-[#7B1B38] hover:shadow-xl hover:shadow-[#7B1B38]/10 hover:-translate-y-1 transition-all text-center relative overflow-hidden"
                   >
-                    <div className="w-16 h-16 bg-[#7B1B38]/10 text-[#7B1B38] rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-[#7B1B38] group-hover:text-white transition-all shadow-sm">
-                      <MapPin className="w-8 h-8" />
+                    <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-[#7B1B38]/10 transition-all shadow-sm">
+                      <span className="text-3xl filter drop-shadow-xs">{getCountryFlag(country)}</span>
                     </div>
                     <span className="font-black text-slate-900 text-lg group-hover:text-[#7B1B38] transition-colors">{country}</span>
                     <span className="text-xs text-slate-400 font-medium mt-1">
@@ -703,15 +739,29 @@ export function VisaWizard() {
                       </div>
                     )}
 
-                    <div className="mt-auto pt-4 border-t border-slate-100">
+                    <div className="mt-auto pt-4 border-t border-slate-100 grid grid-cols-2 gap-2">
+                      <Button 
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setDetailedServiceOption(opt);
+                          setIsDetailModalOpen(true);
+                        }}
+                        className="h-12 text-xs font-bold rounded-xl border-slate-200 hover:bg-slate-100 text-slate-700 flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-slate-500" />
+                        <span>{isEn ? "Details" : "Détails"}</span>
+                      </Button>
+
                       <Button 
                         onClick={() => {
                           setSelectedOption(opt);
                           setStep(2);
                         }}
-                        className="w-full h-12 text-sm font-black rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white shadow-md shadow-[#7B1B38]/20 flex items-center justify-center gap-2"
+                        className="h-12 text-xs font-black rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white shadow-md shadow-[#7B1B38]/20 flex items-center justify-center gap-1.5"
                       >
-                        {isEn ? "Select this package" : "Choisir cette formule"} <ArrowRight className="w-4 h-4" />
+                        <span>{isEn ? "Select" : "Choisir"}</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
                       </Button>
                     </div>
                   </div>
@@ -720,6 +770,130 @@ export function VisaWizard() {
             </div>
           </div>
         )}
+
+        {/* MODAL : FICHE PRODUIT / DÉTAILS DE LA FORMULE SÉLECTIONNÉE */}
+        <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+          <DialogContent className="w-[96vw] max-w-2xl max-h-[90vh] p-0 overflow-hidden rounded-3xl bg-white shadow-2xl flex flex-col border-0">
+            {detailedServiceOption && (
+              <div className="flex flex-col h-full overflow-hidden">
+                {/* En-tête */}
+                <div className="bg-[#7B1B38] text-white p-6 shrink-0 relative">
+                  <button
+                    onClick={() => setIsDetailModalOpen(false)}
+                    className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-2xl">{getCountryFlag(detailedServiceOption.destination)}</span>
+                    <Badge className="bg-white/20 text-white border-0 font-bold text-xs">
+                      {detailedServiceOption.type}
+                    </Badge>
+                    <span className="text-white/80 text-xs font-semibold">
+                      • {detailedServiceOption.destination}
+                    </span>
+                  </div>
+
+                  <h3 className="text-2xl font-black leading-tight text-white">
+                    {detailedServiceOption.title}
+                  </h3>
+                </div>
+
+                {/* Corps défilant */}
+                <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-800">
+                  {/* Tarifs et Délais */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        {isEn ? "B2B Rate" : "Tarif B2B Débité"}
+                      </span>
+                      <div className="text-2xl font-black font-mono text-[#7B1B38] mt-0.5">
+                        {detailedServiceOption.price.toLocaleString()} <span className="text-xs font-bold text-slate-500">DZD</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        {isEn ? "Processing Time" : "Délai Consulaire"}
+                      </span>
+                      <div className="text-sm font-black text-slate-800 mt-1 flex items-center gap-1.5">
+                        <Clock className="w-4 h-4 text-[#7B1B38]" />
+                        <span>{detailedServiceOption.processingTime || "24h à 48h"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Description si disponible */}
+                  {detailedServiceOption.description && (
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
+                        {isEn ? "Description" : "Description de la formule"}
+                      </h4>
+                      <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-3.5 rounded-2xl border border-slate-100 font-medium">
+                        {detailedServiceOption.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Conditions Consulaires */}
+                  {detailedServiceOption.conditions && detailedServiceOption.conditions.length > 0 && detailedServiceOption.conditions[0] && (
+                    <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200/80 space-y-2">
+                      <div className="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider">
+                        <AlertCircle className="w-4 h-4 text-amber-600" />
+                        <span>{isEn ? "Conditions & Eligibility" : "Conditions & Éligibilité :"}</span>
+                      </div>
+                      <ul className="text-xs text-amber-800 space-y-1 font-medium list-disc list-inside">
+                        {detailedServiceOption.conditions.filter(Boolean).map((cond, i) => (
+                          <li key={i}>{cond}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Documents requis */}
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2.5 flex items-center gap-1.5">
+                      <FileCheck className="w-4 h-4 text-emerald-600" /> 
+                      <span>{isEn ? "Required Documents" : "Pièces Justificatives Obligatoires"} ({detailedServiceOption.requiredDocuments?.length || 0})</span>
+                    </h4>
+                    <div className="space-y-1.5">
+                      {(detailedServiceOption.requiredDocuments || ["Scan du Passeport", "Photo d'identité"]).map((docItem, idx) => (
+                        <div key={idx} className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs font-medium text-slate-700">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <span>{docItem}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pied de modal avec CTA Choisir */}
+                <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsDetailModalOpen(false)}
+                    className="h-11 text-xs font-bold rounded-xl border-slate-200"
+                  >
+                    {isEn ? "Close" : "Fermer"}
+                  </Button>
+
+                  <Button
+                    onClick={() => {
+                      setIsDetailModalOpen(false);
+                      setSelectedOption(detailedServiceOption);
+                      setStep(2);
+                    }}
+                    className="h-11 px-6 bg-[#7B1B38] hover:bg-[#63142c] text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>{isEn ? "Choose This Package" : "Choisir cette formule"}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </motion.div>
     );
   };
@@ -772,15 +946,23 @@ export function VisaWizard() {
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6 relative z-10">
           <div>
             <div className="inline-flex items-center gap-2 bg-[#7B1B38] text-white px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase mb-2 shadow-sm">
-              <Sparkles className="w-3.5 h-3.5" /> {isEn ? "Secure Registration & Passport Data" : "Enregistrement Sécurisé & Données Passeport"}
+              <Sparkles className="w-3.5 h-3.5" /> {isPermisService 
+                ? (isEn ? "Secure Registration & Driving License Scan" : "Enregistrement Sécurisé & Scan Permis de Conduire") 
+                : (isEn ? "Secure Registration & Passport Data" : "Enregistrement Sécurisé & Données Passeport")}
             </div>
             <h3 className="text-xl md:text-2xl font-black">
-              {isEn ? "Upload or scan passport" : "Déposez ou scannez le passeport"}
+              {isPermisService 
+                ? (isEn ? "Upload or scan driving license" : "Déposez ou scannez le permis de conduire")
+                : (isEn ? "Upload or scan passport" : "Déposez ou scannez le passeport")}
             </h3>
             <p className="text-slate-400 text-sm mt-1 max-w-xl">
-              {isEn 
-                ? "Upload the passport identity page (clear photo or PDF scan). The document is saved and attached to the application, allowing you to review or complete the information below."
-                : "Déposez la page d'identité du passeport (photo nette ou scan PDF). Le document est sauvegardé et rattaché à la demande, vous permettant de vérifier ou compléter les coordonnées ci-dessous."}
+              {isPermisService
+                ? (isEn 
+                    ? "Upload the driving license (photo or PDF scan). The document is saved and attached to the application, and personal details are filled automatically." 
+                    : "Déposez le permis de conduire (photo nette ou scan PDF). Le document est sauvegardé et rattaché à la demande, et les coordonnées sont pré-remplies automatiquement.")
+                : (isEn 
+                    ? "Upload the passport identity page (clear photo or PDF scan). The document is saved and attached to the application, allowing you to review or complete the information below."
+                    : "Déposez la page d'identité du passeport (photo nette ou scan PDF). Le document est sauvegardé et rattaché à la demande, vous permettant de vérifier ou compléter les coordonnées ci-dessous.")}
             </p>
           </div>
 
@@ -801,10 +983,12 @@ export function VisaWizard() {
             />
             <div className="border-2 border-dashed border-slate-700 hover:border-[#7B1B38] bg-slate-800/60 hover:bg-slate-800/90 rounded-2xl p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center min-h-[180px]">
               <div className="w-16 h-16 bg-[#7B1B38]/20 text-[#7B1B38] rounded-2xl flex items-center justify-center mb-4">
-                <Upload className="w-8 h-8" />
+                {isPermisService ? <Car className="w-8 h-8" /> : <Upload className="w-8 h-8" />}
               </div>
               <p className="font-bold text-base text-white">
-                {isEn ? "Drag & drop passport photo or scan here" : "Glissez-déposez la photo ou le scan du passeport ici"}
+                {isPermisService 
+                  ? (isEn ? "Drag & drop driving license photo or scan here" : "Glissez-déposez la photo ou le scan du permis de conduire ici")
+                  : (isEn ? "Drag & drop passport photo or scan here" : "Glissez-déposez la photo ou le scan du passeport ici")}
               </p>
               <p className="text-xs text-slate-400 mt-1">
                 {isEn ? "or click to browse files from your computer" : "ou cliquez pour parcourir les fichiers de votre ordinateur"}
@@ -952,16 +1136,18 @@ export function VisaWizard() {
             />
           </div>
 
-          {/* Numéro de passeport */}
+          {/* Numéro de document (Passeport ou Permis) */}
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-slate-700">
-              {isEn ? "Passport Number" : "Numéro de Passeport"} <span className="text-red-500">*</span>
+              {isPermisService 
+                ? (isEn ? "Driving License Number" : "Numéro de Permis de Conduire") 
+                : (isEn ? "Passport Number" : "Numéro de Passeport")} <span className="text-red-500">*</span>
             </Label>
             <Input 
               value={applicant.passportNumber} 
               onChange={e => setApplicant({ ...applicant, passportNumber: e.target.value.toUpperCase().replace(/\s+/g, '') })} 
               className="h-11 rounded-xl uppercase font-mono font-black text-slate-900 border-slate-200 tracking-wider focus-visible:ring-[#7B1B38]" 
-              placeholder="Ex: 214589632" 
+              placeholder={isPermisService ? "Ex: 191245678" : "Ex: 214589632"} 
             />
           </div>
 

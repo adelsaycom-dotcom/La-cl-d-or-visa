@@ -5,7 +5,7 @@ import {
   MapPin, Calendar, DollarSign, Users, Search, Check, 
   Info, CheckCircle2, Clock, AlertCircle, ArrowRight, 
   FileText, ShieldCheck, Loader2, Sparkles, Copy, Printer,
-  BookmarkCheck, Share2
+  BookmarkCheck, Share2, Eye, X
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -13,6 +13,7 @@ import { Badge } from '../ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
 import { useLanguage } from "../../src/i18n/LanguageContext";
+import { getCountryFlag } from "../../src/utils/flags";
 
 export default function OrganizedTrips() {
   const { language, t } = useLanguage();
@@ -24,6 +25,8 @@ export default function OrganizedTrips() {
   const [activeTab, setActiveTab] = useState<'catalog' | 'my-reservations'>('catalog');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTrip, setSelectedTrip] = useState<OrganizedTrip | null>(null);
+  const [detailedTrip, setDetailedTrip] = useState<OrganizedTrip | null>(null);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [step, setStep] = useState<'form' | 'confirmation' | 'success'>('form');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -350,23 +353,37 @@ export default function OrganizedTrips() {
                       </p>
                     </div>
 
-                    <Button 
-                      className={`w-full h-11 rounded-xl text-xs font-black shadow-sm ${
-                        trip.availableSeats <= 0 
-                          ? 'bg-slate-200 text-slate-500 cursor-not-allowed' 
-                          : bookedSeats > 0
-                          ? 'bg-emerald-700 hover:bg-emerald-800 text-white'
-                          : 'bg-[#7B1B38] hover:bg-[#63142c] text-white'
-                      }`}
-                      disabled={trip.availableSeats <= 0}
-                      onClick={() => handleOpenBooking(trip)}
-                    >
-                      {trip.availableSeats > 0 
-                        ? (bookedSeats > 0 
-                            ? (isEn ? `Add Travelers (Already ${bookedSeats})` : `Ajouter des voyageurs (Déjà ${bookedSeats})`)
-                            : (isEn ? 'Book for Traveler' : 'Réserver pour un voyageur'))
-                        : (isEn ? 'Fully Booked' : 'Complet')}
-                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          setDetailedTrip(trip);
+                          setIsProductModalOpen(true);
+                        }}
+                        className="h-11 rounded-xl text-xs font-bold border-slate-200 hover:bg-slate-100 text-slate-700 flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-slate-500" />
+                        <span>{isEn ? "View Details" : "Détails de l'offre"}</span>
+                      </Button>
+
+                      <Button 
+                        className={`h-11 rounded-xl text-xs font-black shadow-sm ${
+                          trip.availableSeats <= 0 
+                            ? 'bg-slate-200 text-slate-500 cursor-not-allowed' 
+                            : bookedSeats > 0
+                            ? 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                            : 'bg-[#7B1B38] hover:bg-[#63142c] text-white'
+                        }`}
+                        disabled={trip.availableSeats <= 0}
+                        onClick={() => handleOpenBooking(trip)}
+                      >
+                        {trip.availableSeats > 0 
+                          ? (bookedSeats > 0 
+                              ? (isEn ? `Book (${bookedSeats})` : `Réserver (${bookedSeats})`)
+                              : (isEn ? 'Book' : 'Réserver'))
+                          : (isEn ? 'Fully Booked' : 'Complet')}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               );
@@ -523,6 +540,151 @@ export default function OrganizedTrips() {
           )}
         </div>
       )}
+
+      {/* MODAL : FICHE PRODUIT DÉTAILLÉE DU VOYAGE ORGANISÉ */}
+      <Dialog open={isProductModalOpen} onOpenChange={setIsProductModalOpen}>
+        <DialogContent className="w-[96vw] max-w-3xl max-h-[92vh] p-0 overflow-hidden rounded-3xl bg-white shadow-2xl flex flex-col border-0">
+          {detailedTrip && (
+            <div className="flex flex-col h-full overflow-hidden">
+              {/* Image et présentation */}
+              <div className="relative h-64 w-full overflow-hidden shrink-0 bg-slate-900">
+                <img 
+                  src={detailedTrip.photoUrl || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&q=80"} 
+                  alt={detailedTrip.title} 
+                  className="w-full h-full object-cover" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent"></div>
+
+                <div className="absolute top-4 left-4 flex items-center gap-2">
+                  <Badge className="bg-black/60 backdrop-blur-md text-white text-xs font-bold px-3 py-1 rounded-xl flex items-center gap-1.5 border-0">
+                    <span className="text-base">{getCountryFlag(detailedTrip.destination)}</span>
+                    <span>{detailedTrip.destination}</span>
+                  </Badge>
+                  <Badge className="bg-[#7B1B38] text-white text-xs font-black uppercase px-3 py-1 rounded-xl border-0">
+                    {isEn ? "Group Tour" : "Circuit Organisé"}
+                  </Badge>
+                </div>
+
+                <button
+                  onClick={() => setIsProductModalOpen(false)}
+                  className="absolute top-4 right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/80 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div className="absolute bottom-4 left-6 right-6 text-white">
+                  <h3 className="text-2xl font-black leading-tight text-white drop-shadow-sm">
+                    {detailedTrip.title}
+                  </h3>
+                  <p className="text-sm text-slate-200 font-medium mt-1 flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-[#7B1B38]" /> {detailedTrip.destination}
+                  </p>
+                </div>
+              </div>
+
+              {/* Contenu détaillé du séjour */}
+              <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-800">
+                {/* 1. Métriques et Dates */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                    <Calendar className="w-4 h-4 text-[#7B1B38] mx-auto mb-1" />
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">{isEn ? "Departure" : "Départ"}</span>
+                    <span className="text-xs font-black text-slate-800">
+                      {new Date(detailedTrip.startDate).toLocaleDateString(isEn ? 'en-US' : 'fr-FR')}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                    <Calendar className="w-4 h-4 text-slate-600 mx-auto mb-1" />
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">{isEn ? "Return" : "Retour"}</span>
+                    <span className="text-xs font-black text-slate-800">
+                      {new Date(detailedTrip.endDate).toLocaleDateString(isEn ? 'en-US' : 'fr-FR')}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                    <Users className="w-4 h-4 text-emerald-600 mx-auto mb-1" />
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">{isEn ? "Available Seats" : "Places Dispo"}</span>
+                    <span className="text-xs font-black text-emerald-700">{detailedTrip.availableSeats}</span>
+                  </div>
+
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                    <DollarSign className="w-4 h-4 text-[#7B1B38] mx-auto mb-1" />
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">{isEn ? "Total Quota" : "Capacité Totale"}</span>
+                    <span className="text-xs font-black text-slate-800">{detailedTrip.totalSeats} places</span>
+                  </div>
+                </div>
+
+                {/* 2. Description complète & Programme */}
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-[#7B1B38]" /> {isEn ? "Program & Details" : "Programme & Descriptif du Séjour"}
+                  </h4>
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs text-slate-700 leading-relaxed font-normal whitespace-pre-line">
+                    {detailedTrip.description || (isEn ? "All-inclusive organized trip with hotel, transfers, and excursions." : "Séjour organisé complet comprenant hébergement sélectionné, transferts et visites guidées.")}
+                  </div>
+                </div>
+
+                {/* 3. Prestations incluses */}
+                <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200/80 space-y-2">
+                  <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs uppercase tracking-wider">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>{isEn ? "Guarantees & Inclusions" : "Garanties & Prestations Incluses :"}</span>
+                  </div>
+                  <ul className="text-xs text-emerald-800 space-y-1.5 font-medium">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>{isEn ? "Confirmed flights and group transfers on arrival" : "Vols et transferts aéroport - hôtel confirmés"}</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>{isEn ? "Selected accommodation in partner hotels" : "Hébergements certifiés en hôtels partenaires"}</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>{isEn ? "Assistance and local guide throughout the stay" : "Assistance et guide accompagnateur bilingue"}</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Pied de modal avec CTA Réserver */}
+              <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    {isEn ? "B2B Rate per person" : "Tarif Agence B2B par personne"}
+                  </span>
+                  <div className="text-2xl font-black font-mono text-[#7B1B38]">
+                    {detailedTrip.price.toLocaleString()} <span className="text-xs font-bold text-slate-500">DZD</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsProductModalOpen(false)}
+                    className="h-11 text-xs font-bold rounded-xl border-slate-200"
+                  >
+                    {isEn ? "Close" : "Fermer"}
+                  </Button>
+
+                  <Button
+                    onClick={() => {
+                      setIsProductModalOpen(false);
+                      handleOpenBooking(detailedTrip);
+                    }}
+                    disabled={detailedTrip.availableSeats <= 0}
+                    className="h-11 px-6 bg-[#7B1B38] hover:bg-[#63142c] text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>{isEn ? "Book This Trip" : "Réserver ce voyage"}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* DIALOG DE RÉSERVATION AVEC CONFIRMATION ANTI MULTI-CLICS */}
       <Dialog open={isBookingOpen} onOpenChange={(open) => {

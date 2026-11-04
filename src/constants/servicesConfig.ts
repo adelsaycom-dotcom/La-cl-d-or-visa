@@ -42,7 +42,7 @@ export const AGENCY_SERVICES: AgencyServiceConfig[] = [
     bgColor: "bg-blue-50",
     borderColor: "border-blue-200 hover:border-blue-400",
     path: "/agency/apply?service=Visa",
-    matchKeys: ["visa", "visab2b", "visa b2b", "evisa", "e-visa"]
+    matchKeys: ["visa b2b", "visa", "visab2b", "evisa", "e-visa"]
   },
   {
     id: "invitation",
@@ -58,7 +58,7 @@ export const AGENCY_SERVICES: AgencyServiceConfig[] = [
     bgColor: "bg-cyan-50",
     borderColor: "border-cyan-200 hover:border-cyan-400",
     path: "/agency/apply?service=Invitation",
-    matchKeys: ["invitation", "affaires", "business"]
+    matchKeys: ["invitation"]
   },
   {
     id: "trips",
@@ -91,7 +91,7 @@ export const AGENCY_SERVICES: AgencyServiceConfig[] = [
     bgColor: "bg-indigo-50",
     borderColor: "border-indigo-200 hover:border-indigo-400",
     path: "/agency/apply?service=Dossier Résidence",
-    matchKeys: ["residence", "dossier résidence", "séjour", "titre de séjour"]
+    matchKeys: ["dossier résidence", "residence", "résidence", "titre de séjour"]
   },
   {
     id: "rendezvous",
@@ -107,7 +107,7 @@ export const AGENCY_SERVICES: AgencyServiceConfig[] = [
     bgColor: "bg-orange-50",
     borderColor: "border-orange-200 hover:border-orange-400",
     path: "/agency/apply?service=Prise de Rendez-vous",
-    matchKeys: ["rendez-vous", "prise de rendez-vous", "rdv", "tls", "vfs", "bls"]
+    matchKeys: ["rendez-vous", "prise de rendez-vous", "rdv", "appointment"]
   },
   {
     id: "dossier",
@@ -123,7 +123,7 @@ export const AGENCY_SERVICES: AgencyServiceConfig[] = [
     bgColor: "bg-teal-50",
     borderColor: "border-teal-200 hover:border-teal-400",
     path: "/agency/apply?service=Traitement de Dossier",
-    matchKeys: ["dossier", "traitement de dossier", "traduction", "formulaire"]
+    matchKeys: ["traitement de dossier", "traitement dossier"]
   },
   {
     id: "permis",
@@ -138,8 +138,8 @@ export const AGENCY_SERVICES: AgencyServiceConfig[] = [
     textColor: "text-amber-700",
     bgColor: "bg-amber-50",
     borderColor: "border-amber-200 hover:border-amber-400",
-    path: "/agency/apply?service=Permis internationnal",
-    matchKeys: ["permis", "permis internationnal", "permis international", "conduire"]
+    path: "/agency/apply?service=Permis",
+    matchKeys: ["permis intl", "permis internationnal", "permis international", "permis de conduire", "permis"]
   },
   {
     id: "study",
