@@ -586,6 +586,32 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const appId = (application as any).id || `ETUD-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
     const price = application.price || 0;
 
+    // Protection anti-dépassement Firestore (1 Mo) : normaliser les documents et pièces jointes
+    const safeDocuments: Record<string, string> = {};
+    if (application.documents) {
+      for (const [k, v] of Object.entries(application.documents)) {
+        if (typeof v === 'string') {
+          if (v.startsWith('data:') && v.length > 500) {
+            safeDocuments[k] = `att_${Date.now()}_${k.replace(/[^a-zA-Z0-9]/g, '_')}`;
+          } else {
+            safeDocuments[k] = v;
+          }
+        }
+      }
+    }
+
+    const safeAttachments = ((application as any).attachments || []).map((att: any) => ({
+      id: att.id || att.storageId || `att_${Date.now()}`,
+      storageId: att.storageId || att.id,
+      name: att.name || 'document',
+      category: att.category || 'Dossier',
+      type: att.type || 'application/octet-stream',
+      size: att.size || 0,
+      url: att.url && !att.url.startsWith('data:') ? att.url : (att.storageId || ''),
+      uploadedAt: att.uploadedAt || new Date().toISOString(),
+      uploadedBy: att.uploadedBy || 'Agency'
+    }));
+
     const newStudyApp: StudyApplication = {
       ...application,
       id: appId,
@@ -594,6 +620,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
       paymentStatus: 'unpaid',
       submissionDate: new Date().toISOString(),
       status: "Pending",
+      documents: safeDocuments,
+      attachments: safeAttachments,
       timeline: [
         {
           id: `entry_${Date.now()}`,
@@ -628,7 +656,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         status: 'Pending',
         price: price,
         submissionDate: new Date().toISOString(),
-        attachments: (application as any).attachments || [],
+        attachments: safeAttachments,
         customFormData: {
           programId: application.programId,
           programTitle: application.programTitle,
@@ -637,7 +665,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
           city: application.city,
           email: application.email,
           phone: application.phone,
-          documents: application.documents || {}
+          documents: safeDocuments
         },
         timeline: newStudyApp.timeline
       }));

@@ -359,18 +359,23 @@ export default function StudyPrograms() {
       clearInterval(timer);
       setUploadProgress(100);
 
-      const fileData = uploadRes.dataUrl || uploadRes.url;
-      setDocuments(prev => ({ ...prev, [docName]: fileData }));
+      // Référence légère : URL physique /uploads/... ou identifiant cloud storageId
+      // Évite impérativement d'injecter des mégaoctets de base64 dans le document Firestore
+      const fileRef = uploadRes.url && uploadRes.url.startsWith("/uploads/") 
+        ? uploadRes.url 
+        : uploadRes.storageId;
+
+      setDocuments(prev => ({ ...prev, [docName]: fileRef }));
       setUploadedAttachments(prev => ({
         ...prev,
         [docName]: {
           id: uploadRes.storageId,
+          storageId: uploadRes.storageId,
           name: file.name,
           category: docName,
           type: file.type || (file.name.toLowerCase().endsWith(".pdf") ? "application/pdf" : "image/jpeg"),
           size: uploadRes.size,
-          dataUrl: uploadRes.dataUrl,
-          url: uploadRes.url,
+          url: fileRef,
           uploadedAt: new Date().toISOString(),
           uploadedBy: "Agency"
         }
@@ -425,10 +430,40 @@ export default function StudyPrograms() {
   const executeSubmission = async () => {
     if (!selectedProgram) return;
 
+    if (!auth.currentUser) {
+      toast.error("Connexion requise", "Veuillez vous connecter à votre compte agence pour soumettre ce dossier.");
+      return;
+    }
+
     setIsSubmitting(true);
     setMissingDocsModalOpen(false);
     try {
       const newRefId = `ETUD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+      // Nettoyer les documents pour garantir l'absence totale de chaîne base64 lourde
+      const cleanDocs: Record<string, string> = {};
+      Object.entries(documents).forEach(([key, val]) => {
+        if (typeof val === 'string') {
+          if (val.startsWith('data:')) {
+            const match = val.match(/att_\d+_[a-z0-9]+/);
+            cleanDocs[key] = match ? match[0] : (uploadedAttachments[key]?.storageId || `doc_${Date.now()}`);
+          } else {
+            cleanDocs[key] = val;
+          }
+        }
+      });
+
+      const cleanAttachments = Object.values(uploadedAttachments).map((att: any) => ({
+        id: att.id || att.storageId,
+        storageId: att.storageId || att.id,
+        name: att.name || 'document',
+        category: att.category || 'Dossier',
+        type: att.type || 'application/octet-stream',
+        size: att.size || 0,
+        url: att.url && !att.url.startsWith('data:') ? att.url : (att.storageId || ''),
+        uploadedAt: att.uploadedAt || new Date().toISOString(),
+        uploadedBy: att.uploadedBy || "Agency"
+      }));
 
       await addStudyApplication({
         id: newRefId,
@@ -437,8 +472,8 @@ export default function StudyPrograms() {
         country: selectedProgram.country,
         university: selectedProgram.university,
         city: selectedProgram.city || '',
-        agencyId: currentAgencyId,
-        agencyName: auth.currentUser?.email || "Mon Agence Partenaire",
+        agencyId: auth.currentUser.uid,
+        agencyName: auth.currentUser.email || "Mon Agence Partenaire",
         studentName: formData.studentName.trim(),
         passportNumber: formData.passportNumber.toUpperCase().trim(),
         email: formData.email.trim(),
@@ -447,8 +482,8 @@ export default function StudyPrograms() {
         price: selectedProgram.price || 0,
         paidAmount: 0,
         paymentStatus: 'unpaid',
-        documents: documents,
-        attachments: Object.values(uploadedAttachments),
+        documents: cleanDocs,
+        attachments: cleanAttachments,
         adminNotes: formData.notes?.trim() || ''
       } as any);
 
@@ -456,7 +491,12 @@ export default function StudyPrograms() {
       toast.success("Candidature enregistrée !", `Dossier #${newRefId} transmis à l'administration.`);
     } catch (err: any) {
       console.error("Erreur dépôt dossier études:", err);
-      toast.error("Erreur de soumission", "Une erreur est survenue lors de l'enregistrement du dossier.");
+      const detailMsg = err?.message?.includes("exceeds maximum")
+        ? "Les pièces justificatives dépassent la limite de stockage cloud. Veuillez compresser vos fichiers."
+        : (err?.code === "permission-denied"
+          ? "Permission refusée par le serveur. Veuillez réactualiser votre session."
+          : (err?.message || "Une erreur est survenue lors de l'enregistrement du dossier."));
+      toast.error("Erreur de soumission", detailMsg);
     } finally {
       setIsSubmitting(false);
     }

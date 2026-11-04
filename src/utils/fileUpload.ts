@@ -80,7 +80,7 @@ export async function compressImageIfPossible(
  * Envoie le fichier vers le stockage universel :
  * 1. Enregistre dans la collection cloud Firestore 'attachments' (accessible partout, y compris Hostinger)
  * 2. Tente en parallèle l'API Node /uploads si disponible
- * 3. Retourne les métadonnées et le dataUrl intact sans URL 404 morte.
+ * 3. Retourne les métadonnées et un identifiant propre sans alourdir le document parent.
  */
 export async function uploadFileToServer(
   file: File, 
@@ -94,14 +94,14 @@ export async function uploadFileToServer(
   type: string;
   category: string;
 }> {
-  // 1. Compression optimisée (< 100 Ko pour les images)
+  // 1. Compression optimisée (< 120 Ko pour les images)
   const base64Data = file.type.startsWith("image/") 
     ? await compressImageIfPossible(file) 
     : await fileToBase64(file);
 
   const attId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
-  // 2. Mettre immédiatement en cache local
+  // 2. Mettre immédiatement en cache local pour affichage instantané
   attachmentMemoryCache.set(attId, base64Data);
   try {
     sessionStorage.setItem(`doc_${attId}`, base64Data);
@@ -109,17 +109,42 @@ export async function uploadFileToServer(
     // Quota sessionStorage dépassé, le cache mémoire prend le relais
   }
 
-  // 3. Sauvegarde dans le cloud Firestore 'attachments' (Universal Cloud Storage pour Hostinger)
+  // 3. Sauvegarde dans le cloud Firestore 'attachments'
   try {
-    await setDoc(doc(db, "attachments", attId), {
-      id: attId,
-      name: file.name,
-      type: file.type || "application/octet-stream",
-      size: file.size,
-      category: category,
-      data: base64Data,
-      createdAt: new Date().toISOString()
-    });
+    if (base64Data.length <= 700000) {
+      await setDoc(doc(db, "attachments", attId), {
+        id: attId,
+        name: file.name,
+        type: file.type || "application/octet-stream",
+        size: file.size,
+        category: category,
+        data: base64Data,
+        createdAt: new Date().toISOString()
+      });
+    } else {
+      // Pour les fichiers volumineux (> 700 Ko), stockage par morceaux dans la sous-collection chunks
+      const chunkSize = 450000;
+      const totalChunks = Math.ceil(base64Data.length / chunkSize);
+      await setDoc(doc(db, "attachments", attId), {
+        id: attId,
+        name: file.name,
+        type: file.type || "application/octet-stream",
+        size: file.size,
+        category: category,
+        isChunked: true,
+        chunkCount: totalChunks,
+        data: "",
+        createdAt: new Date().toISOString()
+      });
+
+      for (let i = 0; i < totalChunks; i++) {
+        const chunkStr = base64Data.substring(i * chunkSize, (i + 1) * chunkSize);
+        await setDoc(doc(db, "attachments", attId, "chunks", String(i)), {
+          index: i,
+          data: chunkStr
+        });
+      }
+    }
   } catch (firestoreErr) {
     console.warn("Avertissement sauvegarde Firestore attachment:", firestoreErr);
   }
@@ -128,7 +153,7 @@ export async function uploadFileToServer(
   let localServerUrl = "";
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1800);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     const res = await fetch("/api/upload-attachment", {
       method: "POST",
@@ -150,11 +175,13 @@ export async function uploadFileToServer(
       }
     }
   } catch (e) {
-    // Mode Hostinger normal sans backend Express disque
+    // Mode sans backend Express disque
   }
 
+  const cleanUrl = localServerUrl || `/attachments/${attId}`;
+
   return {
-    url: localServerUrl || base64Data,
+    url: cleanUrl,
     dataUrl: base64Data,
     storageId: attId,
     size: file.size,
@@ -174,6 +201,7 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
   // Cas 1 : Chaîne déjà en base64 Data URL
   if (typeof attachment === "string") {
     if (attachment.startsWith("data:")) return attachment;
+    if (attachment.startsWith("http") || attachment.startsWith("/uploads/")) return attachment;
     
     // Si c'est un identifiant storageId ou une URL relative /attachments/att_...
     const match = attachment.match(/att_\d+_[a-z0-9]+/);
@@ -187,17 +215,29 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
       }
       try {
         const snap = await getDoc(doc(db, "attachments", attId));
-        if (snap.exists() && snap.data().data) {
-          const data = snap.data().data;
-          attachmentMemoryCache.set(attId, data);
-          return data;
+        if (snap.exists()) {
+          const docData = snap.data();
+          if (docData.data) {
+            attachmentMemoryCache.set(attId, docData.data);
+            return docData.data;
+          } else if (docData.isChunked && docData.chunkCount) {
+            const chunkPromises = [];
+            for (let i = 0; i < docData.chunkCount; i++) {
+              chunkPromises.push(getDoc(doc(db, "attachments", attId, "chunks", String(i))));
+            }
+            const chunkSnaps = await Promise.all(chunkPromises);
+            const fullData = chunkSnaps.map(cs => (cs.exists() ? (cs.data()?.data || "") : "")).join("");
+            if (fullData) {
+              attachmentMemoryCache.set(attId, fullData);
+              return fullData;
+            }
+          }
         }
       } catch (err) {
         console.warn("Erreur lecture Firestore attachment:", err);
       }
     }
 
-    if (attachment.startsWith("http")) return attachment;
     return "";
   }
 
@@ -209,6 +249,11 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
 
   // Si attObj.url est déjà un data:
   if (attObj.url && typeof attObj.url === "string" && attObj.url.startsWith("data:")) {
+    return attObj.url;
+  }
+
+  // Si attObj.url est une URL HTTP ou /uploads/
+  if (attObj.url && typeof attObj.url === "string" && (attObj.url.startsWith("http") || attObj.url.startsWith("/uploads/"))) {
     return attObj.url;
   }
 
@@ -235,17 +280,30 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
 
     try {
       const snap = await getDoc(doc(db, "attachments", storageId));
-      if (snap.exists() && snap.data().data) {
-        const data = snap.data().data;
-        attachmentMemoryCache.set(storageId, data);
-        return data;
+      if (snap.exists()) {
+        const docData = snap.data();
+        if (docData.data) {
+          attachmentMemoryCache.set(storageId, docData.data);
+          return docData.data;
+        } else if (docData.isChunked && docData.chunkCount) {
+          const chunkPromises = [];
+          for (let i = 0; i < docData.chunkCount; i++) {
+            chunkPromises.push(getDoc(doc(db, "attachments", storageId, "chunks", String(i))));
+          }
+          const chunkSnaps = await Promise.all(chunkPromises);
+          const fullData = chunkSnaps.map(cs => (cs.exists() ? (cs.data()?.data || "") : "")).join("");
+          if (fullData) {
+            attachmentMemoryCache.set(storageId, fullData);
+            return fullData;
+          }
+        }
       }
     } catch (err) {
       console.warn("Erreur chargement document cloud:", err);
     }
   }
 
-  if (attObj.url && attObj.url.startsWith("http")) return attObj.url;
+  if (attObj.url && typeof attObj.url === "string" && attObj.url.startsWith("http")) return attObj.url;
   return "";
 }
 
