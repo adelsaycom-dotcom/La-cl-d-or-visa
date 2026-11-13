@@ -1,5 +1,5 @@
+import React, { useState, useMemo } from 'react';
 import { auth } from "../../src/firebase";
-import React, { useState } from 'react';
 import { useAppStore, OrganizedTrip, TripReservation } from '../../src/store/useAppStore';
 import { 
   MapPin, Calendar, DollarSign, Users, Search, Check, 
@@ -14,12 +14,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { getCountryFlag } from "../../src/utils/flags";
+import { TablePagination } from "../common/TablePagination";
 
 export default function OrganizedTrips() {
   const { language, t } = useLanguage();
   const isEn = language === "en";
 
-  const { organizedTrips, tripReservations, addTripReservation, agencyBalance } = useAppStore();
+  const organizedTrips = useAppStore(state => state.organizedTrips);
+  const tripReservations = useAppStore(state => state.tripReservations);
+  const addTripReservation = useAppStore(state => state.addTripReservation);
+  const agencyBalance = useAppStore(state => state.agencyBalance);
   const currentAgencyId = auth.currentUser?.uid || 'agency_1';
 
   const [activeTab, setActiveTab] = useState<'catalog' | 'my-reservations'>('catalog');
@@ -35,6 +39,8 @@ export default function OrganizedTrips() {
   const [lastBookedId, setLastBookedId] = useState<string | null>(null);
   const [copiedRef, setCopiedRef] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [catalogPage, setCatalogPage] = useState(1);
+  const [resPage, setResPage] = useState(1);
 
   // Form State
   const [clientName, setClientName] = useState('');
@@ -45,22 +51,50 @@ export default function OrganizedTrips() {
   const [customFormData, setCustomFormData] = useState<Record<string, any>>({});
   const [passengers, setPassengers] = useState(Array.from({ length: 1 }, () => ({ firstName: '', lastName: '', passportNumber: '' })));
 
-  const activeTrips = (organizedTrips || []).filter(t => t.status === 'active' || !t.status);
-  const filteredTrips = activeTrips.filter(t => 
-    t.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    t.destination.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtrage mémoïsé des voyages actifs
+  const filteredTrips = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return (organizedTrips || [])
+      .filter(t => t.status === 'active' || !t.status)
+      .filter(t => !term || t.title.toLowerCase().includes(term) || t.destination.toLowerCase().includes(term));
+  }, [organizedTrips, searchTerm]);
 
-  // Réservations de l'agence connectée
-  const myReservations = (tripReservations || []).filter(r => 
-    r.agencyId === currentAgencyId || r.agencyName === auth.currentUser?.email
-  ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const catalogPageSize = 6;
+  const catalogTotalPages = Math.max(1, Math.ceil(filteredTrips.length / catalogPageSize));
+  const safeCatalogPage = Math.min(Math.max(1, catalogPage), catalogTotalPages);
 
-  // Nombre de places réservées par cette agence pour un voyage spécifique
+  const paginatedTrips = useMemo(() => {
+    const start = (safeCatalogPage - 1) * catalogPageSize;
+    return filteredTrips.slice(start, start + catalogPageSize);
+  }, [filteredTrips, safeCatalogPage, catalogPageSize]);
+
+  // Réservations mémoïsées de l'agence connectée
+  const myReservations = useMemo(() => {
+    return (tripReservations || [])
+      .filter(r => r.agencyId === currentAgencyId || r.agencyName === auth.currentUser?.email)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [tripReservations, currentAgencyId]);
+
+  const resPageSize = 6;
+  const resTotalPages = Math.max(1, Math.ceil(myReservations.length / resPageSize));
+  const paginatedReservations = useMemo(() => {
+    const start = (resPage - 1) * resPageSize;
+    return myReservations.slice(start, start + resPageSize);
+  }, [myReservations, resPage, resPageSize]);
+
+  // Indexation O(N) des places réservées par cette agence pour chaque voyage
+  const bookedSeatsMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const r of myReservations) {
+      if (r.status !== 'cancelled') {
+        map[r.tripId] = (map[r.tripId] || 0) + (r.numberOfPeople || 0);
+      }
+    }
+    return map;
+  }, [myReservations]);
+
   const getBookedSeatsForTrip = (tripId: string) => {
-    return myReservations
-      .filter(r => r.tripId === tripId && r.status !== 'cancelled')
-      .reduce((sum, r) => sum + (r.numberOfPeople || 0), 0);
+    return bookedSeatsMap[tripId] || 0;
   };
 
   const handleOpenBooking = (trip: OrganizedTrip) => {
@@ -297,7 +331,7 @@ export default function OrganizedTrips() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTrips.map(trip => {
+            {paginatedTrips.map(trip => {
               const bookedSeats = getBookedSeatsForTrip(trip.id);
 
               return (
@@ -397,6 +431,16 @@ export default function OrganizedTrips() {
               <p className="text-xs text-slate-500 mt-1">{isEn ? "No tour matching your search." : "Aucun voyage ne correspond à votre recherche."}</p>
             </div>
           )}
+
+          {/* Pagination du catalogue */}
+          <TablePagination
+            currentPage={safeCatalogPage}
+            totalPages={catalogTotalPages}
+            totalCount={filteredTrips.length}
+            pageSize={catalogPageSize}
+            onPageChange={setCatalogPage}
+            className="rounded-2xl border border-slate-200 shadow-xs"
+          />
         </div>
       )}
 
@@ -445,97 +489,110 @@ export default function OrganizedTrips() {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {myReservations.map(res => {
-                const trip = (organizedTrips || []).find(t => t.id === res.tripId);
-                const isRecentlyBooked = res.id === lastBookedId;
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {paginatedReservations.map(res => {
+                  const trip = (organizedTrips || []).find(t => t.id === res.tripId);
+                  const isRecentlyBooked = res.id === lastBookedId;
 
-                return (
-                  <div 
-                    key={res.id} 
-                    className={`bg-white rounded-3xl border p-6 shadow-sm transition-all flex flex-col justify-between ${
-                      isRecentlyBooked 
-                        ? 'border-2 border-emerald-500 shadow-md ring-4 ring-emerald-50' 
-                        : 'border-slate-200 hover:border-[#7B1B38]/30'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex justify-between items-start gap-2 mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg">Réf: {res.id}</span>
-                          {isRecentlyBooked && (
-                            <Badge className="bg-emerald-500 text-white border-0 font-bold text-[10px] animate-pulse">
-                              {isEn ? "New" : "Nouvelle Réservation"}
-                            </Badge>
+                  return (
+                    <div 
+                      key={res.id} 
+                      className={`bg-white rounded-3xl border p-6 shadow-sm transition-all flex flex-col justify-between ${
+                        isRecentlyBooked 
+                          ? 'border-2 border-emerald-500 shadow-md ring-4 ring-emerald-50' 
+                          : 'border-slate-200 hover:border-[#7B1B38]/30'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex justify-between items-start gap-2 mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg">Réf: {res.id}</span>
+                            {isRecentlyBooked && (
+                              <Badge className="bg-emerald-500 text-white border-0 font-bold text-[10px] animate-pulse">
+                                {isEn ? "New" : "Nouvelle Réservation"}
+                              </Badge>
+                            )}
+                          </div>
+                          <Badge className={
+                            res.status === 'confirmed' 
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-200 font-bold text-xs' 
+                              : res.status === 'cancelled'
+                              ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold text-xs'
+                              : 'bg-amber-100 text-amber-800 border-amber-200 font-bold text-xs'
+                          }>
+                            {res.status === 'confirmed' 
+                              ? (isEn ? "Confirmed" : "Confirmée") 
+                              : res.status === 'cancelled'
+                              ? (isEn ? "Cancelled" : "Annulée")
+                              : (isEn ? "Pending Admin Approval" : "En attente de confirmation")}
+                          </Badge>
+                        </div>
+
+                        <h3 className="text-base font-black text-slate-900 mb-1">
+                          {trip ? trip.title : (isEn ? "Organized Tour" : "Circuit Organisé")}
+                        </h3>
+                        <p className="text-xs text-slate-500 font-medium mb-4 flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-[#7B1B38]" /> {trip?.destination || "Destination internationale"}
+                          {trip?.startDate && (
+                            <span className="text-slate-400">• Départ : {new Date(trip.startDate).toLocaleDateString()}</span>
+                          )}
+                        </p>
+
+                        <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100 space-y-2 mb-4 text-xs">
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500 font-medium">{isEn ? "Lead Traveler" : "Contact / Responsable"} :</span>
+                            <span className="font-bold text-slate-800">{res.clientName}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500 font-medium">{isEn ? "Travelers Count" : "Nombre de personnes"} :</span>
+                            <span className="font-black text-[#7B1B38] font-mono">{res.numberOfPeople} pers.</span>
+                          </div>
+                          {res.passengerNames && res.passengerNames.length > 0 && (
+                            <div className="pt-2 border-t border-slate-200/60">
+                              <span className="text-slate-500 font-medium block mb-1">{isEn ? "Travelers list:" : "Liste des voyageurs :"}</span>
+                              <div className="flex flex-wrap gap-1">
+                                {res.passengerNames.map((pName, pIdx) => (
+                                  <span key={pIdx} className="bg-white px-2 py-0.5 rounded-lg border border-slate-200 text-[11px] font-semibold text-slate-700">
+                                    {pName}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
                           )}
                         </div>
-                        <Badge className={
-                          res.status === 'confirmed' 
-                            ? 'bg-emerald-100 text-emerald-800 border-emerald-200 font-bold text-xs' 
-                            : res.status === 'cancelled'
-                            ? 'bg-rose-100 text-rose-800 border-rose-200 font-bold text-xs'
-                            : 'bg-amber-100 text-amber-800 border-amber-200 font-bold text-xs'
-                        }>
-                          {res.status === 'confirmed' 
-                            ? (isEn ? "Confirmed" : "Confirmée") 
-                            : res.status === 'cancelled'
-                            ? (isEn ? "Cancelled" : "Annulée")
-                            : (isEn ? "Pending Admin Approval" : "En attente de confirmation")}
-                        </Badge>
                       </div>
 
-                      <h3 className="text-base font-black text-slate-900 mb-1">
-                        {trip ? trip.title : (isEn ? "Organized Tour" : "Circuit Organisé")}
-                      </h3>
-                      <p className="text-xs text-slate-500 font-medium mb-4 flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-[#7B1B38]" /> {trip?.destination || "Destination internationale"}
-                        {trip?.startDate && (
-                          <span className="text-slate-400">• Départ : {new Date(trip.startDate).toLocaleDateString()}</span>
-                        )}
-                      </p>
-
-                      <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100 space-y-2 mb-4 text-xs">
-                        <div className="flex justify-between items-center">
-                          <span className="text-slate-500 font-medium">{isEn ? "Lead Traveler" : "Contact / Responsable"} :</span>
-                          <span className="font-bold text-slate-800">{res.clientName}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-slate-500 font-medium">{isEn ? "Travelers Count" : "Nombre de personnes"} :</span>
-                          <span className="font-black text-[#7B1B38] font-mono">{res.numberOfPeople} pers.</span>
-                        </div>
-                        {res.passengerNames && res.passengerNames.length > 0 && (
-                          <div className="pt-2 border-t border-slate-200/60">
-                            <span className="text-slate-500 font-medium block mb-1">{isEn ? "Travelers list:" : "Liste des voyageurs :"}</span>
-                            <div className="flex flex-wrap gap-1">
-                              {res.passengerNames.map((pName, pIdx) => (
-                                <span key={pIdx} className="bg-white px-2 py-0.5 rounded-lg border border-slate-200 text-[11px] font-semibold text-slate-700">
-                                  {pName}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                      <div className="pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handlePrintReceipt(res, trip || null)}
+                          className="text-xs font-bold text-slate-600 hover:text-slate-900 gap-1.5 h-8 px-2.5 rounded-xl hover:bg-slate-100"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>{isEn ? "Print Voucher" : "Imprimer le reçu"}</span>
+                        </Button>
+                        <span className="font-black text-[#7B1B38] text-sm font-mono">
+                          {res.totalPrice?.toLocaleString()} DZD
+                        </span>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
 
-                    <div className="pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handlePrintReceipt(res, trip || null)}
-                        className="text-xs font-bold text-slate-600 hover:text-slate-900 gap-1.5 h-8 px-2.5 rounded-xl hover:bg-slate-100"
-                      >
-                        <Printer className="w-3.5 h-3.5" />
-                        <span>{isEn ? "Print Voucher" : "Imprimer le reçu"}</span>
-                      </Button>
-                      <span className="font-black text-[#7B1B38] text-sm font-mono">
-                        {res.totalPrice?.toLocaleString()} DZD
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+              {myReservations.length > resPageSize && (
+                <TablePagination
+                  currentPage={resPage}
+                  totalPages={resTotalPages}
+                  totalCount={myReservations.length}
+                  pageSize={resPageSize}
+                  onPageChange={setResPage}
+                  className="rounded-2xl border border-slate-200 shadow-xs"
+                />
+              )}
             </div>
           )}
         </div>

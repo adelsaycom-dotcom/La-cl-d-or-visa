@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { useAppStore, Application } from "../../src/store/useAppStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,14 +12,17 @@ import { uploadFileToServer, downloadFileSafe, resolveAttachmentData } from "../
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { AttachmentThumbnail } from "../common/AttachmentThumbnail";
 import { DocumentPreviewModal, PreviewDocData } from "../common/DocumentPreviewModal";
+import { useApplicationFilters } from "../../src/hooks/useApplicationFilters";
+import { TablePagination } from "../common/TablePagination";
 
 export function AgencyApplications() {
   const { language, t } = useLanguage();
   const isEn = language === "en";
 
-  const { applications, updateApplication, addApplicationTimelineEntry } = useAppStore();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filter, setFilter] = useState("ALL");
+  const applications = useAppStore(state => state.applications);
+  const updateApplication = useAppStore(state => state.updateApplication);
+  const addApplicationTimelineEntry = useAppStore(state => state.addApplicationTimelineEntry);
+
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [replyMessage, setReplyMessage] = useState("");
   const [previewDoc, setPreviewDoc] = useState<PreviewDocData | null>(null);
@@ -29,9 +32,29 @@ export function AgencyApplications() {
   const [missingDocCategory, setMissingDocCategory] = useState(isEn ? "Additional Supporting Document" : "Complément de dossier");
   const missingDocInputRef = useRef<HTMLInputElement>(null);
 
-  const selectedApp = applications.find(a => a.id === selectedAppId);
+  // Hook dédié de filtrage et pagination fenêtrée (9 cartes par page)
+  const {
+    searchTerm,
+    setSearchTerm,
+    statusFilter,
+    setStatusFilter,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    totalCount,
+    paginatedApplications,
+    filteredApplications,
+    statusCounts
+  } = useApplicationFilters({
+    applications,
+    pageSize: 9
+  });
 
-  const getStatusBadge = (status: string) => {
+  const selectedApp = useMemo(() => {
+    return applications.find(a => a.id === selectedAppId);
+  }, [applications, selectedAppId]);
+
+  const getStatusBadge = useCallback((status: string) => {
     switch (status) {
       case "Approved": return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200 font-bold"><CheckCircle2 className="w-3.5 h-3.5 mr-1" /> {isEn ? "Approved" : "Approuvée"}</Badge>;
       case "Rejected": return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-red-200 font-bold"><XCircle className="w-3.5 h-3.5 mr-1" /> {isEn ? "Rejected" : "Rejetée"}</Badge>;
@@ -39,9 +62,9 @@ export function AgencyApplications() {
       case "ActionRequired": return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 font-bold"><AlertCircle className="w-3.5 h-3.5 mr-1 animate-pulse" /> {isEn ? "Action Required" : "Action Requise"}</Badge>;
       default: return <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 border-slate-200 font-bold"><Clock className="w-3.5 h-3.5 mr-1" /> {isEn ? "Pending" : "En attente"}</Badge>;
     }
-  };
+  }, [isEn]);
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case "Approved": return "border-l-4 border-l-emerald-500";
       case "Rejected": return "border-l-4 border-l-red-500";
@@ -49,16 +72,7 @@ export function AgencyApplications() {
       case "ActionRequired": return "border-l-4 border-l-amber-500";
       default: return "border-l-4 border-l-slate-300";
     }
-  };
-
-  const filteredApps = applications.filter(app => {
-    const tName = (app.travelerName || (app as any).applicantName || "").toLowerCase();
-    const pNumber = (app.passportNumber || "").toLowerCase();
-    const matchesSearch = tName.includes(searchTerm.toLowerCase()) || 
-                          pNumber.includes(searchTerm.toLowerCase());
-    const matchesFilter = filter === "ALL" || app.status === filter;
-    return matchesSearch && matchesFilter;
-  });
+  }, []);
 
   const handleSendMessage = async () => {
     if (!selectedApp || !replyMessage.trim()) return;
@@ -89,8 +103,8 @@ export function AgencyApplications() {
   const isImageBase64 = (str: any) => typeof str === 'string' && (str.startsWith('data:image/') || str.endsWith('.png') || str.endsWith('.jpg') || str.endsWith('.jpeg'));
   const isPdfBase64 = (str: any) => typeof str === 'string' && (str.startsWith('data:application/pdf') || str.endsWith('.pdf'));
 
-  // Extraction propre des pièces jointes du dossier
-  const getAttachmentsList = () => {
+  // Extraction mémoïsée des pièces jointes du dossier
+  const appAttachments = useMemo(() => {
     if (!selectedApp) return [];
     const list: Array<{ id: string; name: string; category: string; type: string; size?: number; dataUrl: string; url?: string; storageId?: string }> = [];
 
@@ -136,7 +150,7 @@ export function AgencyApplications() {
     }
 
     return list;
-  };
+  }, [selectedApp]);
 
   // Téléversement d'un document manquant si ActionRequired
   const handleUploadMissingDoc = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,7 +202,6 @@ export function AgencyApplications() {
     }
   };
 
-  const appAttachments = getAttachmentsList();
   const applicantDetails = selectedApp?.customFormData?.applicantDetails;
 
   // Vue Détails Dossier
@@ -533,83 +546,105 @@ export function AgencyApplications() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
-        {['ALL', 'ActionRequired', 'Processing', 'Approved', 'Pending', 'Rejected'].map(status => (
-          <button
-            key={status}
-            onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all whitespace-nowrap ${
-              filter === status 
-                ? 'bg-[#7B1B38] text-white shadow-md shadow-[#7B1B38]/20' 
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            {status === 'ALL' 
-              ? (isEn ? 'All Applications' : 'Tous les dossiers')
-              : status === 'ActionRequired' 
-              ? (isEn ? 'Action Required' : 'Action Requise')
-              : status === 'Processing' 
-              ? (isEn ? 'In Progress' : 'En cours')
-              : status === 'Approved' 
-              ? (isEn ? 'Approved' : 'Approuvés')
-              : status === 'Pending' 
-              ? (isEn ? 'Pending' : 'En attente')
-              : (isEn ? 'Rejected' : 'Rejetés')}
-          </button>
-        ))}
+        {(['ALL', 'ActionRequired', 'Processing', 'Approved', 'Pending', 'Rejected'] as const).map(status => {
+          const count = statusCounts[status] || 0;
+          return (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition-all whitespace-nowrap flex items-center gap-2 ${
+                statusFilter === status 
+                  ? 'bg-[#7B1B38] text-white shadow-md shadow-[#7B1B38]/20' 
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <span>
+                {status === 'ALL' 
+                  ? (isEn ? 'All Applications' : 'Tous les dossiers')
+                  : status === 'ActionRequired' 
+                  ? (isEn ? 'Action Required' : 'Action Requise')
+                  : status === 'Processing' 
+                  ? (isEn ? 'In Progress' : 'En cours')
+                  : status === 'Approved' 
+                  ? (isEn ? 'Approved' : 'Approuvés')
+                  : status === 'Pending' 
+                  ? (isEn ? 'Pending' : 'En attente')
+                  : (isEn ? 'Rejected' : 'Rejetés')}
+              </span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+                statusFilter === status ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
+              }`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {filteredApps.length === 0 ? (
+      {paginatedApplications.length === 0 ? (
         <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center text-slate-500">
           <FileText className="w-12 h-12 mx-auto mb-4 text-slate-300" />
           <h3 className="text-lg font-black text-slate-800">{isEn ? "No applications found" : "Aucun dossier trouvé"}</h3>
           <p className="text-xs text-slate-500 mt-1">{isEn ? "No applications match your current search criteria." : "Aucune demande ne correspond à vos critères de recherche actuels."}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredApps.map(app => (
-            <div 
-              key={app.id} 
-              onClick={() => setSelectedAppId(app.id)}
-              className={`bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:border-[#7B1B38]/40 hover:shadow-lg transition-all cursor-pointer relative overflow-hidden flex flex-col ${getStatusColor(app.status)}`}
-            >
-              <div className="flex justify-between items-start mb-4">
-                <span className="font-mono text-xs font-bold text-slate-400">{app.id}</span>
-                {getStatusBadge(app.status)}
-              </div>
-
-              <div className="mb-4">
-                <h3 className="text-lg font-black text-slate-900 group-hover:text-[#7B1B38] transition-colors">
-                  {app.travelerName || (app as any).applicantName || (isEn ? "Traveler" : "Voyageur")}
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5 font-semibold">
-                  {isEn ? "Passport: " : "Passeport : "}<span className="font-mono text-slate-800">{app.passportNumber}</span>
-                </p>
-              </div>
-
-              <div className="bg-slate-50 rounded-2xl p-3 text-xs mb-4 flex justify-between items-center border border-slate-100">
-                <span className="font-bold text-slate-700">{app.serviceType} • {app.country}</span>
-                <span className="font-black text-[#7B1B38] font-mono">{app.price?.toLocaleString()} DZD</span>
-              </div>
-
-              {/* Indicateur Visa disponible */}
-              {app.finalDocument && (
-                <div className="mb-4 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 flex items-center justify-between text-xs text-emerald-800 font-bold">
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> {isEn ? "Issued visa available" : "Visa délivré disponible"}
-                  </span>
-                  <Download className="w-3.5 h-3.5 text-emerald-600" />
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {paginatedApplications.map(app => (
+              <div 
+                key={app.id} 
+                onClick={() => setSelectedAppId(app.id)}
+                className={`bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:border-[#7B1B38]/40 hover:shadow-lg transition-all cursor-pointer relative overflow-hidden flex flex-col ${getStatusColor(app.status)}`}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <span className="font-mono text-xs font-bold text-slate-400">{app.id}</span>
+                  {getStatusBadge(app.status)}
                 </div>
-              )}
 
-              <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                <span className="text-slate-400 font-medium">{new Date(app.submissionDate).toLocaleDateString()}</span>
-                <span className="font-bold text-[#7B1B38] flex items-center gap-1">
-                  {isEn ? "Open application" : "Ouvrir le dossier"} &rarr;
-                </span>
+                <div className="mb-4">
+                  <h3 className="text-lg font-black text-slate-900 group-hover:text-[#7B1B38] transition-colors">
+                    {app.travelerName || (app as unknown as { applicantName?: string }).applicantName || (isEn ? "Traveler" : "Voyageur")}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5 font-semibold">
+                    {isEn ? "Passport: " : "Passeport : "}<span className="font-mono text-slate-800">{app.passportNumber}</span>
+                  </p>
+                </div>
+
+                <div className="bg-slate-50 rounded-2xl p-3 text-xs mb-4 flex justify-between items-center border border-slate-100">
+                  <span className="font-bold text-slate-700">{app.serviceType} • {app.country}</span>
+                  <span className="font-black text-[#7B1B38] font-mono">{app.price?.toLocaleString()} DZD</span>
+                </div>
+
+                {/* Indicateur Visa disponible */}
+                {app.finalDocument && (
+                  <div className="mb-4 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 flex items-center justify-between text-xs text-emerald-800 font-bold">
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" /> {isEn ? "Issued visa available" : "Visa délivré disponible"}
+                    </span>
+                    <Download className="w-3.5 h-3.5 text-emerald-600" />
+                  </div>
+                )}
+
+                <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-medium">{new Date(app.submissionDate).toLocaleDateString()}</span>
+                  <span className="font-bold text-[#7B1B38] flex items-center gap-1">
+                    {isEn ? "Open application" : "Ouvrir le dossier"} &rarr;
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+
+          {/* Pagination fenêtrée des dossiers de l'agence */}
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={9}
+            onPageChange={setCurrentPage}
+            className="rounded-2xl border border-slate-200 shadow-xs"
+          />
+        </>
       )}
     </div>
   );

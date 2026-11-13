@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAppStore, OrganizedTrip, TripReservation } from '../../src/store/useAppStore';
 import { Plus, Edit, Trash2, Users, MapPin, Calendar, DollarSign, Search, Image as ImageIcon, ChevronRight, Star } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -9,22 +9,86 @@ import { Textarea } from '../ui/textarea';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { useLanguage } from '../../src/i18n/LanguageContext';
+import { TablePagination } from '../common/TablePagination';
 
 export default function OrganizedTripsManagement() {
   const { language, t } = useLanguage();
   const isEn = language === "en";
 
-  const { organizedTrips, tripReservations, addOrganizedTrip, updateOrganizedTrip, deleteOrganizedTrip, updateTripReservationStatus, updateTripReservationPayment } = useAppStore();
+  const organizedTrips = useAppStore(state => state.organizedTrips);
+  const tripReservations = useAppStore(state => state.tripReservations);
+  const addOrganizedTrip = useAppStore(state => state.addOrganizedTrip);
+  const updateOrganizedTrip = useAppStore(state => state.updateOrganizedTrip);
+  const deleteOrganizedTrip = useAppStore(state => state.deleteOrganizedTrip);
+  const updateTripReservationStatus = useAppStore(state => state.updateTripReservationStatus);
+  const updateTripReservationPayment = useAppStore(state => state.updateTripReservationPayment);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<OrganizedTrip | null>(null);
   const [isReservationsOpen, setIsReservationsOpen] = useState(false);
   const [editingTripId, setEditingTripId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [newTrip, setNewTrip] = useState<Partial<OrganizedTrip>>({
     title: '', destination: '', description: '', photoUrl: '', totalSeats: 0, price: 0, startDate: '', endDate: '', status: 'active', customFormFields: []
   });
+
+  const filteredTrips = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return (organizedTrips || []).filter(t => {
+      const matchesSearch = !term || t.title.toLowerCase().includes(term) || t.destination.toLowerCase().includes(term);
+      const matchesStatus = statusFilter === 'all' || (t.status || 'active') === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [organizedTrips, searchTerm, statusFilter]);
+
+  const pageSize = 6;
+  const totalPages = Math.max(1, Math.ceil(filteredTrips.length / pageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedTrips = useMemo(() => {
+    const start = (safePage - 1) * pageSize;
+    return filteredTrips.slice(start, start + pageSize);
+  }, [filteredTrips, safePage, pageSize]);
+
+  // Indexation O(N) des réservations par voyage pour éviter les calculs imbriqués dans le rendu
+  const reservationsByTripMap = useMemo(() => {
+    const map: Record<string, { total: number; confirmed: number; list: TripReservation[] }> = {};
+    for (const r of tripReservations || []) {
+      if (!map[r.tripId]) {
+        map[r.tripId] = { total: 0, confirmed: 0, list: [] };
+      }
+      map[r.tripId].list.push(r);
+      if (r.status !== 'cancelled') {
+        map[r.tripId].total += (r.numberOfPeople || 0);
+        if (r.status === 'confirmed') {
+          map[r.tripId].confirmed += (r.numberOfPeople || 0);
+        }
+      }
+    }
+    return map;
+  }, [tripReservations]);
+
+  // Statistiques financières du voyage sélectionné
+  const selectedTripStats = useMemo(() => {
+    if (!selectedTrip) return { expectedTotal: 0, paidTotal: 0, balance: 0, reservations: [] };
+    const tripData = reservationsByTripMap[selectedTrip.id];
+    const reservations = (tripData?.list || []).filter(r => r.status !== 'cancelled');
+    let expectedTotal = 0;
+    let paidTotal = 0;
+    for (const r of reservations) {
+      expectedTotal += r.totalPrice;
+      paidTotal += (r.paidAmount || 0);
+    }
+    return {
+      expectedTotal,
+      paidTotal,
+      balance: expectedTotal - paidTotal,
+      reservations
+    };
+  }, [selectedTrip, reservationsByTripMap]);
 
   
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,14 +173,8 @@ export default function OrganizedTripsManagement() {
     setIsAddOpen(true);
   };
 
-  const filteredTrips = (organizedTrips || []).filter(t => {
-    const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase()) || t.destination.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || (t.status || 'active') === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
   const getTripReservations = (tripId: string) => {
-    return tripReservations.filter(r => r.tripId === tripId);
+    return reservationsByTripMap[tripId]?.list || [];
   };
 
   return (
@@ -273,9 +331,10 @@ export default function OrganizedTripsManagement() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredTrips.map(trip => {
-          const tripRes = getTripReservations(trip.id);
-          const totalReserved = tripRes.reduce((acc, r) => r.status !== 'cancelled' ? acc + r.numberOfPeople : acc, 0);
+        {paginatedTrips.map(trip => {
+          const tripResData = reservationsByTripMap[trip.id] || { total: 0, confirmed: 0, list: [] };
+          const totalReserved = tripResData.total;
+          const tripRes = tripResData.list;
           const occupancyPercentage = Math.round((totalReserved / trip.totalSeats) * 100) || 0;
 
           return (
@@ -288,7 +347,7 @@ export default function OrganizedTripsManagement() {
                     <ImageIcon className="w-12 h-12 text-slate-300" />
                   </div>
                 )}
-                                <div className="absolute top-3 left-3 flex gap-2">
+                <div className="absolute top-3 left-3 flex gap-2">
                   <Badge className={trip.status === 'active' ? 'bg-green-500' : trip.status === 'draft' ? 'bg-slate-500' : 'bg-blue-500'}>
                     {trip.status === 'active' 
                       ? (isEn ? 'Published' : 'Publié') 
@@ -323,7 +382,7 @@ export default function OrganizedTripsManagement() {
                     variant="ghost" 
                     size="icon" 
                     className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm text-slate-600 hover:bg-red-50 hover:text-red-600 shadow-sm"
-                    onClick={(e) => {
+                    onClick={() => {
                       if(window.confirm(isEn ? 'Do you really want to delete this trip?' : 'Voulez-vous vraiment supprimer ce voyage ?')) deleteOrganizedTrip(trip.id);
                     }}
                   >
@@ -378,6 +437,7 @@ export default function OrganizedTripsManagement() {
           );
         })}
       </div>
+
       {filteredTrips.length === 0 && (
         <div className="text-center py-12 bg-white rounded-xl border border-slate-100">
           <MapPin className="w-12 h-12 text-slate-300 mx-auto mb-3" />
@@ -390,6 +450,16 @@ export default function OrganizedTripsManagement() {
         </div>
       )}
 
+      {/* Pagination des voyages organisés */}
+      <TablePagination
+        currentPage={safePage}
+        totalPages={totalPages}
+        totalCount={filteredTrips.length}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
+        className="rounded-xl border border-slate-200"
+      />
+
       {/* Reservations Modal */}
       <Dialog open={isReservationsOpen} onOpenChange={setIsReservationsOpen}>
         <DialogContent className="w-[95vw] sm:max-w-4xl md:max-w-5xl bg-white max-h-[95vh] overflow-hidden flex flex-col">
@@ -400,31 +470,20 @@ export default function OrganizedTripsManagement() {
           <div className="flex-1 overflow-y-auto min-h-0 p-1">
             <div className="space-y-6 pr-4">
               {selectedTrip && (
-                <>
-                  {(() => {
-                    const reservations = getTripReservations(selectedTrip.id).filter(r => r.status !== 'cancelled');
-                    const expectedTotal = reservations.reduce((acc, r) => acc + r.totalPrice, 0);
-                    const paidTotal = reservations.reduce((acc, r) => acc + (r.paidAmount || 0), 0);
-                    const balance = expectedTotal - paidTotal;
-                    
-                    return (
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                          <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">Total Attendu</p>
-                          <p className="text-2xl font-black text-blue-900 mt-1">{expectedTotal.toLocaleString()} DZD</p>
-                        </div>
-                        <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-                          <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Total Encaissé</p>
-                          <p className="text-2xl font-black text-emerald-900 mt-1">{paidTotal.toLocaleString()} DZD</p>
-                        </div>
-                        <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
-                          <p className="text-xs font-bold text-amber-600 uppercase tracking-wider">Reste à percevoir</p>
-                          <p className="text-2xl font-black text-amber-900 mt-1">{balance.toLocaleString()} DZD</p>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                    <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">Total Attendu</p>
+                    <p className="text-2xl font-black text-blue-900 mt-1">{selectedTripStats.expectedTotal.toLocaleString()} DZD</p>
+                  </div>
+                  <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+                    <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Total Encaissé</p>
+                    <p className="text-2xl font-black text-emerald-900 mt-1">{selectedTripStats.paidTotal.toLocaleString()} DZD</p>
+                  </div>
+                  <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
+                    <p className="text-xs font-bold text-amber-600 uppercase tracking-wider">Reste à percevoir</p>
+                    <p className="text-2xl font-black text-amber-900 mt-1">{selectedTripStats.balance.toLocaleString()} DZD</p>
+                  </div>
+                </div>
               )}
 
               {selectedTrip && getTripReservations(selectedTrip.id).length > 0 ? (

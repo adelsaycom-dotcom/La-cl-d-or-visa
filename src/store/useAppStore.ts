@@ -24,6 +24,7 @@ export interface Agency {
 import { create } from "zustand";
 import { collection, doc, setDoc, updateDoc, deleteDoc, runTransaction, writeBatch, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
+import { catalogService } from '../services/catalogService';
 
 export function sanitizeFirestoreData<T>(data: T): T {
   if (data === null || data === undefined) {
@@ -290,6 +291,9 @@ export interface AppState {
   setB2cMarginPercent: (percent: number) => void;
   updateAgency: (id: string, updates: Partial<Agency>) => Promise<void>;
 
+  quotaExceeded: boolean;
+  setQuotaExceeded: (exceeded: boolean) => void;
+
   addApplication: (application: Application) => void;
   updateApplicationStatus: (id: string, status: Application["status"]) => void;
   updateApplication: (id: string, updates: Partial<Application>) => void;
@@ -298,6 +302,9 @@ export interface AppState {
 }
 
 export const useAppStore = create<AppState>()((set, get) => ({
+  quotaExceeded: false,
+  setQuotaExceeded: (exceeded) => set({ quotaExceeded: exceeded }),
+
   currentAgency: null,
   setCurrentAgency: (agency) => set({ currentAgency: agency }),
   b2cMode: false,
@@ -423,12 +430,15 @@ export const useAppStore = create<AppState>()((set, get) => ({
   addService: async (s) => {
     const sId = s.id || doc(collection(db, 'services')).id;
     await setDoc(doc(db, 'services', sId), sanitizeFirestoreData({ ...s, id: sId }));
+    catalogService.invalidateCache('services');
   },
   updateService: async (id, s) => {
     await updateDoc(doc(db, 'services', id), sanitizeFirestoreData(s));
+    catalogService.invalidateCache('services');
   },
   deleteService: async (id) => {
     await deleteDoc(doc(db, 'services', id));
+    catalogService.invalidateCache('services');
   },
 
   addOrganizedTrip: async (tripData) => {
@@ -439,14 +449,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
       createdAt: new Date().toISOString(),
       availableSeats: tripData.totalSeats,
     });
+    catalogService.invalidateCache('organizedTrips');
   },
 
   updateOrganizedTrip: async (id, tripData) => {
     await updateDoc(doc(db, 'organizedTrips', id), tripData);
+    catalogService.invalidateCache('organizedTrips');
   },
 
   deleteOrganizedTrip: async (id) => {
     await deleteDoc(doc(db, 'organizedTrips', id));
+    catalogService.invalidateCache('organizedTrips');
   },
 
   addTripReservation: async (resData) => {
@@ -471,57 +484,45 @@ export const useAppStore = create<AppState>()((set, get) => ({
     };
 
     const sanitized = sanitizeFirestoreData(newReservation);
-    await setDoc(doc(db, 'tripReservations', resId), sanitized);
+    const updatedSeats = Math.max(0, trip.availableSeats - resData.numberOfPeople);
+    const notifAdminRef = doc(collection(db, 'notifications'));
+    const notifAgencyRef = doc(collection(db, 'notifications'));
+
+    // Écriture groupée atomique (writeBatch)
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'tripReservations', resId), sanitized);
+    batch.update(doc(db, 'organizedTrips', resData.tripId), { availableSeats: updatedSeats });
+    batch.set(notifAdminRef, {
+      id: notifAdminRef.id,
+      agencyId: 'admin',
+      title: 'Nouvelle réservation Voyage Organisé',
+      message: `${resData.agencyName || 'Une agence'} a réservé ${resData.numberOfPeople} place(s) pour « ${trip.title} » (Client: ${resData.clientName}).`,
+      type: 'info',
+      read: false,
+      createdAt: new Date().toISOString(),
+      link: '/admin/trips'
+    });
+    batch.set(notifAgencyRef, {
+      id: notifAgencyRef.id,
+      agencyId: resData.agencyId,
+      title: 'Réservation Enregistrée avec Succès',
+      message: `Votre réservation pour « ${trip.title} » (${resData.numberOfPeople} personne(s)) est enregistrée sous la référence ${resId}.`,
+      type: 'success',
+      read: false,
+      createdAt: new Date().toISOString(),
+      link: '/agency/trips'
+    });
+    await batch.commit();
 
     // Mise à jour immédiate du store local
     set((state) => ({
       tripReservations: [newReservation, ...state.tripReservations.filter(r => r.id !== resId)],
       organizedTrips: state.organizedTrips.map(t => 
         t.id === resData.tripId 
-          ? { ...t, availableSeats: Math.max(0, t.availableSeats - resData.numberOfPeople) }
+          ? { ...t, availableSeats: updatedSeats }
           : t
       )
     }));
-
-    // Décompter les places disponibles dans Firestore
-    try {
-      const updatedSeats = Math.max(0, trip.availableSeats - resData.numberOfPeople);
-      await updateDoc(doc(db, 'organizedTrips', resData.tripId), {
-        availableSeats: updatedSeats
-      });
-    } catch (seatErr) {
-      console.warn("Avertissement mise à jour places disponibles:", seatErr);
-    }
-
-    // Notification pour l'administrateur
-    try {
-      const notifAdminRef = doc(collection(db, 'notifications'));
-      await setDoc(notifAdminRef, {
-        id: notifAdminRef.id,
-        agencyId: 'admin',
-        title: 'Nouvelle réservation Voyage Organisé',
-        message: `${resData.agencyName || 'Une agence'} a réservé ${resData.numberOfPeople} place(s) pour « ${trip.title} » (Client: ${resData.clientName}).`,
-        type: 'info',
-        read: false,
-        createdAt: new Date().toISOString(),
-        link: '/admin/trips'
-      });
-
-      // Notification pour l'agence
-      const notifAgencyRef = doc(collection(db, 'notifications'));
-      await setDoc(notifAgencyRef, {
-        id: notifAgencyRef.id,
-        agencyId: resData.agencyId,
-        title: 'Réservation Enregistrée avec Succès',
-        message: `Votre réservation pour « ${trip.title} » (${resData.numberOfPeople} personne(s)) est enregistrée sous la référence ${resId}.`,
-        type: 'success',
-        read: false,
-        createdAt: new Date().toISOString(),
-        link: '/agency/trips'
-      });
-    } catch (notifErr) {
-      console.warn("Avertissement notification voyage:", notifErr);
-    }
 
     return newReservation;
   },
@@ -551,6 +552,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   addCountry: async (country) => {
     await setDoc(doc(db, 'countries', country.id), country);
+    catalogService.invalidateCache('countries');
   },
 
   addStudyProgram: async (programData) => {
@@ -562,6 +564,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     } as StudyProgram;
     const sanitized = sanitizeFirestoreData(newProg);
     await setDoc(doc(db, 'studyPrograms', progId), sanitized);
+    catalogService.invalidateCache('studyPrograms');
     set(state => ({
       studyPrograms: [newProg, ...state.studyPrograms.filter(p => p.id !== progId)]
     }));
@@ -570,6 +573,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
   updateStudyProgram: async (id, programData) => {
     const sanitized = sanitizeFirestoreData(programData);
     await updateDoc(doc(db, 'studyPrograms', id), sanitized);
+    catalogService.invalidateCache('studyPrograms');
     set(state => ({
       studyPrograms: state.studyPrograms.map(p => p.id === id ? { ...p, ...programData } : p)
     }));
@@ -577,6 +581,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   deleteStudyProgram: async (id) => {
     await deleteDoc(doc(db, 'studyPrograms', id));
+    catalogService.invalidateCache('studyPrograms');
     set(state => ({
       studyPrograms: state.studyPrograms.filter(p => p.id !== id)
     }));
@@ -634,74 +639,66 @@ export const useAppStore = create<AppState>()((set, get) => ({
     };
 
     const sanitized = sanitizeFirestoreData(newStudyApp);
-    await setDoc(doc(db, 'studyApplications', appId), sanitized);
+    const mainAppData = sanitizeFirestoreData({
+      id: appId,
+      agencyId: application.agencyId,
+      agencyName: application.agencyName || 'Mon Agence',
+      serviceType: 'Etude',
+      country: application.country || 'Destination Universitaire',
+      visaType: `Visa Études - ${application.programTitle || 'Admission Universitaire'}`,
+      travelerName: application.studentName,
+      passportNumber: application.passportNumber,
+      status: 'Pending',
+      price: price,
+      submissionDate: new Date().toISOString(),
+      attachments: safeAttachments,
+      customFormData: {
+        programId: application.programId,
+        programTitle: application.programTitle,
+        university: application.university,
+        country: application.country,
+        city: application.city,
+        email: application.email,
+        phone: application.phone,
+        documents: safeDocuments
+      },
+      timeline: newStudyApp.timeline
+    });
+
+    const notifAdminRef = doc(collection(db, 'notifications'));
+    const notifAgencyRef = doc(collection(db, 'notifications'));
+
+    // Écriture groupée atomique (writeBatch) pour minimiser les requêtes et garantir la cohérence
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'studyApplications', appId), sanitized);
+    batch.set(doc(db, 'applications', appId), mainAppData);
+    batch.set(notifAdminRef, {
+      id: notifAdminRef.id,
+      agencyId: 'admin',
+      title: 'Nouveau dossier Visa Études',
+      message: `${application.agencyName || 'Une agence'} a soumis un dossier d'études pour ${application.studentName} (${application.university || ''} - ${application.country || ''}).`,
+      type: 'info',
+      read: false,
+      createdAt: new Date().toISOString(),
+      link: '/admin/study'
+    });
+    batch.set(notifAgencyRef, {
+      id: notifAgencyRef.id,
+      agencyId: application.agencyId,
+      title: 'Dossier Études Enregistré',
+      message: `Votre dossier pour ${application.studentName} (${application.university || ''}) est bien enregistré sous la référence ${appId}.`,
+      type: 'success',
+      read: false,
+      createdAt: new Date().toISOString(),
+      link: '/agency/study'
+    });
+
+    await batch.commit();
 
     // Mise à jour immédiate du store local
     set((state) => ({
       studyApplications: [newStudyApp, ...state.studyApplications.filter(a => a.id !== appId)]
     }));
-
-    // Inscription conjointe dans applications pour la vue globale centrale
-    try {
-      const mainAppRef = doc(db, 'applications', appId);
-      await setDoc(mainAppRef, sanitizeFirestoreData({
-        id: appId,
-        agencyId: application.agencyId,
-        agencyName: application.agencyName || 'Mon Agence',
-        serviceType: 'Etude',
-        country: application.country || 'Destination Universitaire',
-        visaType: `Visa Études - ${application.programTitle || 'Admission Universitaire'}`,
-        travelerName: application.studentName,
-        passportNumber: application.passportNumber,
-        status: 'Pending',
-        price: price,
-        submissionDate: new Date().toISOString(),
-        attachments: safeAttachments,
-        customFormData: {
-          programId: application.programId,
-          programTitle: application.programTitle,
-          university: application.university,
-          country: application.country,
-          city: application.city,
-          email: application.email,
-          phone: application.phone,
-          documents: safeDocuments
-        },
-        timeline: newStudyApp.timeline
-      }));
-    } catch (mainErr) {
-      console.warn("Avertissement synchronisation globale:", mainErr);
-    }
-
-    // Notification pour l'administrateur
-    try {
-      const notifRef = doc(collection(db, 'notifications'));
-      await setDoc(notifRef, {
-        id: notifRef.id,
-        agencyId: 'admin',
-        title: 'Nouveau dossier Visa Études',
-        message: `${application.agencyName || 'Une agence'} a soumis un dossier d'études pour ${application.studentName} (${application.university || ''} - ${application.country || ''}).`,
-        type: 'info',
-        read: false,
-        createdAt: new Date().toISOString(),
-        link: '/admin/study'
-      });
-
-      // Notification de confirmation pour l'agence
-      const notifAgencyRef = doc(collection(db, 'notifications'));
-      await setDoc(notifAgencyRef, {
-        id: notifAgencyRef.id,
-        agencyId: application.agencyId,
-        title: 'Dossier Études Enregistré',
-        message: `Votre dossier pour ${application.studentName} (${application.university || ''}) est bien enregistré sous la référence ${appId}.`,
-        type: 'success',
-        read: false,
-        createdAt: new Date().toISOString(),
-        link: '/agency/study'
-      });
-    } catch (notifErr) {
-      console.warn("Avertissement notification:", notifErr);
-    }
   },
 
   updateStudyApplicationStatus: async (id, status) => {
@@ -761,10 +758,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   updateCountry: async (id, data) => {
     await updateDoc(doc(db, 'countries', id), data);
+    catalogService.invalidateCache('countries');
   },
 
   removeCountry: async (id) => {
     await deleteDoc(doc(db, 'countries', id));
+    catalogService.invalidateCache('countries');
   },
 
   addVisaType: async (countryId, visaType) => {
@@ -772,6 +771,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     if (country) {
       const newVisaTypes = [...country.visaTypes, visaType];
       await updateDoc(doc(db, 'countries', countryId), { visaTypes: newVisaTypes });
+      catalogService.invalidateCache('countries');
     }
   },
 
@@ -780,6 +780,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     if (country) {
       const newVisaTypes = country.visaTypes.map(v => v.id === visaId ? { ...v, ...data } : v);
       await updateDoc(doc(db, 'countries', countryId), { visaTypes: newVisaTypes });
+      catalogService.invalidateCache('countries');
     }
   },
 
@@ -788,6 +789,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     if (country) {
       const newVisaTypes = country.visaTypes.filter(v => v.id !== visaId);
       await updateDoc(doc(db, 'countries', countryId), { visaTypes: newVisaTypes });
+      catalogService.invalidateCache('countries');
     }
   },
 

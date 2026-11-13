@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useAppStore } from "../../src/store/useAppStore";
+import { useAppStore, Application } from "../../src/store/useAppStore";
 import { 
   CheckCircle, XCircle, AlertCircle, 
   Info, Clock, Send, UploadCloud, FileText, User, 
@@ -12,24 +12,48 @@ import { uploadFileToServer, downloadFileSafe, resolveAttachmentData } from "../
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { AttachmentThumbnail } from "../common/AttachmentThumbnail";
 import { DocumentPreviewModal, PreviewDocData } from "../common/DocumentPreviewModal";
+import { useApplicationFilters } from "../../src/hooks/useApplicationFilters";
+import { TablePagination } from "../common/TablePagination";
 
 export function ApplicationManagement() {
   const { language, t } = useLanguage();
   const isEn = language === "en";
 
-  const { applications, updateApplication, addApplicationTimelineEntry } = useAppStore();
+  const applications = useAppStore(state => state.applications);
+  const updateApplication = useAppStore(state => state.updateApplication);
+  const addApplicationTimelineEntry = useAppStore(state => state.addApplicationTimelineEntry);
+
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [searchTerm, setSearchTerm] = useState("");
   
+  // Utilisation du hook dédié pour les filtres et la pagination fenêtrée
+  const {
+    searchTerm,
+    setSearchTerm,
+    statusFilter,
+    setStatusFilter,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    totalCount,
+    paginatedApplications,
+    filteredApplications,
+    statusCounts
+  } = useApplicationFilters({
+    applications,
+    pageSize: 8
+  });
+
   const [replyMessage, setReplyMessage] = useState("");
   const [finalDocUrl, setFinalDocUrl] = useState("");
   const [finalDocFile, setFinalDocFile] = useState<File | null>(null);
   const [previewDoc, setPreviewDoc] = useState<PreviewDocData | null>(null);
 
-  const selectedApp = applications.find((a) => a.id === selectedAppId);
+  // Recherche optimisée du dossier sélectionné
+  const selectedApp = useMemo(() => {
+    return applications.find((a) => a.id === selectedAppId);
+  }, [applications, selectedAppId]);
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = useCallback((status: string) => {
     switch (status) {
       case "Approved":
         return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 font-bold border-emerald-200 px-3 py-1"><CheckCircle className="w-3 h-3 mr-1" /> {isEn ? "Approved" : "Approuvée"}</Badge>;
@@ -42,24 +66,9 @@ export function ApplicationManagement() {
       default:
         return <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 font-bold border-slate-200 px-3 py-1"><Info className="w-3 h-3 mr-1" /> {isEn ? "Pending" : "En attente"}</Badge>;
     }
-  };
+  }, [isEn]);
 
-  const filteredApps = applications.filter(app => {
-    const matchesStatus = statusFilter === "ALL" || app.status === statusFilter;
-    
-    const tName = (app.travelerName || (app as any).applicantName || "").toLowerCase();
-    const pNumber = (app.passportNumber || "").toLowerCase();
-    const aName = (app.agencyName || "").toLowerCase();
-    
-    const matchesSearch = 
-      tName.includes(searchTerm.toLowerCase()) || 
-      pNumber.includes(searchTerm.toLowerCase()) ||
-      aName.includes(searchTerm.toLowerCase());
-      
-    return matchesStatus && matchesSearch;
-  });
-
-  const handleStatusChange = async (newStatus: any) => {
+  const handleStatusChange = async (newStatus: Application['status']) => {
     if (!selectedApp) return;
     
     await updateApplication(selectedApp.id, { status: newStatus });
@@ -146,8 +155,8 @@ export function ApplicationManagement() {
   const isImageBase64 = (str: any) => typeof str === 'string' && (str.startsWith('data:image/') || str.endsWith('.png') || str.endsWith('.jpg') || str.endsWith('.jpeg'));
   const isPdfBase64 = (str: any) => typeof str === 'string' && (str.startsWith('data:application/pdf') || str.endsWith('.pdf'));
 
-  // Extraction propre de la liste des pièces jointes
-  const getAttachmentsList = () => {
+  // Extraction mémoïsée de la liste des pièces jointes du dossier sélectionné
+  const appAttachments = useMemo(() => {
     if (!selectedApp) return [];
     
     const list: Array<{ id: string; name: string; category: string; type: string; size?: number; dataUrl: string; url?: string; storageId?: string }> = [];
@@ -197,9 +206,8 @@ export function ApplicationManagement() {
     }
 
     return list;
-  };
+  }, [selectedApp]);
 
-  const appAttachments = getAttachmentsList();
   const applicantDetails = selectedApp?.customFormData?.applicantDetails;
 
   return (
@@ -234,35 +242,45 @@ export function ApplicationManagement() {
             />
             
             <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs">
-              {['ALL', 'ActionRequired', 'Processing', 'Approved', 'Pending', 'Rejected'].map(status => (
-                <button
-                  key={status}
-                  onClick={() => setStatusFilter(status)}
-                  className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap transition-colors ${
-                    statusFilter === status 
-                      ? 'bg-[#7B1B38] text-white shadow-sm' 
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {status === 'ALL' ? (isEn ? 'All Applications' : 'Tous les dossiers') : 
-                   status === 'ActionRequired' ? (isEn ? 'Action Required' : 'Action Requise') : 
-                   status === 'Processing' ? (isEn ? 'Processing' : 'En traitement') : 
-                   status === 'Approved' ? (isEn ? 'Approved' : 'Approuvés') : 
-                   status === 'Pending' ? (isEn ? 'Pending' : 'En attente') : 
-                   (isEn ? 'Rejected' : 'Rejetés')}
-                </button>
-              ))}
+              {(['ALL', 'ActionRequired', 'Processing', 'Approved', 'Pending', 'Rejected'] as const).map(status => {
+                const count = statusCounts[status] || 0;
+                return (
+                  <button
+                    key={status}
+                    onClick={() => setStatusFilter(status)}
+                    className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                      statusFilter === status 
+                        ? 'bg-[#7B1B38] text-white shadow-sm' 
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <span>
+                      {status === 'ALL' ? (isEn ? 'All' : 'Tous') : 
+                       status === 'ActionRequired' ? (isEn ? 'Action Required' : 'Action Requise') : 
+                       status === 'Processing' ? (isEn ? 'Processing' : 'En traitement') : 
+                       status === 'Approved' ? (isEn ? 'Approved' : 'Approuvés') : 
+                       status === 'Pending' ? (isEn ? 'Pending' : 'En attente') : 
+                       (isEn ? 'Rejected' : 'Rejetés')}
+                    </span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                      statusFilter === status ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto divide-y divide-slate-100 custom-scrollbar">
-            {filteredApps.length === 0 ? (
+            {paginatedApplications.length === 0 ? (
               <div className="p-8 text-center text-slate-400">
                 <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
                 <p>Aucun dossier ne correspond à votre filtre.</p>
               </div>
             ) : (
-              filteredApps.map(app => (
+              paginatedApplications.map(app => (
                 <div 
                   key={app.id} 
                   onClick={() => setSelectedAppId(app.id)}
@@ -275,7 +293,7 @@ export function ApplicationManagement() {
                     {getStatusBadge(app.status)}
                   </div>
                   <div className="font-black text-slate-900 text-base mb-1">
-                    {app.travelerName || (app as any).applicantName || "Voyageur inconnu"}
+                    {app.travelerName || (app as unknown as { applicantName?: string }).applicantName || "Voyageur inconnu"}
                   </div>
                   <div className="flex justify-between text-xs text-slate-500 font-medium">
                     <span>{app.serviceType} • {app.country}</span>
@@ -290,6 +308,16 @@ export function ApplicationManagement() {
               ))
             )}
           </div>
+
+          {/* Contrôle de Pagination fenêtrée */}
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={8}
+            onPageChange={setCurrentPage}
+            isCompact={true}
+          />
         </div>
 
         {/* Right Details Panel */}

@@ -22,6 +22,7 @@ import { DocumentPreviewModal, PreviewDocData } from '../common/DocumentPreviewM
 import { resolveAttachmentData, downloadFileSafe, uploadFileToServer } from '../../src/utils/fileUpload';
 import { getCountryFlag } from '../../src/utils/flags';
 import { useToast } from '../ui/toast';
+import { TablePagination } from '../common/TablePagination';
 
 // Documents types fréquemment demandés par les universités
 const STANDARD_DOCUMENTS = [
@@ -263,6 +264,10 @@ export default function StudyProgramsManagement() {
     return Array.from(new Set(list)).sort();
   }, [studyApplications, appCountryFilter]);
 
+  // Pagination
+  const [progPage, setProgPage] = useState(1);
+  const [appPage, setAppPage] = useState(1);
+
   // Programmes filtrés
   const filteredPrograms = useMemo(() => {
     return allPrograms.filter(prog => {
@@ -275,6 +280,14 @@ export default function StudyProgramsManagement() {
       return matchCountry && matchSearch;
     });
   }, [allPrograms, selectedCountryFilter, programSearchTerm]);
+
+  const progPageSize = 6;
+  const progTotalPages = Math.max(1, Math.ceil(filteredPrograms.length / progPageSize));
+  const safeProgPage = Math.min(Math.max(1, progPage), progTotalPages);
+  const paginatedPrograms = useMemo(() => {
+    const start = (safeProgPage - 1) * progPageSize;
+    return filteredPrograms.slice(start, start + progPageSize);
+  }, [filteredPrograms, safeProgPage, progPageSize]);
 
   // Candidatures filtrées
   const filteredApplications = useMemo(() => {
@@ -291,15 +304,34 @@ export default function StudyProgramsManagement() {
     });
   }, [studyApplications, appCountryFilter, appUnivFilter, appStatusFilter, appSearchTerm]);
 
-  // Stats candidatures
+  const appPageSize = 8;
+  const appTotalPages = Math.max(1, Math.ceil(filteredApplications.length / appPageSize));
+  const safeAppPage = Math.min(Math.max(1, appPage), appTotalPages);
+  const paginatedApplications = useMemo(() => {
+    const start = (safeAppPage - 1) * appPageSize;
+    return filteredApplications.slice(start, start + appPageSize);
+  }, [filteredApplications, safeAppPage, appPageSize]);
+
+  // Stats candidatures calculées en une seule passe O(N)
   const appStats = useMemo(() => {
     const total = studyApplications.length;
-    const pending = studyApplications.filter(a => a.status === 'Pending').length;
-    const processing = studyApplications.filter(a => a.status === 'Processing').length;
-    const approved = studyApplications.filter(a => a.status === 'Approved').length;
-    const actionRequired = studyApplications.filter(a => a.status === 'ActionRequired').length;
-    const totalRevenue = studyApplications.reduce((acc, a) => acc + (a.price || 0), 0);
-    const totalCollected = studyApplications.reduce((acc, a) => acc + (a.paidAmount || 0), 0);
+    let pending = 0;
+    let processing = 0;
+    let approved = 0;
+    let actionRequired = 0;
+    let totalRevenue = 0;
+    let totalCollected = 0;
+
+    for (const a of studyApplications) {
+      if (a.status === 'Pending') pending++;
+      else if (a.status === 'Processing') processing++;
+      else if (a.status === 'Approved') approved++;
+      else if (a.status === 'ActionRequired') actionRequired++;
+
+      totalRevenue += (a.price || 0);
+      totalCollected += (a.paidAmount || 0);
+    }
+
     return { total, pending, processing, approved, actionRequired, totalRevenue, totalCollected };
   }, [studyApplications]);
 
@@ -687,148 +719,161 @@ export default function StudyProgramsManagement() {
           </div>
 
           {/* Grille des Universités / Programmes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredPrograms.map((prog) => (
-              <div
-                key={prog.id}
-                className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col group"
-              >
-                {/* Photo du campus & badges */}
-                <div className="relative h-44 overflow-hidden bg-slate-100">
-                  <img
-                    src={prog.image || "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80"}
-                    alt={prog.university}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent"></div>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {paginatedPrograms.map((prog) => (
+                <div
+                  key={prog.id}
+                  className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col group"
+                >
+                  {/* Photo du campus & badges */}
+                  <div className="relative h-44 overflow-hidden bg-slate-100">
+                    <img
+                      src={prog.image || "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80"}
+                      alt={prog.university}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent"></div>
 
-                  <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                    <span className="bg-white/90 backdrop-blur-md text-slate-900 text-xs font-black px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1">
-                      <span>{prog.countryFlag || "🎓"}</span>
-                      <span>{prog.country}</span>
-                    </span>
-                    {prog.city && (
-                      <span className="bg-black/60 backdrop-blur-md text-white text-[11px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-red-400" />
-                        <span>{prog.city}</span>
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                      <span className="bg-white/90 backdrop-blur-md text-slate-900 text-xs font-black px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1">
+                        <span>{prog.countryFlag || "🎓"}</span>
+                        <span>{prog.country}</span>
                       </span>
-                    )}
-                  </div>
-
-                  <div className="absolute top-3 right-3">
-                    <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
-                      prog.status === 'active' ? 'bg-emerald-500 text-white' : 'bg-slate-500 text-white'
-                    }`}>
-                      {prog.status === 'active' ? 'Actif' : 'Brouillon'}
-                    </span>
-                  </div>
-
-                  <div className="absolute bottom-3 left-3 right-3 text-white">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 block">
-                      {prog.type}
-                    </span>
-                    <h3 className="text-base font-black leading-tight line-clamp-1 text-white">
-                      {prog.university}
-                    </h3>
-                  </div>
-                </div>
-
-                {/* Contenu & Détails */}
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                  <div className="space-y-3">
-                    <div>
-                      <h4 className="text-xs font-black text-slate-900 line-clamp-1">
-                        {prog.title}
-                      </h4>
-                      <p className="text-[11px] text-slate-500 line-clamp-2 mt-1">
-                        {prog.description || "Aucune description renseignée."}
-                      </p>
-                    </div>
-
-                    {/* Conditions & Délais */}
-                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-1.5 text-[11px]">
-                      <div className="flex items-center justify-between text-slate-600">
-                        <span className="font-bold flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-blue-500" /> Délais invitation :
+                      {prog.city && (
+                        <span className="bg-black/60 backdrop-blur-md text-white text-[11px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-red-400" />
+                          <span>{prog.city}</span>
                         </span>
-                        <span className="font-semibold text-slate-800">{prog.processingTime || "20 à 30 jours"}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-slate-600">
-                        <span className="font-bold flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-purple-500" /> Rentrée :
-                        </span>
-                        <span className="font-semibold text-slate-800">{prog.intake || "Septembre 2025"}</span>
-                      </div>
-                      {prog.conditions && (
-                        <div className="pt-1 border-t border-slate-200 text-slate-600">
-                          <span className="font-bold text-slate-700 block">Conditions :</span>
-                          <span className="text-[10px] line-clamp-2 text-slate-500">{prog.conditions}</span>
-                        </div>
                       )}
                     </div>
 
-                    {/* Documents exigés */}
-                    <div>
-                      <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">
-                        Pièces obligatoires ({prog.requiredDocuments?.length || 0}) :
+                    <div className="absolute top-3 right-3">
+                      <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
+                        prog.status === 'active' ? 'bg-emerald-500 text-white' : 'bg-slate-500 text-white'
+                      }`}>
+                        {prog.status === 'active' ? 'Actif' : 'Brouillon'}
                       </span>
-                      <div className="flex flex-wrap gap-1">
-                        {(prog.requiredDocuments || []).slice(0, 3).map((doc, idx) => (
-                          <span key={idx} className="text-[10px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md truncate max-w-[200px]">
-                            • {doc}
+                    </div>
+
+                    <div className="absolute bottom-3 left-3 right-3 text-white">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 block">
+                        {prog.type}
+                      </span>
+                      <h3 className="text-base font-black leading-tight line-clamp-1 text-white">
+                        {prog.university}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Contenu & Détails */}
+                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                    <div className="space-y-3">
+                      <div>
+                        <h4 className="text-xs font-black text-slate-900 line-clamp-1">
+                          {prog.title}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 line-clamp-2 mt-1">
+                          {prog.description || "Aucune description renseignée."}
+                        </p>
+                      </div>
+
+                      {/* Conditions & Délais */}
+                      <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-1.5 text-[11px]">
+                        <div className="flex items-center justify-between text-slate-600">
+                          <span className="font-bold flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-blue-500" /> Délais invitation :
                           </span>
-                        ))}
-                        {(prog.requiredDocuments?.length || 0) > 3 && (
-                          <span className="text-[10px] font-bold text-slate-400 px-1 py-0.5">
-                            +{(prog.requiredDocuments?.length || 0) - 3} autres
+                          <span className="font-semibold text-slate-800">{prog.processingTime || "20 à 30 jours"}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-slate-600">
+                          <span className="font-bold flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-purple-500" /> Rentrée :
                           </span>
+                          <span className="font-semibold text-slate-800">{prog.intake || "Septembre 2025"}</span>
+                        </div>
+                        {prog.conditions && (
+                          <div className="pt-1 border-t border-slate-200 text-slate-600">
+                            <span className="font-bold text-slate-700 block">Conditions :</span>
+                            <span className="text-[10px] line-clamp-2 text-slate-500">{prog.conditions}</span>
+                          </div>
                         )}
+                      </div>
+
+                      {/* Documents exigés */}
+                      <div>
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">
+                          Pièces obligatoires ({prog.requiredDocuments?.length || 0}) :
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {(prog.requiredDocuments || []).slice(0, 3).map((doc, idx) => (
+                            <span key={idx} className="text-[10px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md truncate max-w-[200px]">
+                              • {doc}
+                            </span>
+                          ))}
+                          {(prog.requiredDocuments?.length || 0) > 3 && (
+                            <span className="text-[10px] font-bold text-slate-400 px-1 py-0.5">
+                              +{(prog.requiredDocuments?.length || 0) - 3} autres
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Prix B2B & Actions */}
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Frais Traitement B2B</span>
+                        <span className="text-base font-black font-mono text-slate-900">
+                          {(prog.price || 0).toLocaleString()} <span className="text-xs text-slate-500">DZD</span>
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditClick(prog)}
+                          className="h-8 px-2.5 text-xs font-bold text-slate-700 border-slate-200 hover:bg-slate-100 rounded-lg cursor-pointer"
+                        >
+                          <Edit className="w-3.5 h-3.5 mr-1" />
+                          <span>Modifier</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setProgramToDelete({ id: prog.id, university: prog.university, title: prog.title })}
+                          className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 rounded-lg cursor-pointer"
+                          title="Supprimer ce programme"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     </div>
                   </div>
-
-                  {/* Prix B2B & Actions */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 block uppercase">Frais Traitement B2B</span>
-                      <span className="text-base font-black font-mono text-slate-900">
-                        {(prog.price || 0).toLocaleString()} <span className="text-xs text-slate-500">DZD</span>
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEditClick(prog)}
-                        className="h-8 px-2.5 text-xs font-bold text-slate-700 border-slate-200 hover:bg-slate-100 rounded-lg cursor-pointer"
-                      >
-                        <Edit className="w-3.5 h-3.5 mr-1" />
-                        <span>Modifier</span>
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setProgramToDelete({ id: prog.id, university: prog.university, title: prog.title })}
-                        className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 rounded-lg cursor-pointer"
-                        title="Supprimer ce programme"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
 
-            {filteredPrograms.length === 0 && (
-              <div className="col-span-full py-16 text-center bg-white rounded-3xl border border-slate-200 border-dashed">
-                <GraduationCap className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-                <h3 className="text-base font-black text-slate-800">Aucune université trouvée pour ce filtre</h3>
-                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                  Ajoutez une nouvelle université ou sélectionnez une autre destination dans la barre de filtres.
-                </p>
-              </div>
+              {filteredPrograms.length === 0 && (
+                <div className="col-span-full py-16 text-center bg-white rounded-3xl border border-slate-200 border-dashed">
+                  <GraduationCap className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                  <h3 className="text-base font-black text-slate-800">Aucune université trouvée pour ce filtre</h3>
+                  <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                    Ajoutez une nouvelle université ou sélectionnez une autre destination dans la barre de filtres.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {filteredPrograms.length > progPageSize && (
+              <TablePagination
+                currentPage={progPage}
+                totalPages={progTotalPages}
+                totalCount={filteredPrograms.length}
+                pageSize={progPageSize}
+                onPageChange={setProgPage}
+                className="rounded-2xl border border-slate-200 shadow-xs"
+              />
             )}
           </div>
         </div>
@@ -943,7 +988,7 @@ export default function StudyProgramsManagement() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredApplications.map((app) => {
+                  {paginatedApplications.map((app) => {
                     const isPaid = (app.paidAmount || 0) >= (app.price || 0) && (app.price || 0) > 0;
                     return (
                       <tr key={app.id} className="hover:bg-slate-50/80 transition-colors">
@@ -1034,6 +1079,18 @@ export default function StudyProgramsManagement() {
                 </tbody>
               </table>
             </div>
+
+            {filteredApplications.length > appPageSize && (
+              <div className="p-4 border-t border-slate-100">
+                <TablePagination
+                  currentPage={appPage}
+                  totalPages={appTotalPages}
+                  totalCount={filteredApplications.length}
+                  pageSize={appPageSize}
+                  onPageChange={setAppPage}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}

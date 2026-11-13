@@ -1,6 +1,6 @@
 import { 
   FileText, Mail, Plane, Building2, CalendarDays, FolderOpen, Car, 
-  GraduationCap, ShieldCheck, Map 
+  GraduationCap, ShieldCheck, Map, type LucideIcon
 } from "lucide-react";
 
 export interface AgencyServiceConfig {
@@ -11,7 +11,7 @@ export interface AgencyServiceConfig {
   badgeEn?: string;
   description: string;
   descriptionEn?: string;
-  icon: any;
+  icon: LucideIcon;
   color: string;
   textColor: string;
   bgColor: string;

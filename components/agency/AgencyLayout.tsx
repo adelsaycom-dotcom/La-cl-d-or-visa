@@ -7,7 +7,7 @@ import {
 import { 
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Logo } from '@/components/Logo';
 import { auth } from "../../src/firebase";
@@ -16,27 +16,39 @@ import { useLanguage } from "../../src/i18n/LanguageContext";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 
 export function AgencyLayout() {
-  const { 
-    agencyBalance, 
-    notifications, 
-    markNotificationAsRead, 
-    markAllNotificationsAsRead,
-    currentAgency,
-    b2cMode,
-    setB2cMode,
-    b2cMarginPercent,
-    setB2cMarginPercent
-  } = useAppStore();
+  const agencyBalance = useAppStore(state => state.agencyBalance);
+  const notifications = useAppStore(state => state.notifications);
+  const markNotificationAsRead = useAppStore(state => state.markNotificationAsRead);
+  const markAllNotificationsAsRead = useAppStore(state => state.markAllNotificationsAsRead);
+  const currentAgency = useAppStore(state => state.currentAgency);
+  const b2cMode = useAppStore(state => state.b2cMode);
+  const setB2cMode = useAppStore(state => state.setB2cMode);
+  const b2cMarginPercent = useAppStore(state => state.b2cMarginPercent);
+  const setB2cMarginPercent = useAppStore(state => state.setB2cMarginPercent);
 
-  const agencyDisplayName = currentAgency?.agencyName || currentAgency?.companyName || currentAgency?.name || auth.currentUser?.displayName || "Mon Agence";
-  const agencyCode = currentAgency?.id ? `ID: AGE-${currentAgency.id.slice(0, 6).toUpperCase()}` : "ID: AGE-2948";
+  const agencyDisplayName = useMemo(() => {
+    return currentAgency?.agencyName || currentAgency?.companyName || currentAgency?.name || auth.currentUser?.displayName || "Mon Agence";
+  }, [currentAgency]);
+
+  const agencyCode = useMemo(() => {
+    return currentAgency?.id ? `ID: AGE-${currentAgency.id.slice(0, 6).toUpperCase()}` : "ID: AGE-2948";
+  }, [currentAgency?.id]);
+
   const [showMarginInput, setShowMarginInput] = useState(false);
   const [marginTemp, setMarginTemp] = useState(b2cMarginPercent || 15);
 
-  const unreadNotifications = (notifications || []).filter(n => !n.read).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const unreadNotifications = useMemo(() => {
+    if (!notifications) return [];
+    return notifications
+      .filter(n => !n.read)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [notifications]);
+
   const notificationsCount = unreadNotifications.length;
   
-  const balanceColor = agencyBalance > 10000 ? "text-emerald-600" : agencyBalance > 0 ? "text-amber-600" : "text-red-600";
+  const balanceColor = useMemo(() => {
+    return agencyBalance > 10000 ? "text-emerald-600" : agencyBalance > 0 ? "text-amber-600" : "text-red-600";
+  }, [agencyBalance]);
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
@@ -50,7 +62,7 @@ export function AgencyLayout() {
   const { language, t } = useLanguage();
   const isEn = language === "en";
 
-  const navItems = [
+  const navItems = useMemo(() => [
     { name: t("nav.dashboard"), path: "/agency", icon: LayoutDashboard },
     { name: t("nav.passportIndex"), path: "/agency/passport-index", icon: Globe2 },
     { name: t("nav.newApplication"), path: "/agency/apply", icon: FileText, highlight: true },
@@ -60,7 +72,16 @@ export function AgencyLayout() {
     { name: t("nav.wallet"), path: "/agency/wallet", icon: WalletCards },
     { name: t("nav.support"), path: "/agency/support", icon: HelpCircle },
     { name: t("nav.settings"), path: "/agency/settings", icon: Settings },
-  ];
+  ], [t]);
+
+  const handleNotificationClick = useCallback((notifId: string, link?: string) => {
+    markNotificationAsRead(notifId);
+    if (link) navigate(link);
+  }, [markNotificationAsRead, navigate]);
+
+  const handleMarkAllRead = useCallback(() => {
+    markAllNotificationsAsRead(auth.currentUser?.uid || "");
+  }, [markAllNotificationsAsRead]);
 
   return (
     <div className="relative flex h-screen overflow-hidden font-sans">
@@ -324,7 +345,7 @@ export function AgencyLayout() {
                   ) : (
                     <div className="divide-y divide-white/20">
                       {unreadNotifications.map(notif => (
-                        <div key={notif.id} className="p-4 hover:bg-white/30 cursor-pointer transition-colors" onClick={() => { markNotificationAsRead(notif.id); if(notif.link) navigate(notif.link); }}>
+                        <div key={notif.id} className="p-4 hover:bg-white/30 cursor-pointer transition-colors" onClick={() => handleNotificationClick(notif.id, notif.link)}>
                            <p className="text-sm font-bold text-slate-800 mb-1 leading-tight">{notif.title}</p>
                            <p className="text-xs text-slate-500 line-clamp-2">{notif.message}</p>
                         </div>
@@ -334,7 +355,7 @@ export function AgencyLayout() {
                 </div>
                 {notificationsCount > 0 && (
                   <div className="p-2 border-t border-white/20 bg-white/30">
-                    <button className="w-full py-2 text-xs font-bold text-[#7B1B38] hover:bg-[#7B1B38]/10 rounded-lg transition-colors" onClick={() => markAllNotificationsAsRead(auth.currentUser?.uid || "")}>
+                    <button className="w-full py-2 text-xs font-bold text-[#7B1B38] hover:bg-[#7B1B38]/10 rounded-lg transition-colors" onClick={handleMarkAllRead}>
                       {isEn ? "Mark all as read" : "Tout marquer comme lu"}
                     </button>
                   </div>

@@ -1,8 +1,8 @@
-
 import { useEffect, useRef } from 'react';
-import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, getDoc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
+import { catalogService } from '../services/catalogService';
 
 export function useFirebaseSync() {
   const setStore = useAppStore.setState;
@@ -10,110 +10,237 @@ export function useFirebaseSync() {
   const currentUidRef = useRef<string | null>(null);
 
   useEffect(() => {
+    // 1. Chargement ponctuel et ultra-économe du catalogue (Cache TTL 15 min)
+    // Évite 4 écouteurs onSnapshot continus sur les collections statiques
+    const loadCachedCatalog = async () => {
+      try {
+        const [countries, services, trips, programs] = await Promise.all([
+          catalogService.getCountries(),
+          catalogService.getServices(),
+          catalogService.getOrganizedTrips(),
+          catalogService.getStudyPrograms()
+        ]);
+
+        setStore({
+          countries: countries as any,
+          services: services as any,
+          organizedTrips: trips as any,
+          studyPrograms: programs as any
+        });
+      } catch (err) {
+        console.warn('[Catalog] Erreur initialisation catalogue:', err);
+      }
+    };
+
+    loadCachedCatalog();
+
+    // 2. Synchronisation sélective et ciblée pour l'utilisateur connecté
     const unsubAuth = auth.onAuthStateChanged(async user => {
-      // Clear previous listeners synchronously
-      unsubsRef.current.forEach(fn => fn());
+      // Nettoyer les écouteurs précédents de manière synchrone
+      unsubsRef.current.forEach(fn => {
+        try { fn(); } catch (_) {}
+      });
       unsubsRef.current = [];
       currentUidRef.current = user ? user.uid : null;
       const expectedUid = currentUidRef.current;
 
+      const handleSnapshotError = (collectionName: string, err: any) => {
+        if (err?.code === 'resource-exhausted' || err?.message?.includes('Quota exceeded')) {
+          console.warn(`[Firestore Quota] Quota journalier atteint sur '${collectionName}'. Maintien du cache local.`);
+          setStore({ quotaExceeded: true });
+          // Déconnexion préventive des écouteurs pour ne pas saturer le quota
+          unsubsRef.current.forEach(fn => {
+            try { fn(); } catch (_) {}
+          });
+          unsubsRef.current = [];
+        } else {
+          console.warn(`[Firestore Sync] Erreur d'écoute sur '${collectionName}':`, err);
+        }
+      };
+
       if (user) {
-        // Fetch role
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        
-        // If auth state changed while fetching role, abort to prevent dangling listeners
-        if (currentUidRef.current !== expectedUid) return;
-        
-        const role = userDoc.exists() ? userDoc.data().role : 'agency';
-
-        // Helper to get query
-        const getQuery = (collName: string) => {
-          if (role === 'admin') return collection(db, collName);
-          return query(collection(db, collName), where('agencyId', '==', user.uid));
-        };
-
-        if (role === 'admin') {
-          unsubsRef.current.push(onSnapshot(collection(db, 'users'), snapshot => {
-            const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setStore({ agencies: users as any });
-          }));
+        let role = 'agency';
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            role = userDoc.data().role || 'agency';
+          }
+        } catch (err: any) {
+          if (err?.code === 'resource-exhausted' || err?.message?.includes('Quota exceeded')) {
+            console.warn('[Firestore Quota] Quota atteint lors de la vérification du profil.');
+            setStore({ quotaExceeded: true });
+          }
+          if (user.email === 'adel.saycom@gmail.com' || user.email?.startsWith('admin@')) {
+            role = 'admin';
+          }
         }
 
-        
-        const notifQuery = role === 'admin' ? query(collection(db, 'notifications'), where('agencyId', '==', 'admin')) : getQuery('notifications');
-        unsubsRef.current.push(onSnapshot(notifQuery, snapshot => {
-          const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setStore({ notifications: docs as any });
-        }));
-        unsubsRef.current.push(onSnapshot(getQuery('applications'), snapshot => {
-          const apps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setStore({ applications: apps as any });
-        }));
-        
-        unsubsRef.current.push(onSnapshot(getQuery('supportTickets'), snapshot => {
-          const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setStore({ supportTickets: docs as any });
-        }));
+        if (currentUidRef.current !== expectedUid) return;
 
-        unsubsRef.current.push(onSnapshot(getQuery('transactions'), snapshot => {
-          const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setStore({ transactions: docs as any });
-        }));
+        // Fonction de construction des requêtes strictement paginées
+        const getQuery = (collName: string, maxItems = 40) => {
+          if (role === 'admin') return query(collection(db, collName), limit(maxItems));
+          return query(collection(db, collName), where('agencyId', '==', user.uid), limit(maxItems));
+        };
 
-        unsubsRef.current.push(onSnapshot(getQuery('rechargeRequests'), snapshot => {
-          const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setStore({ rechargeRequests: docs as any });
-        }));
+        // Écouteur temps réel 1 : Solde et profil de l'utilisateur actif (1 seul document !)
+        try {
+          unsubsRef.current.push(
+            onSnapshot(
+              doc(db, 'users', user.uid),
+              docSnap => {
+                if (docSnap.exists()) {
+                  const data = docSnap.data();
+                  setStore({ 
+                    agencyBalance: data.balance || 0,
+                    currentAgency: { id: docSnap.id, ...data } as any,
+                    b2cMarginPercent: typeof data.b2cMarginPercent === 'number' ? data.b2cMarginPercent : 15
+                  });
+                }
+              },
+              err => handleSnapshotError('currentUser', err)
+            )
+          );
+        } catch (e) {
+          handleSnapshotError('currentUser', e);
+        }
 
-        unsubsRef.current.push(onSnapshot(collection(db, 'countries'), snapshot => {
-          const countries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setStore({ countries: countries as any });
-        }));
+        // Écouteur temps réel 2 : Notifications non lues (limité à 25)
+        const notifQuery = role === 'admin'
+          ? query(collection(db, 'notifications'), where('agencyId', '==', 'admin'), limit(25))
+          : getQuery('notifications', 25);
 
-        unsubsRef.current.push(onSnapshot(collection(db, 'services'), snapshot => {
-          const services = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setStore({ services: services as any });
-        }));
+        try {
+          unsubsRef.current.push(
+            onSnapshot(
+              notifQuery,
+              snapshot => {
+                const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                setStore({ notifications: docs as any });
+              },
+              err => handleSnapshotError('notifications', err)
+            )
+          );
+        } catch (e) {
+          handleSnapshotError('notifications', e);
+        }
 
-        unsubsRef.current.push(onSnapshot(collection(db, 'organizedTrips'), snapshot => {
-          const trips = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setStore({ organizedTrips: trips as any });
-        }));
+        // Écouteur temps réel 3 : Dossiers de visas récents (limité à 30)
+        try {
+          unsubsRef.current.push(
+            onSnapshot(
+              getQuery('applications', 30),
+              snapshot => {
+                const apps = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                setStore({ applications: apps as any });
+              },
+              err => handleSnapshotError('applications', err)
+            )
+          );
+        } catch (e) {
+          handleSnapshotError('applications', e);
+        }
 
-        unsubsRef.current.push(onSnapshot(getQuery('tripReservations'), snapshot => {
-          const res = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setStore({ tripReservations: res as any });
-        }));
-
-        unsubsRef.current.push(onSnapshot(collection(db, 'studyPrograms'), snapshot => {
-          const programs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setStore({ studyPrograms: programs as any });
-        }));
-
-        unsubsRef.current.push(onSnapshot(getQuery('studyApplications'), snapshot => {
-          const apps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setStore({ studyApplications: apps as any });
-        }));
-        
-        unsubsRef.current.push(onSnapshot(doc(db, 'users', user.uid), docSnap => {
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            setStore({ 
-              agencyBalance: data.balance || 0,
-              currentAgency: { id: docSnap.id, ...data } as any,
-              b2cMarginPercent: typeof data.b2cMarginPercent === 'number' ? data.b2cMarginPercent : 15
-            });
+        // Écouteurs conditionnels pour l'administration (recharges en attente et tickets)
+        if (role === 'admin') {
+          try {
+            unsubsRef.current.push(
+              onSnapshot(
+                query(collection(db, 'rechargeRequests'), where('status', '==', 'pending'), limit(20)),
+                snapshot => {
+                  const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                  setStore({ rechargeRequests: docs as any });
+                },
+                err => handleSnapshotError('rechargeRequests', err)
+              )
+            );
+          } catch (e) {
+            handleSnapshotError('rechargeRequests', e);
           }
-        }));
+
+          try {
+            unsubsRef.current.push(
+              onSnapshot(
+                query(collection(db, 'users'), limit(50)),
+                snapshot => {
+                  const users = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                  setStore({ agencies: users as any });
+                },
+                err => handleSnapshotError('users', err)
+              )
+            );
+          } catch (e) {
+            handleSnapshotError('users', e);
+          }
+        } else {
+          // Pour l'agence : recharges et tickets propres (limités à 15)
+          try {
+            unsubsRef.current.push(
+              onSnapshot(
+                getQuery('rechargeRequests', 15),
+                snapshot => {
+                  const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                  setStore({ rechargeRequests: docs as any });
+                },
+                err => handleSnapshotError('rechargeRequests', err)
+              )
+            );
+          } catch (e) {
+            handleSnapshotError('rechargeRequests', e);
+          }
+        }
+
+        // Candidatures d'études récentes
+        try {
+          unsubsRef.current.push(
+            onSnapshot(
+              getQuery('studyApplications', 25),
+              snapshot => {
+                const apps = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                setStore({ studyApplications: apps as any });
+              },
+              err => handleSnapshotError('studyApplications', err)
+            )
+          );
+        } catch (e) {
+          handleSnapshotError('studyApplications', e);
+        }
+
+        // Réservations de voyages récentes
+        try {
+          unsubsRef.current.push(
+            onSnapshot(
+              getQuery('tripReservations', 25),
+              snapshot => {
+                const res = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                setStore({ tripReservations: res as any });
+              },
+              err => handleSnapshotError('tripReservations', err)
+            )
+          );
+        } catch (e) {
+          handleSnapshotError('tripReservations', e);
+        }
 
       } else {
-        setStore({ agencies: [], applications: [], supportTickets: [], transactions: [], rechargeRequests: [], countries: [], organizedTrips: [], tripReservations: [] });
+        // En cas de déconnexion, vider uniquement les données privées
+        setStore({
+          agencies: [],
+          applications: [],
+          supportTickets: [],
+          transactions: [],
+          rechargeRequests: [],
+          tripReservations: [],
+          studyApplications: []
+        });
       }
     });
 
     return () => {
       unsubAuth();
-      unsubsRef.current.forEach(fn => fn());
+      unsubsRef.current.forEach(fn => {
+        try { fn(); } catch (_) {}
+      });
       unsubsRef.current = [];
       currentUidRef.current = null;
     };

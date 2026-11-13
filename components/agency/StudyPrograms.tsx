@@ -18,6 +18,8 @@ import { useLanguage } from "../../src/i18n/LanguageContext";
 import { uploadFileToServer, downloadFileSafe, resolveAttachmentData } from '../../src/utils/fileUpload';
 import { DocumentPreviewModal, PreviewDocData } from '../common/DocumentPreviewModal';
 import { useToast } from '../ui/toast';
+import { parseConditionsList } from '../../src/utils/conditions';
+import { TablePagination } from '../common/TablePagination';
 
 // Données de secours réalistes si Firestore est vide
 const DEFAULT_PRESET_PROGRAMS: StudyProgram[] = [
@@ -133,7 +135,9 @@ export default function StudyPrograms() {
   const isEn = language === "en";
   const toast = useToast();
 
-  const { studyPrograms, studyApplications, addStudyApplication } = useAppStore();
+  const studyPrograms = useAppStore(state => state.studyPrograms);
+  const studyApplications = useAppStore(state => state.studyApplications);
+  const addStudyApplication = useAppStore(state => state.addStudyApplication);
   const currentAgencyId = auth.currentUser?.uid || 'unknown';
 
   const [activeTab, setActiveTab] = useState<'programs' | 'my-applications'>('programs');
@@ -142,6 +146,7 @@ export default function StudyPrograms() {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [countrySearchTerm, setCountrySearchTerm] = useState('');
   const [programSearchTerm, setProgramSearchTerm] = useState('');
+  const [progPage, setProgPage] = useState(1);
 
   // Candidature sélectionnée & Modal
   const [selectedProgram, setSelectedProgram] = useState<StudyProgram | null>(null);
@@ -160,7 +165,17 @@ export default function StudyPrograms() {
 
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [documents, setDocuments] = useState<Record<string, string>>({});
-  const [uploadedAttachments, setUploadedAttachments] = useState<Record<string, any>>({});
+  const [uploadedAttachments, setUploadedAttachments] = useState<Record<string, {
+    id: string;
+    storageId: string;
+    name: string;
+    category: string;
+    type: string;
+    size: number;
+    url: string;
+    uploadedAt: string;
+    uploadedBy: string;
+  }>>({});
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
 
@@ -176,14 +191,17 @@ export default function StudyPrograms() {
   const [previewDoc, setPreviewDoc] = useState<PreviewDocData | null>(null);
   const [resolvingDocName, setResolvingDocName] = useState<string | null>(null);
 
-  // Filtre mes candidatures
+  // Filtre et pagination mes candidatures
   const [myAppSearch, setMyAppSearch] = useState('');
   const [myAppStatusFilter, setMyAppStatusFilter] = useState('all');
+  const [appPage, setAppPage] = useState(1);
 
-  // Catalogue effectif
-  const activePrograms = (studyPrograms && studyPrograms.length > 0)
-    ? studyPrograms.filter(p => p.status === 'active')
-    : DEFAULT_PRESET_PROGRAMS;
+  // Catalogue effectif mémoïsé
+  const activePrograms = useMemo(() => (
+    studyPrograms && studyPrograms.length > 0
+      ? studyPrograms.filter(p => p.status === 'active')
+      : DEFAULT_PRESET_PROGRAMS
+  ), [studyPrograms]);
 
   // Validation intelligente en temps réel
   const errors = useMemo(() => {
@@ -274,30 +292,48 @@ export default function StudyPrograms() {
   // Universités pour le pays sélectionné
   const programsForSelectedCountry = useMemo(() => {
     if (!selectedCountry) return [];
+    const term = programSearchTerm.trim().toLowerCase();
     return activePrograms.filter(p => {
       const matchCountry = p.country.toLowerCase() === selectedCountry.toLowerCase();
-      const matchSearch = 
-        p.university.toLowerCase().includes(programSearchTerm.toLowerCase()) ||
-        p.title.toLowerCase().includes(programSearchTerm.toLowerCase()) ||
-        (p.city && p.city.toLowerCase().includes(programSearchTerm.toLowerCase()));
+      const matchSearch = !term ||
+        p.university.toLowerCase().includes(term) ||
+        p.title.toLowerCase().includes(term) ||
+        (p.city && p.city.toLowerCase().includes(term));
       return matchCountry && matchSearch;
     });
   }, [activePrograms, selectedCountry, programSearchTerm]);
 
+  const progPageSize = 6;
+  const progTotalPages = Math.max(1, Math.ceil(programsForSelectedCountry.length / progPageSize));
+  const safeProgPage = Math.min(Math.max(1, progPage), progTotalPages);
+  const paginatedPrograms = useMemo(() => {
+    const start = (safeProgPage - 1) * progPageSize;
+    return programsForSelectedCountry.slice(start, start + progPageSize);
+  }, [programsForSelectedCountry, safeProgPage, progPageSize]);
+
   // Candidatures de l'agence
   const myApplications = useMemo(() => {
+    const term = myAppSearch.trim().toLowerCase();
     return (studyApplications || []).filter(a => 
       a.agencyId === currentAgencyId || a.agencyName === auth.currentUser?.email
     ).filter(app => {
       const matchStatus = myAppStatusFilter === 'all' || app.status === myAppStatusFilter;
-      const matchSearch = 
-        app.studentName.toLowerCase().includes(myAppSearch.toLowerCase()) ||
-        app.passportNumber.toLowerCase().includes(myAppSearch.toLowerCase()) ||
-        (app.university && app.university.toLowerCase().includes(myAppSearch.toLowerCase())) ||
-        (app.country && app.country.toLowerCase().includes(myAppSearch.toLowerCase()));
+      const matchSearch = !term ||
+        app.studentName.toLowerCase().includes(term) ||
+        app.passportNumber.toLowerCase().includes(term) ||
+        (app.university && app.university.toLowerCase().includes(term)) ||
+        (app.country && app.country.toLowerCase().includes(term));
       return matchStatus && matchSearch;
     }).sort((a, b) => new Date(b.submissionDate).getTime() - new Date(a.submissionDate).getTime());
   }, [studyApplications, currentAgencyId, myAppSearch, myAppStatusFilter]);
+
+  const appPageSize = 6;
+  const appTotalPages = Math.max(1, Math.ceil(myApplications.length / appPageSize));
+  const safeAppPage = Math.min(Math.max(1, appPage), appTotalPages);
+  const paginatedApplications = useMemo(() => {
+    const start = (safeAppPage - 1) * appPageSize;
+    return myApplications.slice(start, start + appPageSize);
+  }, [myApplications, safeAppPage, appPageSize]);
 
   const handleOpenDoc = async (docName: string, rawUrl: string) => {
     setResolvingDocName(docName);
@@ -766,6 +802,7 @@ export default function StudyPrograms() {
                     onClick={() => {
                       setSelectedCountry(item.country);
                       setProgramSearchTerm('');
+                      setProgPage(1);
                     }}
                     className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs hover:shadow-lg hover:border-[#7B1B38]/40 transition-all cursor-pointer group flex flex-col justify-between"
                   >
@@ -857,7 +894,7 @@ export default function StudyPrograms() {
 
               {/* Grille des Universités de ce Pays */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {programsForSelectedCountry.map((prog) => (
+                {paginatedPrograms.map((prog) => (
                   <div
                     key={prog.id}
                     className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
@@ -907,29 +944,51 @@ export default function StudyPrograms() {
                         </div>
 
                         {/* Bloc Conditions d'admission spécifiques */}
-                        <div className="bg-amber-50/70 p-3.5 rounded-2xl border border-amber-200/80 space-y-2 text-xs">
-                          <div className="flex items-center gap-1.5 text-amber-900 font-bold">
-                            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                            <span>Conditions d'Admission :</span>
-                          </div>
-                          <p className="text-[11px] text-amber-800 leading-relaxed font-medium">
-                            {prog.conditions || "Baccalauréat requis. Examen du dossier académique par l'université."}
-                          </p>
-                          <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between text-[11px] text-amber-900">
-                            <span className="flex items-center gap-1 font-semibold">
-                              <Clock className="w-3 h-3 text-amber-700" /> Délais :
-                            </span>
-                            <span className="font-bold">{prog.processingTime || "20 à 35 jours"}</span>
-                          </div>
-                          {prog.tuitionFeeYear && (
-                            <div className="flex items-center justify-between text-[11px] text-amber-900">
-                              <span className="flex items-center gap-1 font-semibold">
-                                <BookOpen className="w-3 h-3 text-amber-700" /> Scolarité :
-                              </span>
-                              <span className="font-bold font-mono">{prog.tuitionFeeYear}</span>
+                        {(() => {
+                          const cardConds = parseConditionsList(prog.conditions);
+                          return (
+                            <div className="bg-gradient-to-br from-amber-50/80 to-amber-50/40 p-3.5 rounded-2xl border border-amber-200/80 space-y-2.5 text-xs">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 text-amber-950 font-bold text-[11px] uppercase tracking-wide">
+                                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>Conditions Requises</span>
+                                </div>
+                                <span className="text-[10px] font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-md font-mono">
+                                  {cardConds.length} {cardConds.length > 1 ? "points" : "point"}
+                                </span>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                {cardConds.slice(0, 2).map((c, i) => (
+                                  <div key={i} className="flex items-start gap-2 text-[11px] text-amber-900 font-medium">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1.5"></span>
+                                    <span className="line-clamp-2 leading-relaxed">{c}</span>
+                                  </div>
+                                ))}
+                                {cardConds.length > 2 && (
+                                  <span className="text-[10px] text-amber-700/90 font-bold italic block pl-3.5">
+                                    + {cardConds.length - 2} autre(s) critère(s)...
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between text-[11px] text-amber-900">
+                                <span className="flex items-center gap-1 font-semibold">
+                                  <Clock className="w-3 h-3 text-amber-700" /> Délais :
+                                </span>
+                                <span className="font-bold">{prog.processingTime || "20 à 35 jours"}</span>
+                              </div>
+                              {prog.tuitionFeeYear && (
+                                <div className="flex items-center justify-between text-[11px] text-amber-900">
+                                  <span className="flex items-center gap-1 font-semibold">
+                                    <BookOpen className="w-3 h-3 text-amber-700" /> Scolarité :
+                                  </span>
+                                  <span className="font-bold font-mono">{prog.tuitionFeeYear}</span>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
+                          );
+                        })()}
 
                         {/* Bloc Documents à téléverser */}
                         <div className="space-y-1.5">
@@ -1007,6 +1066,17 @@ export default function StudyPrograms() {
                   </div>
                 )}
               </div>
+
+              {programsForSelectedCountry.length > progPageSize && (
+                <TablePagination
+                  currentPage={safeProgPage}
+                  totalPages={progTotalPages}
+                  totalCount={programsForSelectedCountry.length}
+                  pageSize={progPageSize}
+                  onPageChange={setProgPage}
+                  className="rounded-2xl border border-slate-200 shadow-xs"
+                />
+              )}
             </div>
           )}
         </div>
@@ -1056,7 +1126,7 @@ export default function StudyPrograms() {
 
           {/* Liste des Dossiers Soumis */}
           <div className="space-y-4">
-            {myApplications.map((app) => (
+            {paginatedApplications.map((app) => (
               <div
                 key={app.id}
                 className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs hover:shadow-md transition-all space-y-4"
@@ -1174,6 +1244,17 @@ export default function StudyPrograms() {
                 </Button>
               </div>
             )}
+
+            {myApplications.length > appPageSize && (
+              <TablePagination
+                currentPage={safeAppPage}
+                totalPages={appTotalPages}
+                totalCount={myApplications.length}
+                pageSize={appPageSize}
+                onPageChange={setAppPage}
+                className="rounded-2xl border border-slate-200 shadow-xs"
+              />
+            )}
           </div>
         </div>
       )}
@@ -1261,16 +1342,46 @@ export default function StudyPrograms() {
                   </div>
                 </div>
 
-                {/* Conditions d'admission */}
-                <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200/80 space-y-2">
-                  <div className="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider">
-                    <Sparkles className="w-4 h-4 text-amber-600" />
-                    <span>Critères & Conditions d'Admission :</span>
-                  </div>
-                  <p className="text-xs text-amber-800 leading-relaxed font-medium">
-                    {detailedProgram.conditions || "Admission ouverte aux titulaires du Baccalauréat. Validation sur étude du dossier académique par la commission d'admission universitaire."}
-                  </p>
-                </div>
+                {/* Conditions d'admission & Éligibilité */}
+                {(() => {
+                  const condItems = parseConditionsList(detailedProgram.conditions);
+                  return (
+                    <div className="bg-gradient-to-br from-amber-50/90 via-amber-50/50 to-orange-50/40 p-5 rounded-3xl border border-amber-200/90 shadow-xs space-y-3.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-amber-950 font-black text-xs uppercase tracking-wider">
+                          <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-800 flex items-center justify-center shrink-0">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                          </div>
+                          <span>Critères & Conditions d'Admission</span>
+                        </div>
+                        <Badge className="bg-amber-100 text-amber-900 border-amber-300 font-bold text-[10px] px-2.5 py-0.5 rounded-full">
+                          {condItems.length} {condItems.length > 1 ? "critères requis" : "critère requis"}
+                        </Badge>
+                      </div>
+
+                      <div className="space-y-2">
+                        {condItems.map((cond, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-start gap-3 p-3 rounded-2xl bg-white/95 border border-amber-100/90 shadow-2xs hover:border-amber-300/80 transition-colors"
+                          >
+                            <div className="w-5 h-5 rounded-full bg-amber-500/15 text-amber-900 font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5 font-mono">
+                              {idx + 1}
+                            </div>
+                            <p className="text-xs text-slate-800 font-medium leading-relaxed flex-1">
+                              {cond}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-2 border-t border-amber-200/60 flex items-center gap-1.5 text-[11px] text-amber-800/80 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>Vérifiez la conformité de ces critères avant d'initier le dépôt pour votre candidat.</span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Liste des documents obligatoires */}
                 <div>

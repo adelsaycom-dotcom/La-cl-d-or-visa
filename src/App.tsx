@@ -1,22 +1,19 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useFirebaseSync } from "./hooks/useFirebaseSync";
 import { BrowserRouter as Router, Routes, Route, Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { Globe2, LayoutDashboard, Earth, FileText, Users, DollarSign, HelpCircle, Bell, Menu, LogOut, Settings, MapPin, GraduationCap, X, ChevronRight } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import React, { useState, useEffect, lazy, Suspense } from "react";
+import { Globe2, LayoutDashboard, FileText, Users, DollarSign, HelpCircle, Bell, Menu, LogOut, Settings, MapPin, GraduationCap, X, ChevronRight } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import React, { useState, useEffect, lazy, Suspense, useMemo, useCallback } from "react";
 import { useAppStore } from "./store/useAppStore";
 import { Logo } from '@/components/Logo';
 import { LanguageProvider, useLanguage } from "./i18n/LanguageContext";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 import { ToastProvider } from "@/components/ui/toast";
 
-// Eager imports for layout & auth components
-import { VisaEditor } from "@/components/admin/VisaEditor";
-import { LandingPage } from "@/components/LandingPage";
-import { Login } from "@/components/auth/Login";
-import { Register } from "@/components/auth/Register";
+// Code Splitting & Lazy Loading for all entry pages
+const LandingPage = lazy(() => import("@/components/LandingPage").then(m => ({ default: m.LandingPage })));
+const Login = lazy(() => import("@/components/auth/Login").then(m => ({ default: m.Login })));
+const Register = lazy(() => import("@/components/auth/Register").then(m => ({ default: m.Register })));
 
 // Lazy loaded page components
 const AgencyManagement = lazy(() => import("@/components/admin/AgencyManagement").then(m => ({ default: m.AgencyManagement })));
@@ -58,8 +55,8 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     return { hasError: true };
   }
 
-  componentDidCatch(error: any) {
-    console.error("ErrorBoundary caught error:", error);
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+    console.error("ErrorBoundary a intercepté une erreur d'exécution:", error, errorInfo);
   }
 
   render() {
@@ -69,7 +66,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
           <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl max-w-md w-full space-y-4">
             <h2 className="text-xl font-black text-slate-900">Actualisation requise</h2>
             <p className="text-xs text-slate-500">
-              Une nouvelle version de la plateforme a été chargée. Veuillez recharger la page.
+              Une mise à jour de la plateforme a été chargée. Veuillez recharger la page pour poursuivre.
             </p>
             <button
               onClick={() => window.location.reload()}
@@ -86,17 +83,27 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 }
 
 const SuspenseFallback = () => (
-  <div className="flex justify-center items-center h-full w-full p-8 text-gray-500">
+  <div className="flex justify-center items-center h-full w-full p-8 text-gray-500 min-h-[400px]">
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-gold"></div>
   </div>
 );
 
-// Admin Layout
+// Admin Layout optimisé avec mémoïsation
 function AdminLayout() {
   const { language, t } = useLanguage();
   const isEn = language === "en";
-  const { notifications, markNotificationAsRead, markAllNotificationsAsRead } = useAppStore();
-  const unreadNotifications = (notifications || []).filter(n => !n.read && n.agencyId === 'admin').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const notifications = useAppStore(state => state.notifications);
+  const markNotificationAsRead = useAppStore(state => state.markNotificationAsRead);
+  const markAllNotificationsAsRead = useAppStore(state => state.markAllNotificationsAsRead);
+
+  // Mémoïsation du filtrage et du tri des notifications pour éviter des instanciations de Date à chaque cycle
+  const unreadNotifications = useMemo(() => {
+    if (!notifications) return [];
+    return notifications
+      .filter(n => !n.read && n.agencyId === 'admin')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [notifications]);
+
   const adminNotifsCount = unreadNotifications.length;
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -107,7 +114,8 @@ function AdminLayout() {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  const navItems = [
+  // Mémoïsation des éléments de navigation selon la langue
+  const navItems = useMemo(() => [
     { name: t("nav.dashboard"), path: "/admin", icon: LayoutDashboard },
     { name: t("nav.serviceCatalog"), path: "/admin/countries", icon: Globe2 },
     { name: t("nav.myApplications"), path: "/admin/applications", icon: FileText, highlight: true },
@@ -117,7 +125,16 @@ function AdminLayout() {
     { name: t("nav.finances"), path: "/admin/finances", icon: DollarSign },
     { name: t("nav.support"), path: "/admin/support", icon: HelpCircle },
     { name: t("nav.settings"), path: "/admin/settings", icon: Settings },
-  ];
+  ], [t]);
+
+  const handleNotificationClick = useCallback((notifId: string, link?: string) => {
+    markNotificationAsRead(notifId);
+    if (link) navigate(link);
+  }, [markNotificationAsRead, navigate]);
+
+  const handleMarkAllRead = useCallback(() => {
+    markAllNotificationsAsRead('admin');
+  }, [markAllNotificationsAsRead]);
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
@@ -230,7 +247,7 @@ function AdminLayout() {
                   ) : (
                     <div className="divide-y divide-slate-100">
                       {unreadNotifications.map(notif => (
-                        <div key={notif.id} className="p-4 hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => { markNotificationAsRead(notif.id); if(notif.link) navigate(notif.link); }}>
+                        <div key={notif.id} className="p-4 hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => handleNotificationClick(notif.id, notif.link)}>
                            <p className="text-sm font-bold text-slate-800 mb-1 leading-tight">{notif.title}</p>
                            <p className="text-xs text-slate-500 line-clamp-2">{notif.message}</p>
                         </div>
@@ -240,7 +257,7 @@ function AdminLayout() {
                 </div>
                 {adminNotifsCount > 0 && (
                   <div className="p-2 border-t border-slate-100 bg-white">
-                    <button className="w-full py-2 text-xs font-bold text-[#7B1B38] hover:bg-[#7B1B38]/10 rounded-lg transition-colors" onClick={() => markAllNotificationsAsRead('admin')}>
+                    <button className="w-full py-2 text-xs font-bold text-[#7B1B38] hover:bg-[#7B1B38]/10 rounded-lg transition-colors" onClick={handleMarkAllRead}>
                       {isEn ? "Mark all as read" : "Tout marquer comme lu"}
                     </button>
                   </div>
@@ -277,10 +294,30 @@ function AdminLayout() {
 
 export default function App() {
   useFirebaseSync();
+  const quotaExceeded = useAppStore(state => state.quotaExceeded);
+
   return (
     <ErrorBoundary>
       <LanguageProvider>
         <ToastProvider>
+          {quotaExceeded && (
+            <div className="bg-amber-500/15 border-b border-amber-500/30 text-amber-950 px-4 py-2 text-xs flex items-center justify-between gap-3 sticky top-0 z-[999] backdrop-blur-md">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+                <span className="font-semibold truncate">
+                  Quota journalier gratuit Firestore (Spark) atteint. Les données restent accessibles en cache local et le quota sera réinitialisé demain.
+                </span>
+              </div>
+              <a
+                href="https://console.firebase.google.com/project/project-ffd6a722-67cd-492b-a21/firestore/databases/ai-studio-visab2bplatform-997b6e64-cd61-4897-9e6a-a46f23376287/data?openUpgradeDialog=true"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold underline text-amber-900 hover:text-black shrink-0 text-xs"
+              >
+                Mettre à niveau dans Firebase Console
+              </a>
+            </div>
+          )}
           <Router>
             <Suspense fallback={<SuspenseFallback />}>
             <Routes>

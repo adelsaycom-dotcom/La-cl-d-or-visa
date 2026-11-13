@@ -2,32 +2,43 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Global Helper Functions
-    function isSignedIn() { return request.auth != null; }
+    // Sécurité par défaut : rejet systématique de tout document non explicitement autorisé
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Fonctions globales d'authentification et de validation
+    function isSignedIn() { 
+      return request.auth != null; 
+    }
+
     function isAdmin() { 
-       return isSignedIn() && (
-         request.auth.token.email in ['adel.saycom@gmail.com', 'admin@cle-dor.com', 'admin@lacle-dor.com'] ||
-         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
-       ); 
-     }
+      return isSignedIn() && (
+        request.auth.token.email in ['adel.saycom@gmail.com', 'admin@cle-dor.com', 'admin@lacle-dor.com'] ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      ); 
+    }
+
     function isAgency() { 
-       return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agency'; 
-     }
-    
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agency'; 
+    }
+
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
+    // 1. Profils Utilisateurs & Agences
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      // Agency cannot manipulate their role. They can ONLY decrease their balance (spending money) during an atomic transaction.
+      // L'agence ne peut pas manipuler son rôle ni s'attribuer un solde initial supérieur à 0
       allow create: if isAdmin() || (
         isSignedIn() && 
         request.auth.uid == userId && 
         (incoming().role == 'agency' || (incoming().role == 'admin' && (request.auth.token.email in ['adel.saycom@gmail.com', 'admin@cle-dor.com', 'admin@lacle-dor.com']))) && 
         incoming().balance == 0
       );
+      // L'agence ne peut que diminuer son solde lors des transactions atomiques
       allow update: if isAdmin() || (
         request.auth.uid == userId && 
         incoming().role == existing().role && 
@@ -36,86 +47,157 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // 2. Catalogue des Pays
     match /countries/{countryId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
+    // 3. Catalogue des Services & Tarifs B2B
     match /services/{serviceId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
+    // 4. Dossiers de Demandes de Visas
     match /applications/{applicationId} {
       allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      // Agencies must create applications as 'pending'
-      allow create: if isSignedIn() && (isAdmin() || (incoming().agencyId == request.auth.uid && incoming().status.lower() == 'pending'));
-      // Agencies cannot update the status field of existing applications
-      allow update: if isSignedIn() && (isAdmin() || (existing().agencyId == request.auth.uid && incoming().status == existing().status));
+      allow create: if isSignedIn() && (
+        isAdmin() || (
+          incoming().agencyId == request.auth.uid && 
+          incoming().status.lower() == 'pending' &&
+          incoming().travelerName is string &&
+          incoming().travelerName.size() <= 150 &&
+          incoming().passportNumber is string &&
+          incoming().passportNumber.size() <= 30
+        )
+      );
+      allow update: if isSignedIn() && (
+        isAdmin() || (
+          existing().agencyId == request.auth.uid && 
+          incoming().status == existing().status &&
+          incoming().agencyId == existing().agencyId
+        )
+      );
       allow delete: if isAdmin();
     }
 
+    // 5. Voyages Organisés
     match /organizedTrips/{tripId} {
       allow read: if isSignedIn();
       allow create, delete: if isAdmin();
       allow update: if isAdmin() || (
         isSignedIn() && 
-        incoming().diff(existing()).affectedKeys().hasOnly(['availableSeats'])
+        incoming().diff(existing()).affectedKeys().hasOnly(['availableSeats']) &&
+        incoming().availableSeats >= 0
       );
     }
 
+    // 6. Réservations de Voyages
     match /tripReservations/{reservationId} {
+      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow create: if isSignedIn() && (
+        isAdmin() || (
+          incoming().agencyId == request.auth.uid &&
+          incoming().status.lower() == 'pending' &&
+          incoming().numberOfPeople is number &&
+          incoming().numberOfPeople > 0 &&
+          incoming().numberOfPeople <= 50
+        )
+      );
+      allow update: if isSignedIn() && (
+        isAdmin() || (
+          existing().agencyId == request.auth.uid &&
+          incoming().agencyId == existing().agencyId
+        )
+      );
+      allow delete: if isAdmin();
+    }
+
+    // 7. Programmes Universitaires & Études
+    match /studyPrograms/{programId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // 8. Candidatures Visa Études
+    match /studyApplications/{applicationId} {
+      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow create: if isSignedIn() && (
+        isAdmin() || (
+          incoming().agencyId == request.auth.uid && 
+          incoming().status.lower() == 'pending' &&
+          incoming().studentName is string &&
+          incoming().studentName.size() <= 150 &&
+          incoming().passportNumber is string &&
+          incoming().passportNumber.size() <= 30
+        )
+      );
+      allow update: if isSignedIn() && (
+        isAdmin() || (
+          existing().agencyId == request.auth.uid && 
+          incoming().status == existing().status &&
+          incoming().agencyId == existing().agencyId
+        )
+      );
+      allow delete: if isAdmin();
+    }
+
+    // 9. Transactions Financières
+    match /transactions/{transactionId} {
+      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow create: if isAdmin() || (
+        isSignedIn() && 
+        incoming().agencyId == request.auth.uid && 
+        incoming().type == 'debit' &&
+        incoming().amount is number &&
+        incoming().amount >= 0
+      );
+      allow update, delete: if isAdmin();
+    }
+
+    // 10. Demandes de Recharge de Solde
+    match /rechargeRequests/{requestId} {
+      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow create: if isSignedIn() && (
+        isAdmin() || (
+          incoming().agencyId == request.auth.uid && 
+          incoming().status.lower() == 'pending' &&
+          incoming().amount is number &&
+          incoming().amount > 0
+        )
+      );
+      allow update: if isAdmin() || (
+        isSignedIn() && 
+        existing().agencyId == request.auth.uid && 
+        incoming().status == existing().status
+      );
+      allow delete: if isAdmin();
+    }
+
+    // 11. Tickets de Support
+    match /supportTickets/{ticketId} {
       allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
       allow create: if isSignedIn() && (isAdmin() || incoming().agencyId == request.auth.uid);
       allow update: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
       allow delete: if isAdmin();
     }
 
-    match /studyPrograms/{programId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    match /studyApplications/{applicationId} {
-      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      allow create: if isSignedIn() && (isAdmin() || (incoming().agencyId == request.auth.uid && incoming().status.lower() == 'pending'));
-      allow update: if isSignedIn() && (isAdmin() || (existing().agencyId == request.auth.uid && incoming().status == existing().status));
-      allow delete: if isAdmin();
-    }
-
-    match /transactions/{transactionId} {
-      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      allow create: if isAdmin() || (isAgency() && incoming().agencyId == request.auth.uid && incoming().type == 'debit');
-      allow update, delete: if isAdmin();
-    }
-
-    match /rechargeRequests/{requestId} {
-      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      // Agencies must create recharge requests as 'pending'
-      allow create: if isAdmin() || (isAgency() && incoming().agencyId == request.auth.uid && incoming().status.lower() == 'pending');
-      // Agencies cannot update the status of recharge requests
-      allow update: if isAdmin() || (isAgency() && existing().agencyId == request.auth.uid && incoming().status == existing().status);
-      allow delete: if isAdmin();
-    }
-
-    match /supportTickets/{ticketId} {
-      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      allow create: if isAdmin() || (isAgency() && incoming().agencyId == request.auth.uid);
-      allow update: if isAdmin() || (isAgency() && existing().agencyId == request.auth.uid);
-      allow delete: if isAdmin();
-    }
-
+    // 12. Notifications
     match /notifications/{notifId} {
       allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
       allow create: if isSignedIn() && (isAdmin() || incoming().agencyId == request.auth.uid || incoming().agencyId == 'admin');
       allow update: if isSignedIn() && (isAdmin() || (existing().agencyId == request.auth.uid && incoming().read == true));
-      allow delete: if isAdmin() || (isAgency() && existing().agencyId == request.auth.uid);
+      allow delete: if isAdmin() || (isSignedIn() && existing().agencyId == request.auth.uid);
     }
 
+    // 13. Pièces Jointes & Documents Cloud
     match /attachments/{attachmentId} {
-      // Stockage universel cloud pour pièces jointes, scans et visas (compatible Hostinger)
       allow read: if isSignedIn();
-      allow create, update: if isSignedIn();
+      allow create, update: if isSignedIn() && (
+        incoming().size is number && 
+        incoming().size <= 8388608
+      );
       allow delete: if isAdmin();
 
       match /chunks/{chunkId} {
