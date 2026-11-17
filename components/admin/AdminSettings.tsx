@@ -10,24 +10,33 @@ import { Save, AlertTriangle, Trash2, RefreshCw, CheckCircle2 } from "lucide-rea
 import { db, auth } from "../../src/firebase";
 import { collection, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { useLanguage } from "../../src/i18n/LanguageContext";
+import { useToast } from "@/components/ui/toast";
 
 export function AdminSettings() {
   const { language, t } = useLanguage();
   const isEn = language === "en";
+  const toast = useToast();
 
   const clearData = useAppStore(state => state.clearData);
+  const authRole = useAppStore(state => state.authRole);
   const [platformName, setPlatformName] = useState("La Clé d'Or B2B");
   const [contactEmail, setContactEmail] = useState("admin@cle-dor-visa.com");
   const [isResetting, setIsResetting] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
   const [confirmText, setConfirmText] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const resetKeyword = isEn ? "RESET" : "REINITIALISER";
 
   const handleFullReset = async () => {
+    if (authRole !== 'admin' || !auth.currentUser) {
+      toast.error(isEn ? "Unauthorized" : "Accès refusé", isEn ? "Administrator privileges required." : "Action strictement réservée aux administrateurs.");
+      return;
+    }
     if (confirmText !== resetKeyword && confirmText !== "REINITIALISER") return;
     setIsResetting(true);
+    setResetError(null);
     try {
       const collectionsToPurge = [
         'applications',
@@ -69,10 +78,13 @@ export function AdminSettings() {
       setResetSuccess(true);
       setIsDialogOpen(false);
       setConfirmText("");
+      toast.success(isEn ? "Reset complete" : "Réinitialisation réussie", isEn ? "Database has been purged." : "La base de données a été purgée.");
       setTimeout(() => setResetSuccess(false), 5000);
     } catch (err: any) {
       console.error("Erreur lors de la réinitialisation:", err);
-      alert((isEn ? "Reset error: " : "Erreur lors de la réinitialisation : ") + (err.message || String(err)));
+      const msg = (isEn ? "Reset error: " : "Erreur lors de la réinitialisation : ") + (err?.message || String(err));
+      setResetError(msg);
+      toast.error(isEn ? "Reset failed" : "Échec de la réinitialisation", msg);
     } finally {
       setIsResetting(false);
     }
@@ -277,6 +289,12 @@ export function AdminSettings() {
                 className="h-12 font-mono font-bold tracking-wider"
               />
             </div>
+
+            {resetError && (
+              <div className="bg-red-50 border border-red-200 text-red-800 px-3.5 py-2.5 rounded-xl text-xs font-semibold">
+                {resetError}
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <Button

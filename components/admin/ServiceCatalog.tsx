@@ -13,13 +13,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { AGENCY_SERVICES } from "../../src/constants/servicesConfig";
-import { getCountryFlag } from "../../src/utils/flags";
 import {
   doesServiceMatchTab,
   getServiceCategoryMeta,
   computeFamilyCounts
 } from "../../src/utils/serviceMatching";
 import { TablePagination } from "../common/TablePagination";
+import { CountryFlag } from "../common/CountryFlag";
 
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
 type ViewMode = "grid" | "table";
@@ -125,8 +125,9 @@ export function ServiceCatalog() {
 
   // Prestations filtrées
   const filteredServices = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    return services.filter((s) => {
+    const q = (searchQuery || "").toLowerCase().trim();
+    return (services || []).filter((s) => {
+      if (!s) return false;
       if (!doesServiceMatchTab(s, activeFamilyId)) return false;
       if (selectedCountryFilter !== "Tous les pays" && s.destination !== selectedCountryFilter) {
         return false;
@@ -135,10 +136,10 @@ export function ServiceCatalog() {
       if (statusFilter === "INACTIVE" && s.active) return false;
 
       if (q) {
-        const matchTitle = s.title.toLowerCase().includes(q);
-        const matchDest = s.destination?.toLowerCase().includes(q);
-        const matchType = s.type?.toLowerCase().includes(q);
-        const matchDelay = s.processingTime?.toLowerCase().includes(q);
+        const matchTitle = (s.title || "").toLowerCase().includes(q);
+        const matchDest = (s.destination || "").toLowerCase().includes(q);
+        const matchType = (s.type || "").toLowerCase().includes(q);
+        const matchDelay = (s.processingTime || "").toLowerCase().includes(q);
         if (!matchTitle && !matchDest && !matchType && !matchDelay) return false;
       }
       return true;
@@ -606,8 +607,8 @@ export function ServiceCatalog() {
                         {srv.title}
                       </h3>
 
-                      <div className="flex items-center gap-1.5 text-slate-500 mt-2 text-xs font-bold">
-                        <span className="text-base">{getCountryFlag(srv.destination)}</span>
+                      <div className="flex items-center gap-2 text-slate-500 mt-2 text-xs font-bold">
+                        <CountryFlag country={srv.destination} size="sm" />
                         <span className="text-slate-800">{srv.destination}</span>
                       </div>
                     </div>
@@ -620,7 +621,7 @@ export function ServiceCatalog() {
                             Tarif B2B Débité
                           </span>
                           <div className="text-xl font-black text-slate-900 font-mono mt-0.5">
-                            {srv.price?.toLocaleString()}{" "}
+                            {Number(srv.price || 0).toLocaleString()}{" "}
                             <span className="text-xs font-bold text-slate-500">DZD</span>
                           </div>
                         </div>
@@ -749,14 +750,14 @@ export function ServiceCatalog() {
                       </td>
 
                       <td className="py-3.5 px-4 font-bold text-slate-800">
-                        <span className="inline-flex items-center gap-1.5">
-                          <span className="text-base">{getCountryFlag(srv.destination)}</span>
+                        <span className="inline-flex items-center gap-2">
+                          <CountryFlag country={srv.destination} size="sm" />
                           <span>{srv.destination}</span>
                         </span>
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-black font-mono text-slate-900">
-                        {srv.price?.toLocaleString()} DZD
+                        {Number(srv.price || 0).toLocaleString()} DZD
                       </td>
 
                       <td className="py-3.5 px-4 text-slate-600 font-medium">

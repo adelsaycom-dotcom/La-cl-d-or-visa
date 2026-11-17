@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { auth, db } from "../../src/firebase";
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence
+} from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { Link, useNavigate } from "react-router-dom";
+import { useAppStore } from "../../src/store/useAppStore";
 import { 
   ArrowRight, 
   ArrowLeft, 
@@ -71,52 +78,144 @@ export function Login() {
     setIsLoading(true);
 
     try {
+      await setPersistence(
+        auth,
+        rememberMe ? browserLocalPersistence : browserSessionPersistence
+      );
+
       const userCred = await signInWithEmailAndPassword(auth, email.trim(), password);
-      const userDoc = await getDoc(doc(db, "users", userCred.user.uid));
+      const uid = userCred.user.uid;
+      const userDoc = await getDoc(doc(db, "users", uid));
       const userEmail = (userCred.user.email || "").toLowerCase();
-      const isAdminEmail = 
-        userEmail === "adel.saycom@gmail.com" || 
-        userEmail === "admin@cle-dor.com" || 
+      const isAdminEmail =
+        userEmail === "adel.saycom@gmail.com" ||
+        userEmail === "admin@cle-dor.com" ||
         userEmail === "admin@lacle-dor.com";
-      
+
       if (userDoc.exists()) {
-        const role = userDoc.data().role;
-        if (role === "admin" || isAdminEmail) {
-          navigate("/admin");
-        } else {
-          const status = userDoc.data().status;
-          if (status === "PENDING") {
-            setErrorMessage(isEn ? "Your account is awaiting approval by the administrator." : "Votre compte est en attente de validation par l'administrateur.");
-            auth.signOut();
-          } else if (status === "SUSPENDED") {
-            setErrorMessage(isEn ? "Your account has been suspended. Please contact support." : "Votre compte a été suspendu. Veuillez contacter le support.");
-            auth.signOut();
-          } else {
-            navigate("/agency");
-          }
+        const userData: any = { id: userDoc.id, ...userDoc.data() };
+        const role = String(userData.role || "").trim().toLowerCase();
+        const status = String(userData.status || "ACTIVE").trim().toUpperCase();
+
+        if (role === "admin" || (isAdminEmail && userCred.user.emailVerified)) {
+          useAppStore.setState({
+            authReady: true,
+            authUserUid: uid,
+            authRole: "admin",
+            currentAgency: userData,
+            agencyBalance: Number(userData.balance || 0),
+            b2cMarginPercent: typeof userData.b2cMarginPercent === "number" ? userData.b2cMarginPercent : 15
+          });
+          navigate("/admin", { replace: true });
+          return;
         }
-      } else if (isAdminEmail) {
-        // Auto-heal admin document if wiped
-        await setDoc(doc(db, "users", userCred.user.uid), {
-          id: userCred.user.uid,
+
+        if (status === "PENDING") {
+          setErrorMessage(
+            isEn
+              ? "Your account is awaiting approval by the administrator."
+              : "Votre compte est en attente de validation par l'administrateur."
+          );
+          await auth.signOut();
+          return;
+        }
+
+        if (status === "REJECTED") {
+          setErrorMessage(
+            isEn
+              ? "Your agency registration request was declined."
+              : "Votre demande d'inscription partenaire a été refusée par l'administration."
+          );
+          await auth.signOut();
+          return;
+        }
+
+        if (status === "SUSPENDED") {
+          const reason = userData.banReason ? ` Motif : ${userData.banReason}` : "";
+          setErrorMessage(
+            isEn
+              ? `Your account has been suspended. Please contact support.${reason}`
+              : `Votre compte a été suspendu. Veuillez contacter le support.${reason}`
+          );
+          await auth.signOut();
+          return;
+        }
+
+        // Compte Agence actif : synchroniser Zustand AVANT la navigation
+        useAppStore.setState({
+          authReady: true,
+          authUserUid: uid,
+          authRole: "agency",
+          currentAgency: userData,
+          agencyBalance: Number(userData.balance || 0),
+          b2cMarginPercent: typeof userData.b2cMarginPercent === "number" ? userData.b2cMarginPercent : 15
+        });
+        navigate("/agency", { replace: true });
+      } else if (isAdminEmail && userCred.user.emailVerified) {
+        const adminProfile = {
+          id: uid,
           email: userCred.user.email,
           role: "admin",
           status: "ACTIVE",
+          balance: 0,
           createdAt: new Date().toISOString()
-        }, { merge: true });
-        navigate("/admin");
+        };
+        await setDoc(doc(db, "users", uid), adminProfile, { merge: true });
+        useAppStore.setState({
+          authReady: true,
+          authUserUid: uid,
+          authRole: "admin",
+          currentAgency: adminProfile as any,
+          agencyBalance: 0,
+          b2cMarginPercent: 15
+        });
+        navigate("/admin", { replace: true });
       } else {
-        // Normal agency fallback
-        navigate("/agency");
+        setErrorMessage(
+          isEn
+            ? "Account profile not found or inactive. Please contact the administrator."
+            : "Profil introuvable ou non activé. Veuillez contacter l'administration."
+        );
+        await auth.signOut();
       }
     } catch (err: any) {
       console.error("Erreur de connexion:", err);
-      if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
-        setErrorMessage(isEn ? "Incorrect email or password. Please verify and try again." : "Identifiants incorrects. Veuillez vérifier votre e-mail et mot de passe.");
+      if (
+        err.code === "auth/invalid-credential" ||
+        err.code === "auth/user-not-found" ||
+        err.code === "auth/wrong-password" ||
+        err.code === "auth/invalid-email"
+      ) {
+        setErrorMessage(
+          isEn
+            ? "Incorrect email or password. Please verify and try again."
+            : "Identifiants incorrects. Veuillez vérifier votre e-mail et mot de passe."
+        );
+      } else if (err.code === "auth/user-disabled") {
+        setErrorMessage(
+          isEn
+            ? "This account has been disabled by the administrator."
+            : "Ce compte a été désactivé par l'administrateur."
+        );
       } else if (err.code === "auth/too-many-requests") {
-        setErrorMessage(isEn ? "Too many attempts. Account temporarily locked for security." : "Trop de tentatives infructueuses. Veuillez patienter avant de réessayer.");
+        setErrorMessage(
+          isEn
+            ? "Too many attempts. Account temporarily locked for security."
+            : "Trop de tentatives infructueuses. Veuillez patienter quelques minutes avant de réessayer."
+        );
+      } else if (err.code === "auth/network-request-failed") {
+        setErrorMessage(
+          isEn
+            ? "Network error. Please check your internet connection."
+            : "Erreur réseau. Veuillez vérifier votre connexion internet."
+        );
       } else {
-        setErrorMessage(err.message || (isEn ? "Login failed. Please check your connection." : "Une erreur est survenue lors de la connexion."));
+        setErrorMessage(
+          err.message ||
+            (isEn
+              ? "Login failed. Please check your connection."
+              : "Une erreur est survenue lors de la connexion.")
+        );
       }
     } finally {
       setIsLoading(false);

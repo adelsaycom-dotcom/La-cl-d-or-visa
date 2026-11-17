@@ -6,6 +6,7 @@
 
 import { createWorker } from "tesseract.js";
 import { convertPdfPageToImage } from "./pdfToImage";
+import { auth } from "../firebase";
 
 export interface PassportScanResult {
   firstName: string;
@@ -384,52 +385,63 @@ export async function scanPassportSmart(
   
   onProgress?.("Initialisation de l'analyse biométrique...", 15);
 
-  // Étape 1 : Si un backend Node est présent (ex: environnement dev), test rapide non bloquant
+  // Étape 1 : Si un backend Node authentifié est présent, appel sécurisé avec jeton Firebase
   try {
-    const base64Data = typeof imageSource === "string" 
-      ? imageSource 
-      : await new Promise<string>((res) => {
-          const r = new FileReader();
-          r.onload = () => res(r.result as string);
-          r.readAsDataURL(imageSource);
-        });
+    const idToken = await auth.currentUser?.getIdToken();
+    if (idToken) {
+      const base64Data = typeof imageSource === "string" 
+        ? imageSource 
+        : await new Promise<string>((res) => {
+            const r = new FileReader();
+            r.onload = () => res(r.result as string);
+            r.readAsDataURL(imageSource);
+          });
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1200);
+      const mimeType =
+        imageSource instanceof File
+          ? imageSource.type || "image/jpeg"
+          : (base64Data.match(/^data:([^;]+);/)?.[1] || "image/jpeg");
 
-    const apiRes = await fetch("/api/scan-passport", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageBase64: base64Data }),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
 
-    const contentType = apiRes.headers.get("content-type") || "";
-    if (apiRes.ok && contentType.includes("application/json")) {
-      const json = await apiRes.json();
-      if (json && json.data && (json.data.firstName || json.data.passportNumber || json.data.lastName)) {
-        onProgress?.("Données biométriques reconnues avec succès !", 100);
-        return {
-          success: true,
-          data: {
-            firstName: json.data.firstName || "",
-            lastName: json.data.lastName || "",
-            passportNumber: json.data.passportNumber || "",
-            dateOfBirth: json.data.dateOfBirth || "",
-            expiryDate: json.data.expiryDate || "",
-            issueDate: json.data.issueDate || "",
-            nationality: json.data.nationality || "Algérienne",
-            gender: json.data.gender === "F" ? "F" : "M",
-            issuingCountry: json.data.issuingCountry || "Algérie",
-            placeOfBirth: json.data.placeOfBirth || ""
-          },
-          source: "gemini"
-        };
+      const apiRes = await fetch("/api/scan-passport", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`
+        },
+        body: JSON.stringify({ imageBase64: base64Data, mimeType }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      const contentType = apiRes.headers.get("content-type") || "";
+      if (apiRes.ok && contentType.includes("application/json")) {
+        const json = await apiRes.json();
+        if (json && json.data && (json.data.firstName || json.data.passportNumber || json.data.lastName)) {
+          onProgress?.("Données biométriques reconnues avec succès !", 100);
+          return {
+            success: true,
+            data: {
+              firstName: json.data.firstName || "",
+              lastName: json.data.lastName || "",
+              passportNumber: json.data.passportNumber || "",
+              dateOfBirth: json.data.dateOfBirth || "",
+              expiryDate: json.data.expiryDate || "",
+              issueDate: json.data.issueDate || "",
+              nationality: json.data.nationality || "Algérienne",
+              gender: json.data.gender === "F" ? "F" : "M",
+              issuingCountry: json.data.issuingCountry || "Algérie",
+              placeOfBirth: json.data.placeOfBirth || ""
+            },
+            source: "gemini"
+          };
+        }
       }
     }
   } catch {
-    // Mode Hostinger détecté : passage direct à l'analyseur client
+    // Bascule immédiate sur l'analyseur OCR client
   }
 
   // Étape 2 : Scanner Client-Side Tesseract + Analyse MRZ ICAO (100% Autonome sur Hostinger)

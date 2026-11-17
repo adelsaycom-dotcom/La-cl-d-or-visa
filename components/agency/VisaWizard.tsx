@@ -10,12 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
-import { getCountryFlag } from "../../src/utils/flags";
 import { parseConditionsList } from "../../src/utils/conditions";
 import { computeB2cPricing } from "../../src/utils/serviceMatching";
 import { AGENCY_SERVICES } from "../../src/constants/servicesConfig";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { useVisaWizard, formatFileSize } from "../../src/hooks/useVisaWizard";
+import { CountryFlag } from "../common/CountryFlag";
 
 export function VisaWizard() {
   const { language } = useLanguage();
@@ -23,6 +23,8 @@ export function VisaWizard() {
 
   const {
     agencyBalance,
+    catalogLoading,
+    catalogLoaded,
     b2cMode,
     setB2cMode,
     b2cMarginPercent,
@@ -261,7 +263,17 @@ export function VisaWizard() {
               </p>
             </div>
 
-            {availableCountries.length === 0 ? (
+            {catalogLoading && !catalogLoaded && availableCountries.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center text-slate-500">
+                <Loader2 className="w-10 h-10 mx-auto mb-3 text-[#7B1B38] animate-spin" />
+                <p className="font-bold text-base text-slate-800">
+                  {isEn ? "Loading destinations..." : "Chargement des destinations..."}
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {isEn ? "Syncing available packages." : "Synchronisation des formules disponibles."}
+                </p>
+              </div>
+            ) : availableCountries.length === 0 ? (
               <div className="bg-slate-50 border border-slate-200 rounded-3xl p-12 text-center text-slate-500">
                 <MapPin className="w-12 h-12 mx-auto mb-4 text-slate-300" />
                 <p className="font-semibold text-lg text-slate-700">
@@ -289,9 +301,7 @@ export function VisaWizard() {
                     className="group flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-2xl hover:border-[#7B1B38] hover:shadow-xl hover:shadow-[#7B1B38]/10 hover:-translate-y-1 transition-all text-center relative overflow-hidden cursor-pointer"
                   >
                     <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-[#7B1B38]/10 transition-all shadow-sm">
-                      <span className="text-3xl filter drop-shadow-xs">
-                        {getCountryFlag(country)}
-                      </span>
+                      <CountryFlag country={country} size="xl" />
                     </div>
                     <span className="font-black text-slate-900 text-lg group-hover:text-[#7B1B38] transition-colors">
                       {country}
@@ -338,7 +348,7 @@ export function VisaWizard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {availableOptions.map((opt) => {
                 const isSelected = selectedOption?.id === opt.id;
-                const { clientPrice } = computeB2cPricing(opt.price, b2cMarginPercent);
+                const { clientPrice } = computeB2cPricing(Number(opt.price || 0), b2cMarginPercent);
                 const cardConditions = parseConditionsList(opt.conditions);
 
                 return (
@@ -361,7 +371,7 @@ export function VisaWizard() {
                               {isEn ? "Client Public Rate" : "Tarif Public Client"}
                             </span>
                             <div className="text-2xl font-black text-emerald-700 font-mono mt-1">
-                              {clientPrice.toLocaleString()} <span className="text-xs">DZD</span>
+                              {Number(clientPrice || 0).toLocaleString()} <span className="text-xs">DZD</span>
                             </div>
                           </>
                         ) : (
@@ -370,7 +380,7 @@ export function VisaWizard() {
                               {isEn ? "B2B Rate" : "Tarif B2B"}
                             </span>
                             <div className="text-2xl font-black text-[#7B1B38] font-mono mt-1">
-                              {opt.price.toLocaleString()} <span className="text-xs">DZD</span>
+                              {Number(opt.price || 0).toLocaleString()} <span className="text-xs">DZD</span>
                             </div>
                           </>
                         )}
@@ -462,9 +472,7 @@ export function VisaWizard() {
                   </button>
 
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-2xl">
-                      {getCountryFlag(detailedServiceOption.destination)}
-                    </span>
+                    <CountryFlag country={detailedServiceOption.destination} size="md" />
                     <Badge className="bg-white/20 text-white border-0 font-bold text-xs">
                       {detailedServiceOption.type}
                     </Badge>
@@ -486,7 +494,7 @@ export function VisaWizard() {
                         {isEn ? "B2B Rate" : "Tarif B2B Débité"}
                       </span>
                       <div className="text-2xl font-black font-mono text-[#7B1B38] mt-0.5">
-                        {detailedServiceOption.price.toLocaleString()}{" "}
+                        {Number(detailedServiceOption.price || 0).toLocaleString()}{" "}
                         <span className="text-xs font-bold text-slate-500">DZD</span>
                       </div>
                     </div>
@@ -1434,7 +1442,7 @@ export function VisaWizard() {
                     {isEn ? "Current wallet balance:" : "Solde portefeuille actuel :"}
                   </span>
                   <span className="font-mono font-bold text-white">
-                    {agencyBalance.toLocaleString()} DZD
+                    {Number(agencyBalance || 0).toLocaleString()} DZD
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
@@ -1442,7 +1450,7 @@ export function VisaWizard() {
                     {isEn ? "Net debit on balance:" : "Débit net sur votre solde :"}
                   </span>
                   <span className="font-mono font-bold text-rose-400">
-                    - {selectedOption?.price.toLocaleString()} DZD
+                    - {Number(selectedOption?.price || 0).toLocaleString()} DZD
                   </span>
                 </div>
                 <div className="border-t border-slate-800 pt-2 flex justify-between items-center">
@@ -1456,7 +1464,7 @@ export function VisaWizard() {
                         : "text-red-400"
                     }`}
                   >
-                    {(agencyBalance - (selectedOption?.price || 0)).toLocaleString()} DZD
+                    {(Number(agencyBalance || 0) - Number(selectedOption?.price || 0)).toLocaleString()} DZD
                   </span>
                 </div>
               </div>
@@ -1525,7 +1533,7 @@ export function VisaWizard() {
             {isEn ? "Debited Amount" : "Montant Débité"}
           </span>
           <strong className="text-slate-900 font-mono text-sm">
-            {selectedOption?.price.toLocaleString()} DZD
+            {Number(selectedOption?.price || 0).toLocaleString()} DZD
           </strong>
         </div>
         <div className="border-r border-slate-200"></div>
@@ -1534,7 +1542,7 @@ export function VisaWizard() {
             {isEn ? "New Balance" : "Nouveau Solde"}
           </span>
           <strong className="text-[#7B1B38] font-mono text-sm">
-            {agencyBalance.toLocaleString()} DZD
+            {Number(agencyBalance || 0).toLocaleString()} DZD
           </strong>
         </div>
       </div>

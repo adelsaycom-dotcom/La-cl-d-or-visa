@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { X, Download, ExternalLink, FileText, Loader2, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { base64ToBlob, downloadFileSafe } from "../../src/utils/fileUpload";
+import { base64ToBlob, downloadFileSafe, resolveAttachmentData } from "../../src/utils/fileUpload";
 
 export interface PreviewDocData {
   src: string;
@@ -17,6 +17,7 @@ interface DocumentPreviewModalProps {
 
 export function DocumentPreviewModal({ doc, onClose }: DocumentPreviewModalProps) {
   const [blobUrl, setBlobUrl] = useState<string>("");
+  const [resolvedImgSrc, setResolvedImgSrc] = useState<string>("");
   const [isLoadingBlob, setIsLoadingBlob] = useState(false);
 
   const isPdf = Boolean(
@@ -29,33 +30,55 @@ export function DocumentPreviewModal({ doc, onClose }: DocumentPreviewModalProps
   );
 
   useEffect(() => {
-    let currentBlobUrl = "";
+    let createdBlobUrl = "";
     let isMounted = true;
 
-    if (doc && isPdf && doc.src) {
-      setIsLoadingBlob(true);
-      base64ToBlob(doc.src, "application/pdf")
-        .then((blob) => {
+    const loadPreview = async () => {
+      if (!doc || !doc.src) {
+        setBlobUrl("");
+        setResolvedImgSrc("");
+        setIsLoadingBlob(false);
+        return;
+      }
+
+      if (isPdf) {
+        setIsLoadingBlob(true);
+        try {
+          const resolved = await resolveAttachmentData(doc.src);
           if (!isMounted) return;
-          if (blob && blob.size > 0) {
-            currentBlobUrl = URL.createObjectURL(blob);
-            setBlobUrl(currentBlobUrl);
+          if (resolved.startsWith("blob:")) {
+            setBlobUrl(resolved);
+          } else if (resolved) {
+            const blob = await base64ToBlob(resolved, "application/pdf");
+            if (!isMounted) return;
+            if (blob && blob.size > 0) {
+              createdBlobUrl = URL.createObjectURL(blob);
+              setBlobUrl(createdBlobUrl);
+            }
           }
-          setIsLoadingBlob(false);
-        })
-        .catch((e) => {
+        } catch (e) {
           console.error("Erreur création Blob PDF:", e);
+        } finally {
           if (isMounted) setIsLoadingBlob(false);
-        });
-    } else {
-      setBlobUrl("");
-      setIsLoadingBlob(false);
-    }
+        }
+      } else {
+        setBlobUrl("");
+        setIsLoadingBlob(false);
+        if (doc.src.startsWith("/api/files/")) {
+          const resolved = await resolveAttachmentData(doc.src);
+          if (isMounted) setResolvedImgSrc(resolved || doc.src);
+        } else {
+          setResolvedImgSrc(doc.src);
+        }
+      }
+    };
+
+    loadPreview();
 
     return () => {
       isMounted = false;
-      if (currentBlobUrl) {
-        URL.revokeObjectURL(currentBlobUrl);
+      if (createdBlobUrl) {
+        URL.revokeObjectURL(createdBlobUrl);
       }
     };
   }, [doc, isPdf]);
@@ -70,9 +93,9 @@ export function DocumentPreviewModal({ doc, onClose }: DocumentPreviewModalProps
 
   const handleOpenNewTab = () => {
     if (blobUrl) {
-      window.open(blobUrl, "_blank");
+      window.open(blobUrl, "_blank", "noopener,noreferrer");
     } else if (doc.src?.startsWith("http")) {
-      window.open(doc.src, "_blank");
+      window.open(doc.src, "_blank", "noopener,noreferrer");
     } else {
       handleDownload();
     }
@@ -181,7 +204,7 @@ export function DocumentPreviewModal({ doc, onClose }: DocumentPreviewModalProps
             )
           ) : (
             <img 
-              src={doc.src} 
+              src={resolvedImgSrc || doc.src} 
               alt={doc.title} 
               className="max-w-full max-h-[72vh] object-contain rounded-xl p-2 select-none" 
             />

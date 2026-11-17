@@ -16,14 +16,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "../../src/i18n/LanguageContext";
+import { db } from "../../src/firebase";
+import { collection, doc, runTransaction } from "firebase/firestore";
+import { useToast } from "@/components/ui/toast";
 
 export function AgencyManagement() {
   const { language, t } = useLanguage();
   const isEn = language === "en";
+  const toast = useToast();
 
   const { 
     agencies, updateAgencyStatus, updateAgency, applications, 
-    transactions, rechargeRequests, addTransaction 
+    transactions, rechargeRequests 
   } = useAppStore();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -165,35 +169,67 @@ export function AgencyManagement() {
     }
   };
 
-  // Ajustement direct de solde par l'administrateur
+  // Ajustement direct de solde par l'administrateur (transaction atomique)
   const handleAdjustBalance = async () => {
-    if (!selectedAgency || balanceAdjustAmount <= 0 || !balanceAdjustReason.trim()) {
+    const amount = Number(balanceAdjustAmount);
+    if (!selectedAgency || !Number.isFinite(amount) || amount <= 0 || !balanceAdjustReason.trim()) {
       setActionNotice({ type: "error", text: "Veuillez renseigner un montant supérieur à 0 et un motif administratif explicatif." });
       return;
     }
 
-    const currentBal = selectedAgency.balance || 0;
-    const diff = balanceAdjustType === "credit" ? balanceAdjustAmount : -balanceAdjustAmount;
-    const newBal = Math.max(0, currentBal + diff);
-
     setIsAdjustingBalance(true);
     setActionNotice(null);
     try {
-      await updateAgency(selectedAgency.id, { balance: newBal });
-      await addTransaction({
-        agencyId: selectedAgency.id,
-        agencyName: selectedAgency.agencyName || selectedAgency.name || "Agence",
-        type: balanceAdjustType === "credit" ? "Crédit Manuel Admin" : "Débit Manuel Admin",
-        amount: balanceAdjustAmount,
-        date: new Date().toISOString(),
-        note: `Ajustement administratif : ${balanceAdjustReason.trim()}`,
-        status: "Effectué"
+      let updatedBalance = 0;
+
+      await runTransaction(db, async (transaction) => {
+        const agencyRef = doc(db, "users", selectedAgency.id);
+        const agencySnap = await transaction.get(agencyRef);
+        if (!agencySnap.exists()) {
+          throw new Error("Agence introuvable dans la base de données.");
+        }
+
+        const freshData = agencySnap.data();
+        const currentBal = Number(freshData.balance || 0);
+        const diff = balanceAdjustType === "credit" ? amount : -amount;
+        updatedBalance = Math.max(0, currentBal + diff);
+
+        const actualDelta = balanceAdjustType === "credit"
+          ? amount
+          : Math.min(currentBal, amount);
+
+        transaction.update(agencyRef, { balance: updatedBalance });
+
+        const txRef = doc(collection(db, "transactions"));
+        transaction.set(txRef, {
+          id: txRef.id,
+          agencyId: selectedAgency.id,
+          agencyName: freshData.agencyName || selectedAgency.agencyName || selectedAgency.name || "Agence",
+          type: balanceAdjustType,
+          amount: actualDelta,
+          date: new Date().toISOString(),
+          note: `Ajustement administratif : ${balanceAdjustReason.trim()}`.slice(0, 480),
+          description: `${balanceAdjustType === "credit" ? "Crédit Manuel Admin" : "Débit Manuel Admin"} - ${balanceAdjustReason.trim()}`.slice(0, 480),
+          status: "completed"
+        });
+
+        const notifRef = doc(collection(db, "notifications"));
+        transaction.set(notifRef, {
+          id: notifRef.id,
+          agencyId: selectedAgency.id,
+          title: balanceAdjustType === "credit" ? "Crédit Administratif" : "Débit Administratif",
+          message: `Votre solde a été ${balanceAdjustType === "credit" ? "crédité" : "débité"} de ${actualDelta.toLocaleString()} DZD (${balanceAdjustReason.trim()}).`.slice(0, 580),
+          type: balanceAdjustType === "credit" ? "success" : "info",
+          read: false,
+          createdAt: new Date().toISOString(),
+          link: "/agency/wallet"
+        });
       });
 
-      setSelectedAgency(prev => prev ? ({ ...prev, balance: newBal } as Agency) : null);
+      setSelectedAgency(prev => prev ? ({ ...prev, balance: updatedBalance } as Agency) : null);
       setBalanceAdjustAmount(0);
       setBalanceAdjustReason("");
-      setActionNotice({ type: "success", text: `Solde de l'agence mis à jour avec succès. Nouveau solde : ${newBal.toLocaleString()} DZD` });
+      setActionNotice({ type: "success", text: `Solde de l'agence mis à jour avec succès. Nouveau solde : ${updatedBalance.toLocaleString()} DZD` });
       setTimeout(() => setActionNotice(null), 4000);
     } catch (err: any) {
       console.error(err);
@@ -1224,14 +1260,17 @@ export function AgencyManagement() {
                 Annuler
               </Button>
               <Button 
-                disabled={isAddingLoading || !newAgencyName || !newAgencyEmail || !newAgencyPwd}
+                disabled={isAddingLoading || !newAgencyName.trim() || !newAgencyEmail.trim() || newAgencyPwd.length < 6}
                 onClick={async () => {
+                  if (newAgencyPwd.length < 6) {
+                    toast.error("Mot de passe invalide", "Le mot de passe temporaire doit contenir au moins 6 caractères.");
+                    return;
+                  }
                   setIsAddingLoading(true);
                   try {
                     const { getApp, initializeApp } = await import("firebase/app");
                     const { getAuth, createUserWithEmailAndPassword } = await import("firebase/auth");
                     const { doc, setDoc } = await import("firebase/firestore");
-                    const { db } = await import("../../src/firebase");
                     
                     let secondaryApp;
                     try {
@@ -1241,17 +1280,18 @@ export function AgencyManagement() {
                       secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
                     }
                     const secondaryAuth = getAuth(secondaryApp);
-                    const userCred = await createUserWithEmailAndPassword(secondaryAuth, newAgencyEmail, newAgencyPwd);
+                    const userCred = await createUserWithEmailAndPassword(secondaryAuth, newAgencyEmail.trim(), newAgencyPwd);
                     await setDoc(doc(db, "users", userCred.user.uid), {
-                      email: newAgencyEmail,
+                      id: userCred.user.uid,
+                      email: newAgencyEmail.trim(),
                       role: "agency",
-                      agencyName: newAgencyName,
-                      managerName: newAgencyManager,
-                      phone: newAgencyPhone,
-                      rc: newAgencyRc,
-                      nif: newAgencyNif,
-                      wilaya: newAgencyWilaya,
-                      address: newAgencyAddress,
+                      agencyName: newAgencyName.trim(),
+                      managerName: newAgencyManager.trim(),
+                      phone: newAgencyPhone.trim(),
+                      rc: newAgencyRc.trim(),
+                      nif: newAgencyNif.trim(),
+                      wilaya: newAgencyWilaya.trim(),
+                      address: newAgencyAddress.trim(),
                       applicationsCount: 0,
                       balance: 0,
                       status: "ACTIVE",
@@ -1259,9 +1299,19 @@ export function AgencyManagement() {
                     });
                     await secondaryAuth.signOut();
                     setIsAddAgencyOpen(false);
-                    alert("L'agence a été créée avec succès et activée.");
+                    setNewAgencyName("");
+                    setNewAgencyEmail("");
+                    setNewAgencyPhone("");
+                    setNewAgencyPwd("");
+                    setNewAgencyRc("");
+                    setNewAgencyNif("");
+                    setNewAgencyManager("");
+                    setNewAgencyWilaya("");
+                    setNewAgencyAddress("");
+                    toast.success("Agence créée", "L'agence a été créée avec succès et activée.");
+                    setActionNotice({ type: "success", text: "L'agence a été créée avec succès et activée." });
                   } catch(err: any) {
-                    alert("Erreur lors de la création : " + err.message);
+                    toast.error("Erreur de création", err?.message || "Impossible de créer l'agence.");
                   } finally {
                     setIsAddingLoading(false);
                   }

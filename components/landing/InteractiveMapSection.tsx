@@ -20,6 +20,7 @@ import {
   Plane
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { CountryFlag } from "../common/CountryFlag";
 
 // Standard geographic TopoJSON dataset from Natural Earth
 const GEO_URL = "/countries-110m.json";
@@ -398,7 +399,7 @@ export function InteractiveMapSection() {
                           fontWeight: "800",
                         }}
                       >
-                        🇩🇿 Alger (HQ)
+                        Alger (HQ)
                       </text>
                     </g>
                   </Marker>
@@ -435,7 +436,7 @@ export function InteractiveMapSection() {
                               userSelect: "none",
                             }}
                           >
-                            {dest.flag} {dest.city}
+                            {dest.city}
                           </text>
                         </g>
                       </Marker>
@@ -458,7 +459,7 @@ export function InteractiveMapSection() {
                       : "bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100"
                   }`}
                 >
-                  <span>{dest.flag}</span>
+                  <CountryFlag country={dest.name} fallbackCode={dest.flag} size="sm" />
                   <span>{dest.name}</span>
                 </button>
               ))}
@@ -471,8 +472,8 @@ export function InteractiveMapSection() {
             {/* Header info */}
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-4xl drop-shadow-sm">{selectedDest.flag}</span>
-                <h3 className="text-2xl font-black text-slate-900 mt-2">{selectedDest.name}</h3>
+                <CountryFlag country={selectedDest.name} fallbackCode={selectedDest.flag} size="xl" />
+                <h3 className="text-2xl font-black text-slate-900 mt-2.5">{selectedDest.name}</h3>
                 <span className={`inline-block mt-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
                   selectedDest.category === "evisa"
                     ? "bg-emerald-100 text-emerald-800"

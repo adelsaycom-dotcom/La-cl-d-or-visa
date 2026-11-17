@@ -10,10 +10,12 @@ import {
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Logo } from '@/components/Logo';
+import { signOut } from "firebase/auth";
 import { auth } from "../../src/firebase";
 import { useAppStore } from "../../src/store/useAppStore";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 
 export function AgencyLayout() {
   const agencyBalance = useAppStore(state => state.agencyBalance);
@@ -82,6 +84,19 @@ export function AgencyLayout() {
   const handleMarkAllRead = useCallback(() => {
     markAllNotificationsAsRead(auth.currentUser?.uid || "");
   }, [markAllNotificationsAsRead]);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await signOut(auth);
+    } catch {
+      // Ignorer
+    }
+    useAppStore.getState().clearData();
+    navigate("/login", { replace: true });
+  }, [navigate]);
+
+  const isSuspended = currentAgency?.status === "SUSPENDED";
+  const isSupportRoute = location.pathname.startsWith("/agency/support");
 
   return (
     <div className="relative flex h-screen overflow-hidden font-sans">
@@ -181,10 +196,14 @@ export function AgencyLayout() {
 
         {/* Bottom Actions */}
         <div className="p-3 border-t border-white/15 shrink-0">
-          <Link to="/login" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-700 hover:bg-rose-500/10 hover:text-rose-700 transition-colors group font-semibold text-sm">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-700 hover:bg-rose-500/10 hover:text-rose-700 transition-colors group font-semibold text-sm cursor-pointer"
+          >
             <LogOut className="w-5 h-5 text-slate-500 group-hover:text-rose-600 transition-colors" />
             <span>{t("nav.logout")}</span>
-          </Link>
+          </button>
         </div>
       </aside>
 
@@ -381,8 +400,8 @@ export function AgencyLayout() {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
               >
-                {currentAgency?.status === "SUSPENDED" && (
-                  <div className="mb-6 p-4 bg-red-50 border-2 border-red-300 rounded-2xl flex items-start gap-3 shadow-sm">
+                {isSuspended && (
+                  <div className="mb-6 p-5 bg-red-50 border-2 border-red-300 rounded-2xl flex items-start gap-3 shadow-sm">
                     <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                     <div className="text-xs text-red-900 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -401,13 +420,19 @@ export function AgencyLayout() {
                           </span>
                         )}
                       </p>
-                      <Link to="/agency/support" className="inline-block mt-2 font-bold underline text-red-700 hover:text-red-900">
-                        {isEn ? "Contact emergency support to restore your account →" : "Contacter le support d'urgence pour régulariser votre compte →"}
-                      </Link>
+                      {!isSupportRoute && (
+                        <Link to="/agency/support" className="inline-block mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors">
+                          {isEn ? "Contact emergency support to restore your account →" : "Contacter le support d'urgence pour régulariser votre compte →"}
+                        </Link>
+                      )}
                     </div>
                   </div>
                 )}
-                <Outlet />
+                {(!isSuspended || isSupportRoute) && (
+                  <ErrorBoundary scoped key={location.pathname}>
+                    <Outlet />
+                  </ErrorBoundary>
+                )}
               </motion.div>
             </AnimatePresence>
           </div>

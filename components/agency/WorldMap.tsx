@@ -88,12 +88,14 @@ const MapChart = ({ destinations }: WorldMapProps) => {
           <Geographies geography={geoUrl}>
             {({ geographies }) =>
               geographies.map((geo) => {
-                const geoName = geo.properties.name;
-                const destinationMatch = destinations.find(
-                   d => d.country.toLowerCase() === geoName.toLowerCase() ||
-                   (d.country === "United States" && geoName === "United States of America") ||
-                   (d.country === "United Kingdom" && geoName === "United Kingdom") ||
-                   (d.country === "Russia" && geoName === "Russia")
+                const geoName = geo?.properties?.name || "";
+                const destinationMatch = (destinations || []).find(
+                   d => d && (
+                     (d.country || "").toLowerCase() === geoName.toLowerCase() ||
+                     (d.country === "United States" && geoName === "United States of America") ||
+                     (d.country === "United Kingdom" && geoName === "United Kingdom") ||
+                     (d.country === "Russia" && geoName === "Russia")
+                   )
                 );
 
                 const color = getStatusColor(destinationMatch?.status);

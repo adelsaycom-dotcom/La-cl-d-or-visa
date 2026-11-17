@@ -10,10 +10,49 @@
  */
 
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { db, auth } from "../firebase";
 
 // Cache mémoire pour l'affichage ultra-rapide des aperçus
 const attachmentMemoryCache = new Map<string, string>();
+
+const ALLOWED_UPLOAD_MIME_TYPES = new Set<string>([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "application/pdf"
+]);
+
+async function getBearerAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const token = await auth.currentUser?.getIdToken();
+    if (token) {
+      return { Authorization: `Bearer ${token}` };
+    }
+  } catch {
+    // Aucun jeton disponible
+  }
+  return {};
+}
+
+export async function fetchProtectedFileAsBlobUrl(fileUrl: string): Promise<string> {
+  if (!fileUrl) return "";
+  if (fileUrl.startsWith("data:") || fileUrl.startsWith("blob:")) return fileUrl;
+
+  if (attachmentMemoryCache.has(fileUrl)) {
+    return attachmentMemoryCache.get(fileUrl)!;
+  }
+
+  const headers = await getBearerAuthHeaders();
+  const res = await fetch(fileUrl, { headers });
+  if (!res.ok) {
+    throw new Error(`Accès au document refusé (${res.status}).`);
+  }
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  attachmentMemoryCache.set(fileUrl, objectUrl);
+  return objectUrl;
+}
 
 export function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -78,9 +117,9 @@ export async function compressImageIfPossible(
 
 /**
  * Envoie le fichier vers le stockage universel :
- * 1. Enregistre dans la collection cloud Firestore 'attachments' (accessible partout, y compris Hostinger)
- * 2. Tente en parallèle l'API Node /uploads si disponible
- * 3. Retourne les métadonnées et un identifiant propre sans alourdir le document parent.
+ * 1. Valide le format et la taille côté client
+ * 2. Enregistre dans la collection cloud Firestore 'attachments' avec agencyId
+ * 3. Tente en parallèle l'API Node authentifiée /api/upload-attachment
  */
 export async function uploadFileToServer(
   file: File, 
@@ -94,18 +133,27 @@ export async function uploadFileToServer(
   type: string;
   category: string;
 }> {
+  const hasAllowedExtension = /\.(pdf|jpe?g|png|webp)$/i.test(file.name);
+  if ((file.type && !ALLOWED_UPLOAD_MIME_TYPES.has(file.type.toLowerCase())) && !hasAllowedExtension) {
+    throw new Error("Format de fichier non autorisé. Seuls PDF, JPG, PNG et WEBP sont acceptés.");
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error("Le fichier dépasse la taille maximale autorisée de 5 Mo.");
+  }
+
   // 1. Compression optimisée (< 120 Ko pour les images)
   const base64Data = file.type.startsWith("image/") 
     ? await compressImageIfPossible(file) 
     : await fileToBase64(file);
 
   const attId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const ownerUid = auth.currentUser?.uid || "";
 
   // 2. Mettre immédiatement en cache local pour affichage instantané
   attachmentMemoryCache.set(attId, base64Data);
   try {
     sessionStorage.setItem(`doc_${attId}`, base64Data);
-  } catch (e) {
+  } catch {
     // Quota sessionStorage dépassé, le cache mémoire prend le relais
   }
 
@@ -114,6 +162,7 @@ export async function uploadFileToServer(
     if (base64Data.length <= 700000) {
       await setDoc(doc(db, "attachments", attId), {
         id: attId,
+        agencyId: ownerUid,
         name: file.name,
         type: file.type || "application/octet-stream",
         size: file.size,
@@ -127,6 +176,7 @@ export async function uploadFileToServer(
       const totalChunks = Math.ceil(base64Data.length / chunkSize);
       await setDoc(doc(db, "attachments", attId), {
         id: attId,
+        agencyId: ownerUid,
         name: file.name,
         type: file.type || "application/octet-stream",
         size: file.size,
@@ -141,6 +191,7 @@ export async function uploadFileToServer(
         const chunkStr = base64Data.substring(i * chunkSize, (i + 1) * chunkSize);
         await setDoc(doc(db, "attachments", attId, "chunks", String(i)), {
           index: i,
+          agencyId: ownerUid,
           data: chunkStr
         });
       }
@@ -149,32 +200,38 @@ export async function uploadFileToServer(
     console.warn("Avertissement sauvegarde Firestore attachment:", firestoreErr);
   }
 
-  // 4. Si un serveur Node.js avec disque existe, tenter aussi la sauvegarde physique
+  // 4. Si un serveur Node.js avec disque privé existe, tenter la sauvegarde authentifiée
   let localServerUrl = "";
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const authHeaders = await getBearerAuthHeaders();
+    if (authHeaders.Authorization) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    const res = await fetch("/api/upload-attachment", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fileBase64: base64Data,
-        fileName: file.name,
-        fileType: file.type || "application/octet-stream",
-        category: category
-      }),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
+      const res = await fetch("/api/upload-attachment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders
+        },
+        body: JSON.stringify({
+          fileBase64: base64Data,
+          fileName: file.name,
+          fileType: file.type || "application/octet-stream",
+          category: category
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.url) {
-        localServerUrl = data.url;
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.url) {
+          localServerUrl = data.url;
+        }
       }
     }
-  } catch (e) {
+  } catch {
     // Mode sans backend Express disque
   }
 
@@ -198,9 +255,16 @@ export async function uploadFileToServer(
 export async function resolveAttachmentData(attachment: any): Promise<string> {
   if (!attachment) return "";
 
-  // Cas 1 : Chaîne déjà en base64 Data URL
+  // Cas 1 : Chaîne déjà en base64 Data URL ou URL fichier privé
   if (typeof attachment === "string") {
-    if (attachment.startsWith("data:")) return attachment;
+    if (attachment.startsWith("data:") || attachment.startsWith("blob:")) return attachment;
+    if (attachment.startsWith("/api/files/")) {
+      try {
+        return await fetchProtectedFileAsBlobUrl(attachment);
+      } catch {
+        return "";
+      }
+    }
     if (attachment.startsWith("http") || attachment.startsWith("/uploads/")) return attachment;
     
     // Si c'est un identifiant storageId ou une URL relative /attachments/att_...
@@ -250,6 +314,15 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
   // Si attObj.url est déjà un data:
   if (attObj.url && typeof attObj.url === "string" && attObj.url.startsWith("data:")) {
     return attObj.url;
+  }
+
+  // Si attObj.url est une URL fichier privé /api/files/
+  if (attObj.url && typeof attObj.url === "string" && attObj.url.startsWith("/api/files/")) {
+    try {
+      return await fetchProtectedFileAsBlobUrl(attObj.url);
+    } catch {
+      // Poursuivre vers résolution storageId Firestore si disponible
+    }
   }
 
   // Si attObj.url est une URL HTTP ou /uploads/
@@ -388,7 +461,8 @@ export async function downloadFileSafe(fileSource: any, fileName = "document.pdf
     if (resolvedData.startsWith("data:")) {
       blob = await base64ToBlob(resolvedData, isPdf ? "application/pdf" : "application/octet-stream");
     } else {
-      const response = await fetch(resolvedData);
+      const fetchHeaders = resolvedData.startsWith("/api/") ? await getBearerAuthHeaders() : {};
+      const response = await fetch(resolvedData, { headers: fetchHeaders });
       if (!response.ok) {
         throw new Error(`Erreur réseau (${response.status}) lors du téléchargement`);
       }
@@ -417,9 +491,6 @@ export async function downloadFileSafe(fileSource: any, fileName = "document.pdf
     }, 30000);
   } catch (err) {
     console.error("Erreur downloadFileSafe:", err);
-    if (typeof fileSource === "string" && fileSource.startsWith("http")) {
-      window.open(fileSource, "_blank");
-    }
   }
 }
 
@@ -434,12 +505,21 @@ export async function openPdfInNewTab(fileSource: any, fileName = "document.pdf"
       throw new Error("Impossible de récupérer les données du document.");
     }
 
-    if (resolvedData.startsWith("data:")) {
-      const isPdf = resolvedData.startsWith("data:application/pdf") || fileName.toLowerCase().endsWith(".pdf");
-      const blob = await base64ToBlob(resolvedData, isPdf ? "application/pdf" : "application/octet-stream");
-      const blobUrl = URL.createObjectURL(blob);
-      window.open(blobUrl, "_blank", "noopener,noreferrer");
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    if (resolvedData.startsWith("data:") || resolvedData.startsWith("blob:")) {
+      const targetUrl = resolvedData.startsWith("blob:")
+        ? resolvedData
+        : URL.createObjectURL(
+            await base64ToBlob(
+              resolvedData,
+              resolvedData.startsWith("data:application/pdf") || fileName.toLowerCase().endsWith(".pdf")
+                ? "application/pdf"
+                : "application/octet-stream"
+            )
+          );
+      window.open(targetUrl, "_blank", "noopener,noreferrer");
+      if (!resolvedData.startsWith("blob:")) {
+        setTimeout(() => URL.revokeObjectURL(targetUrl), 60000);
+      }
     } else if (resolvedData.startsWith("http")) {
       window.open(resolvedData, "_blank", "noopener,noreferrer");
     } else {

@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import WorldMap from "./WorldMap";
 import { useLanguage } from "../../src/i18n/LanguageContext";
+import { CountryFlag } from "../common/CountryFlag";
 
 export type VisaStatus = "free" | "voa" | "required" | "eta";
 
@@ -83,13 +84,27 @@ export function PassportIndex() {
                 <SelectValue placeholder={isEn ? "Choose a passport" : "Choisir un passeport"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Émirati">🇦🇪 {isEn ? "Emirati Passport" : "Passeport Émirati"}</SelectItem>
-                <SelectItem value="Français">🇫🇷 {isEn ? "French Passport" : "Passeport Français"}</SelectItem>
-                <SelectItem value="Canadien">🇨🇦 {isEn ? "Canadian Passport" : "Passeport Canadien"}</SelectItem>
-                <SelectItem value="Algérien">🇩🇿 {isEn ? "Algerian Passport" : "Passeport Algérien"}</SelectItem>
-                <SelectItem value="Marocain">🇲🇦 {isEn ? "Moroccan Passport" : "Passeport Marocain"}</SelectItem>
-                <SelectItem value="Tunisien">🇹🇳 {isEn ? "Tunisian Passport" : "Passeport Tunisien"}</SelectItem>
-                <SelectItem value="Sénégalais">🇸🇳 {isEn ? "Senegalese Passport" : "Passeport Sénégalais"}</SelectItem>
+                <SelectItem value="Émirati">
+                  <span className="inline-flex items-center gap-2"><CountryFlag country="AE" size="sm" /><span>{isEn ? "Emirati Passport" : "Passeport Émirati"}</span></span>
+                </SelectItem>
+                <SelectItem value="Français">
+                  <span className="inline-flex items-center gap-2"><CountryFlag country="FR" size="sm" /><span>{isEn ? "French Passport" : "Passeport Français"}</span></span>
+                </SelectItem>
+                <SelectItem value="Canadien">
+                  <span className="inline-flex items-center gap-2"><CountryFlag country="CA" size="sm" /><span>{isEn ? "Canadian Passport" : "Passeport Canadien"}</span></span>
+                </SelectItem>
+                <SelectItem value="Algérien">
+                  <span className="inline-flex items-center gap-2"><CountryFlag country="DZ" size="sm" /><span>{isEn ? "Algerian Passport" : "Passeport Algérien"}</span></span>
+                </SelectItem>
+                <SelectItem value="Marocain">
+                  <span className="inline-flex items-center gap-2"><CountryFlag country="MA" size="sm" /><span>{isEn ? "Moroccan Passport" : "Passeport Marocain"}</span></span>
+                </SelectItem>
+                <SelectItem value="Tunisien">
+                  <span className="inline-flex items-center gap-2"><CountryFlag country="TN" size="sm" /><span>{isEn ? "Tunisian Passport" : "Passeport Tunisien"}</span></span>
+                </SelectItem>
+                <SelectItem value="Sénégalais">
+                  <span className="inline-flex items-center gap-2"><CountryFlag country="SN" size="sm" /><span>{isEn ? "Senegalese Passport" : "Passeport Sénégalais"}</span></span>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -146,8 +161,8 @@ export function PassportIndex() {
           {filteredDestinations.map((dest, i) => (
             <div key={i} className={`p-4 rounded-xl border flex items-center justify-between ${getStatusColor(dest.status)} bg-white shadow-sm hover:shadow-md transition-shadow`}>
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-sm font-bold shrink-0 border border-current shadow-sm">
-                  {dest.code}
+                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 border border-slate-200 shadow-xs">
+                  <CountryFlag country={dest.country} size="lg" />
                 </div>
                 <div>
                   <div className="font-bold text-gray-900">{dest.country}</div>

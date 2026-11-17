@@ -14,10 +14,12 @@ import { AttachmentThumbnail } from "../common/AttachmentThumbnail";
 import { DocumentPreviewModal, PreviewDocData } from "../common/DocumentPreviewModal";
 import { useApplicationFilters } from "../../src/hooks/useApplicationFilters";
 import { TablePagination } from "../common/TablePagination";
+import { useToast } from "@/components/ui/toast";
 
 export function AgencyApplications() {
   const { language, t } = useLanguage();
   const isEn = language === "en";
+  const toast = useToast();
 
   const applications = useAppStore(state => state.applications);
   const updateApplication = useAppStore(state => state.updateApplication);
@@ -158,7 +160,7 @@ export function AgencyApplications() {
     if (!file || !selectedApp) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert("Le fichier dépasse la taille maximale autorisée de 5 Mo.");
+      toast.error("Fichier trop volumineux", "Le fichier dépasse la taille maximale autorisée de 5 Mo.");
       return;
     }
 
@@ -192,10 +194,10 @@ export function AgencyApplications() {
         sender: "Agency"
       });
 
-      alert("Votre document a été transmis avec succès à l'administration !");
+      toast.success("Document transmis", "Votre document a été transmis avec succès à l'administration !");
     } catch (err: any) {
       console.error("Erreur téléversement:", err);
-      alert(err.message || "Erreur lors de la transmission du document.");
+      toast.error("Erreur de transmission", err?.message || "Erreur lors de la transmission du document.");
     } finally {
       setIsUploadingMissingDoc(false);
       if (missingDocInputRef.current) missingDocInputRef.current.value = "";

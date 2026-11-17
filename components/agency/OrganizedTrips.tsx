@@ -13,14 +13,23 @@ import { Badge } from '../ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
 import { useLanguage } from "../../src/i18n/LanguageContext";
-import { getCountryFlag } from "../../src/utils/flags";
 import { TablePagination } from "../common/TablePagination";
+import { escapeHtml } from "../../src/utils/sanitizeHtml";
+import { CountryFlag } from "../common/CountryFlag";
+
+const formatSafeDate = (raw?: string, locale: string = 'fr-FR') => {
+  if (!raw) return '—';
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString(locale);
+};
 
 export default function OrganizedTrips() {
   const { language, t } = useLanguage();
   const isEn = language === "en";
 
   const organizedTrips = useAppStore(state => state.organizedTrips);
+  const catalogLoading = useAppStore(state => state.catalogLoading);
+  const catalogLoaded = useAppStore(state => state.catalogLoaded);
   const tripReservations = useAppStore(state => state.tripReservations);
   const addTripReservation = useAppStore(state => state.addTripReservation);
   const agencyBalance = useAppStore(state => state.agencyBalance);
@@ -53,10 +62,10 @@ export default function OrganizedTrips() {
 
   // Filtrage mémoïsé des voyages actifs
   const filteredTrips = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
+    const term = (searchTerm || '').trim().toLowerCase();
     return (organizedTrips || [])
-      .filter(t => t.status === 'active' || !t.status)
-      .filter(t => !term || t.title.toLowerCase().includes(term) || t.destination.toLowerCase().includes(term));
+      .filter(t => t && (t.status === 'active' || !t.status))
+      .filter(t => !term || (t.title || '').toLowerCase().includes(term) || (t.destination || '').toLowerCase().includes(term));
   }, [organizedTrips, searchTerm]);
 
   const catalogPageSize = 6;
@@ -171,13 +180,29 @@ export default function OrganizedTrips() {
   const handlePrintReceipt = (reservation: TripReservation, trip: OrganizedTrip | null) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
+    printWindow.opener = null;
+
+    const safeResId = escapeHtml(reservation.id);
+    const safeTripTitle = escapeHtml(trip?.title || 'Voyage Organisé');
+    const safeDest = escapeHtml(trip?.destination || 'N/A');
+    const safeStartDate = escapeHtml(trip?.startDate ? new Date(trip.startDate).toLocaleDateString() : 'N/A');
+    const safeCreatedAt = escapeHtml(new Date(reservation.createdAt).toLocaleString());
+    const safeClientName = escapeHtml(reservation.clientName || 'N/A');
+    const safeClientPhone = escapeHtml(reservation.clientPhone || 'Non renseigné');
+    const safePeople = escapeHtml(reservation.numberOfPeople);
+    const safeAgencyName = escapeHtml(reservation.agencyName || 'Agence');
+    const safePassengers = reservation.passengerNames && reservation.passengerNames.length > 0
+      ? reservation.passengerNames.map((name) => escapeHtml(name)).join(', ')
+      : '';
+    const safeTotal = escapeHtml(reservation.totalPrice?.toLocaleString() || '0');
+    const safeGenDate = escapeHtml(new Date().toLocaleDateString());
 
     const htmlContent = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Reçu de Réservation - ${reservation.id}</title>
+        <title>Reçu de Réservation - ${safeResId}</title>
         <style>
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; color: #1e293b; }
           .header { display: flex; justify-content: space-between; border-bottom: 2px solid #7B1B38; padding-bottom: 15px; margin-bottom: 25px; }
@@ -205,42 +230,42 @@ export default function OrganizedTrips() {
           </div>
           <div style="text-align: right;">
             <div class="badge">RÉSERVATION CONFIRMÉE</div>
-            <div class="ref">${reservation.id}</div>
+            <div class="ref">${safeResId}</div>
           </div>
         </div>
 
         <div class="section">
           <div class="section-title">Détails du Voyage</div>
           <div class="grid">
-            <div class="item"><span class="label">Circuit :</span> <span class="value">${trip?.title || 'Voyage Organisé'}</span></div>
-            <div class="item"><span class="label">Destination :</span> <span class="value">${trip?.destination || 'N/A'}</span></div>
-            <div class="item"><span class="label">Date de départ :</span> <span class="value">${trip?.startDate ? new Date(trip.startDate).toLocaleDateString() : 'N/A'}</span></div>
-            <div class="item"><span class="label">Date d'enregistrement :</span> <span class="value">${new Date(reservation.createdAt).toLocaleString()}</span></div>
+            <div class="item"><span class="label">Circuit :</span> <span class="value">${safeTripTitle}</span></div>
+            <div class="item"><span class="label">Destination :</span> <span class="value">${safeDest}</span></div>
+            <div class="item"><span class="label">Date de départ :</span> <span class="value">${safeStartDate}</span></div>
+            <div class="item"><span class="label">Date d'enregistrement :</span> <span class="value">${safeCreatedAt}</span></div>
           </div>
         </div>
 
         <div class="section">
           <div class="section-title">Informations Client & Voyageurs</div>
           <div class="grid">
-            <div class="item"><span class="label">Contact Principal :</span> <span class="value">${reservation.clientName}</span></div>
-            <div class="item"><span class="label">Téléphone :</span> <span class="value">${reservation.clientPhone || 'Non renseigné'}</span></div>
-            <div class="item"><span class="label">Nombre de Places :</span> <span class="value">${reservation.numberOfPeople} personne(s)</span></div>
-            <div class="item"><span class="label">Agence :</span> <span class="value">${reservation.agencyName}</span></div>
+            <div class="item"><span class="label">Contact Principal :</span> <span class="value">${safeClientName}</span></div>
+            <div class="item"><span class="label">Téléphone :</span> <span class="value">${safeClientPhone}</span></div>
+            <div class="item"><span class="label">Nombre de Places :</span> <span class="value">${safePeople} personne(s)</span></div>
+            <div class="item"><span class="label">Agence :</span> <span class="value">${safeAgencyName}</span></div>
           </div>
-          ${reservation.passengerNames && reservation.passengerNames.length > 0 ? `
+          ${safePassengers ? `
             <div style="margin-top: 10px; font-size: 13px;">
-              <span class="label">Passagers :</span> <span class="value">${reservation.passengerNames.join(', ')}</span>
+              <span class="label">Passagers :</span> <span class="value">${safePassengers}</span>
             </div>
           ` : ''}
         </div>
 
         <div class="total">
           <div class="total-label">Montant Total de la Réservation :</div>
-          <div class="total-amount">${reservation.totalPrice?.toLocaleString()} DZD</div>
+          <div class="total-amount">${safeTotal} DZD</div>
         </div>
 
         <div class="footer">
-          Document généré le ${new Date().toLocaleDateString()} • Reçu officiel de réservation B2B
+          Document généré le ${safeGenDate} • Reçu officiel de réservation B2B
         </div>
 
         <script>
@@ -330,50 +355,59 @@ export default function OrganizedTrips() {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {paginatedTrips.map(trip => {
-              const bookedSeats = getBookedSeatsForTrip(trip.id);
+          {catalogLoading && !catalogLoaded && filteredTrips.length === 0 ? (
+            <div className="py-20 text-center bg-white rounded-3xl border border-slate-200">
+              <Loader2 className="w-9 h-9 mx-auto text-[#7B1B38] animate-spin mb-3" />
+              <p className="font-bold text-slate-800 text-sm">
+                {isEn ? "Loading organized trips..." : "Chargement des voyages organisés..."}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {paginatedTrips.map(trip => {
+                const bookedSeats = getBookedSeatsForTrip(trip.id);
 
-              return (
-                <div key={trip.id} className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col hover:border-[#7B1B38]/30 hover:shadow-lg transition-all duration-300">
-                  <div className="h-52 relative overflow-hidden group">
-                    <img 
-                      src={trip.photoUrl || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&q=80"} 
-                      alt={trip.title} 
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-                    />
-                    
-                    {/* Badge Prix B2B */}
-                    <div className="absolute top-4 left-4">
-                      <Badge className="bg-white/95 text-slate-900 backdrop-blur-md border-0 font-black px-3 py-1 shadow-sm text-xs">
-                        {trip.price.toLocaleString()} DZD <span className="text-[10px] font-medium text-slate-500 ml-1">/{isEn ? "person" : "pers"}</span>
-                      </Badge>
-                    </div>
-
-                    {/* Indicateur si l'agence a déjà réservé ce voyage */}
-                    {bookedSeats > 0 && (
-                      <div className="absolute top-4 right-4">
-                        <Badge className="bg-emerald-500 text-white border-0 font-black px-3 py-1 text-xs shadow-md flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> {isEn ? `Booked (${bookedSeats} seats)` : `Réservé (${bookedSeats} places)`}
+                return (
+                  <div key={trip.id} className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col hover:border-[#7B1B38]/30 hover:shadow-lg transition-all duration-300">
+                    <div className="h-52 relative overflow-hidden group">
+                      <img 
+                        src={trip.photoUrl || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&q=80"} 
+                        alt={trip.title} 
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                      />
+                      
+                      {/* Badge Prix B2B */}
+                      <div className="absolute top-4 left-4">
+                        <Badge className="bg-white/95 text-slate-900 backdrop-blur-md border-0 font-black px-3 py-1 shadow-sm text-xs">
+                          {Number(trip.price || 0).toLocaleString()} DZD <span className="text-[10px] font-medium text-slate-500 ml-1">/{isEn ? "person" : "pers"}</span>
                         </Badge>
                       </div>
-                    )}
 
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-5 pt-10">
-                      <h3 className="text-white font-black text-lg leading-tight mb-0.5">{trip.title}</h3>
-                      <p className="text-slate-200 text-xs flex items-center gap-1 font-medium">
-                        <MapPin className="w-3.5 h-3.5 text-[#7B1B38]" /> {trip.destination}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="p-5 flex-1 flex flex-col">
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div className="bg-slate-50 rounded-xl p-2.5 flex flex-col items-center justify-center text-center border border-slate-100">
-                        <Calendar className="w-4 h-4 text-[#7B1B38] mb-1" />
-                        <span className="text-[10px] text-slate-400 uppercase font-bold">{isEn ? "Departure" : "Départ"}</span>
-                        <span className="text-xs font-bold text-slate-800">{new Date(trip.startDate).toLocaleDateString(isEn ? 'en-US' : 'fr-FR')}</span>
+                      {/* Indicateur si l'agence a déjà réservé ce voyage */}
+                      {bookedSeats > 0 && (
+                        <div className="absolute top-4 right-4">
+                          <Badge className="bg-emerald-500 text-white border-0 font-black px-3 py-1 text-xs shadow-md flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> {isEn ? `Booked (${bookedSeats} seats)` : `Réservé (${bookedSeats} places)`}
+                          </Badge>
+                        </div>
+                      )}
+
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-5 pt-10">
+                        <h3 className="text-white font-black text-lg leading-tight mb-0.5">{trip.title}</h3>
+                        <p className="text-slate-200 text-xs flex items-center gap-1.5 font-medium">
+                          <CountryFlag country={trip.destination} size="sm" />
+                          <span>{trip.destination}</span>
+                        </p>
                       </div>
+                    </div>
+                    
+                    <div className="p-5 flex-1 flex flex-col">
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="bg-slate-50 rounded-xl p-2.5 flex flex-col items-center justify-center text-center border border-slate-100">
+                          <Calendar className="w-4 h-4 text-[#7B1B38] mb-1" />
+                          <span className="text-[10px] text-slate-400 uppercase font-bold">{isEn ? "Departure" : "Départ"}</span>
+                          <span className="text-xs font-bold text-slate-800">{formatSafeDate(trip.startDate, isEn ? 'en-US' : 'fr-FR')}</span>
+                        </div>
                       <div className="bg-slate-50 rounded-xl p-2.5 flex flex-col items-center justify-center text-center border border-slate-100">
                         <Users className="w-4 h-4 text-emerald-600 mb-1" />
                         <span className="text-[10px] text-slate-400 uppercase font-bold">{isEn ? "Seats Left" : "Places Dispo"}</span>
@@ -422,9 +456,10 @@ export default function OrganizedTrips() {
                 </div>
               );
             })}
-          </div>
+            </div>
+          )}
 
-          {filteredTrips.length === 0 && (
+          {!catalogLoading && filteredTrips.length === 0 && (
             <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 p-8">
               <MapPin className="w-12 h-12 text-slate-300 mx-auto mb-3" />
               <h3 className="text-lg font-bold text-slate-800">{isEn ? "No trips found" : "Aucun voyage disponible"}</h3>
@@ -614,7 +649,7 @@ export default function OrganizedTrips() {
 
                 <div className="absolute top-4 left-4 flex items-center gap-2">
                   <Badge className="bg-black/60 backdrop-blur-md text-white text-xs font-bold px-3 py-1 rounded-xl flex items-center gap-1.5 border-0">
-                    <span className="text-base">{getCountryFlag(detailedTrip.destination)}</span>
+                    <CountryFlag country={detailedTrip.destination} size="sm" />
                     <span>{detailedTrip.destination}</span>
                   </Badge>
                   <Badge className="bg-[#7B1B38] text-white text-xs font-black uppercase px-3 py-1 rounded-xl border-0">
@@ -712,7 +747,7 @@ export default function OrganizedTrips() {
                     {isEn ? "B2B Rate per person" : "Tarif Agence B2B par personne"}
                   </span>
                   <div className="text-2xl font-black font-mono text-[#7B1B38]">
-                    {detailedTrip.price.toLocaleString()} <span className="text-xs font-bold text-slate-500">DZD</span>
+                    {Number(detailedTrip.price || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">DZD</span>
                   </div>
                 </div>
 
@@ -785,7 +820,7 @@ export default function OrganizedTrips() {
                   </div>
                   <div className="text-right shrink-0">
                     <span className="text-[10px] uppercase font-bold text-slate-400 block">{isEn ? "Rate / Person" : "Tarif / pers"}</span>
-                    <span className="font-black text-[#7B1B38] text-sm font-mono">{selectedTrip.price.toLocaleString()} DZD</span>
+                    <span className="font-black text-[#7B1B38] text-sm font-mono">{Number(selectedTrip.price || 0).toLocaleString()} DZD</span>
                   </div>
                 </div>
               )}

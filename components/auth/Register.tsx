@@ -111,6 +111,7 @@ export function Register() {
 
     setIsLoading(true);
 
+    let createdUser = false;
     try {
       // 1. Création compte Firebase Auth
       const userCred = await createUserWithEmailAndPassword(
@@ -118,6 +119,7 @@ export function Register() {
         formData.email.trim(), 
         formData.password
       );
+      createdUser = true;
       const uid = userCred.user.uid;
 
       // 2. Génération code agence automatique
@@ -144,9 +146,6 @@ export function Register() {
         notes: "Nouvelle inscription via portail B2B"
       });
 
-      // Déconnexion immédiate pour empêcher l'accès avant approbation admin
-      await auth.signOut();
-
       setIsSubmittedSuccess(true);
     } catch (err: any) {
       console.error("Erreur inscription agence:", err);
@@ -160,6 +159,13 @@ export function Register() {
         setError(err.message || (isEn ? "Error submitting registration. Please try again." : "Une erreur est survenue lors de l'enregistrement de votre demande."));
       }
     } finally {
+      if (createdUser) {
+        try {
+          await auth.signOut();
+        } catch {
+          // Ignorer
+        }
+      }
       setIsLoading(false);
     }
   };

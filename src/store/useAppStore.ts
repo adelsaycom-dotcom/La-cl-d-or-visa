@@ -283,6 +283,9 @@ export interface AppState {
   updateVisaType: (countryId: string, visaId: string, data: Partial<VisaType>) => void;
   removeVisaType: (countryId: string, visaId: string) => void;
 
+  authReady: boolean;
+  authUserUid: string | null;
+  authRole: 'admin' | 'agency' | null;
   currentAgency: Agency | null;
   setCurrentAgency: (agency: Agency | null) => void;
   b2cMode: boolean;
@@ -291,10 +294,14 @@ export interface AppState {
   setB2cMarginPercent: (percent: number) => void;
   updateAgency: (id: string, updates: Partial<Agency>) => Promise<void>;
 
+  catalogLoading: boolean;
+  catalogLoaded: boolean;
+  refreshCatalog: (force?: boolean) => Promise<void>;
+
   quotaExceeded: boolean;
   setQuotaExceeded: (exceeded: boolean) => void;
 
-  addApplication: (application: Application) => void;
+  addApplication: (application: Application) => Promise<void>;
   updateApplicationStatus: (id: string, status: Application["status"]) => void;
   updateApplication: (id: string, updates: Partial<Application>) => void;
   addApplicationTimelineEntry: (id: string, entry: Omit<NonNullable<Application["timeline"]>[0], "id" | "date">) => Promise<void>;
@@ -302,8 +309,37 @@ export interface AppState {
 }
 
 export const useAppStore = create<AppState>()((set, get) => ({
+  authReady: false,
+  authUserUid: null,
+  authRole: null,
+  catalogLoading: false,
+  catalogLoaded: false,
   quotaExceeded: false,
   setQuotaExceeded: (exceeded) => set({ quotaExceeded: exceeded }),
+
+  refreshCatalog: async (force = true) => {
+    set({ catalogLoading: true });
+    try {
+      if (force) catalogService.invalidateCache();
+      const [countries, services, organizedTrips, studyPrograms] = await Promise.all([
+        catalogService.getCountries(force),
+        catalogService.getServices(force),
+        catalogService.getOrganizedTrips(force),
+        catalogService.getStudyPrograms(force)
+      ]);
+      set({
+        countries: countries as any,
+        services: services as any,
+        organizedTrips: organizedTrips as any,
+        studyPrograms: studyPrograms as any,
+        catalogLoading: false,
+        catalogLoaded: true
+      });
+    } catch (err) {
+      console.warn('[Catalog] Erreur rafraîchissement catalogue:', err);
+      set({ catalogLoading: false, catalogLoaded: true });
+    }
+  },
 
   currentAgency: null,
   setCurrentAgency: (agency) => set({ currentAgency: agency }),
@@ -429,130 +465,199 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   addService: async (s) => {
     const sId = s.id || doc(collection(db, 'services')).id;
-    await setDoc(doc(db, 'services', sId), sanitizeFirestoreData({ ...s, id: sId }));
+    const finalService = { ...s, id: sId };
+    await setDoc(doc(db, 'services', sId), sanitizeFirestoreData(finalService));
     catalogService.invalidateCache('services');
+    set(state => ({
+      services: [finalService, ...state.services.filter(item => item.id !== sId)]
+    }));
   },
   updateService: async (id, s) => {
     await updateDoc(doc(db, 'services', id), sanitizeFirestoreData(s));
     catalogService.invalidateCache('services');
+    set(state => ({
+      services: state.services.map(item => item.id === id ? { ...item, ...s } : item)
+    }));
   },
   deleteService: async (id) => {
     await deleteDoc(doc(db, 'services', id));
     catalogService.invalidateCache('services');
+    set(state => ({
+      services: state.services.filter(item => item.id !== id)
+    }));
   },
 
   addOrganizedTrip: async (tripData) => {
     const tripId = doc(collection(db, 'organizedTrips')).id;
-    await setDoc(doc(db, 'organizedTrips', tripId), {
+    const newTrip: OrganizedTrip = {
       ...tripData,
       id: tripId,
       createdAt: new Date().toISOString(),
       availableSeats: tripData.totalSeats,
-    });
+    } as OrganizedTrip;
+    await setDoc(doc(db, 'organizedTrips', tripId), sanitizeFirestoreData(newTrip));
     catalogService.invalidateCache('organizedTrips');
+    set(state => ({
+      organizedTrips: [newTrip, ...state.organizedTrips.filter(t => t.id !== tripId)]
+    }));
   },
 
   updateOrganizedTrip: async (id, tripData) => {
-    await updateDoc(doc(db, 'organizedTrips', id), tripData);
+    await updateDoc(doc(db, 'organizedTrips', id), sanitizeFirestoreData(tripData));
     catalogService.invalidateCache('organizedTrips');
+    set(state => ({
+      organizedTrips: state.organizedTrips.map(t => t.id === id ? { ...t, ...tripData } : t)
+    }));
   },
 
   deleteOrganizedTrip: async (id) => {
     await deleteDoc(doc(db, 'organizedTrips', id));
     catalogService.invalidateCache('organizedTrips');
+    set(state => ({
+      organizedTrips: state.organizedTrips.filter(t => t.id !== id)
+    }));
   },
 
   addTripReservation: async (resData) => {
-    const trip = get().organizedTrips.find(t => t.id === resData.tripId);
-    if (!trip) {
-      throw new Error("Ce voyage organisé n'est plus disponible.");
-    }
-    if (trip.availableSeats < resData.numberOfPeople) {
-      throw new Error(`Nombre de places insuffisant : seulement ${trip.availableSeats} place(s) disponible(s).`);
+    const peopleCount = Number(resData.numberOfPeople);
+    if (!Number.isInteger(peopleCount) || peopleCount < 1 || peopleCount > 50) {
+      throw new Error("Le nombre de voyageurs doit être un entier compris entre 1 et 50.");
     }
 
     const resId = `RES-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-    const totalPrice = (trip.price || 0) * (resData.numberOfPeople || 1);
-    
-    const newReservation: TripReservation = {
-      ...resData,
-      id: resId,
-      createdAt: new Date().toISOString(),
-      status: 'pending',
-      totalPrice: totalPrice,
-      paidAmount: 0
-    };
-
-    const sanitized = sanitizeFirestoreData(newReservation);
-    const updatedSeats = Math.max(0, trip.availableSeats - resData.numberOfPeople);
+    const tripRef = doc(db, 'organizedTrips', resData.tripId);
+    const resRef = doc(db, 'tripReservations', resId);
     const notifAdminRef = doc(collection(db, 'notifications'));
     const notifAgencyRef = doc(collection(db, 'notifications'));
 
-    // Écriture groupée atomique (writeBatch)
-    const batch = writeBatch(db);
-    batch.set(doc(db, 'tripReservations', resId), sanitized);
-    batch.update(doc(db, 'organizedTrips', resData.tripId), { availableSeats: updatedSeats });
-    batch.set(notifAdminRef, {
-      id: notifAdminRef.id,
-      agencyId: 'admin',
-      title: 'Nouvelle réservation Voyage Organisé',
-      message: `${resData.agencyName || 'Une agence'} a réservé ${resData.numberOfPeople} place(s) pour « ${trip.title} » (Client: ${resData.clientName}).`,
-      type: 'info',
-      read: false,
-      createdAt: new Date().toISOString(),
-      link: '/admin/trips'
+    let finalReservation: TripReservation | null = null;
+    let finalUpdatedSeats = 0;
+
+    await runTransaction(db, async (transaction) => {
+      const tripDoc = await transaction.get(tripRef);
+      if (!tripDoc.exists()) {
+        throw new Error("Ce voyage organisé n'est plus disponible.");
+      }
+
+      const tripData = tripDoc.data() as OrganizedTrip;
+      if (tripData.status && tripData.status !== 'active') {
+        throw new Error("Ce voyage organisé n'est actuellement pas ouvert aux réservations.");
+      }
+
+      const freshAvailableSeats = Number(tripData.availableSeats || 0);
+      if (freshAvailableSeats < peopleCount) {
+        throw new Error(`Nombre de places insuffisant : seulement ${freshAvailableSeats} place(s) disponible(s).`);
+      }
+
+      const unitPrice = Number(tripData.price || 0);
+      if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+        throw new Error("Tarif du voyage invalide.");
+      }
+
+      const totalPrice = unitPrice * peopleCount;
+      finalUpdatedSeats = Math.max(0, freshAvailableSeats - peopleCount);
+
+      finalReservation = {
+        ...resData,
+        id: resId,
+        numberOfPeople: peopleCount,
+        createdAt: new Date().toISOString(),
+        status: 'pending',
+        totalPrice,
+        paidAmount: 0
+      };
+
+      const sanitized = sanitizeFirestoreData(finalReservation);
+
+      transaction.update(tripRef, { availableSeats: finalUpdatedSeats });
+      transaction.set(resRef, sanitized);
+      transaction.set(notifAdminRef, {
+        id: notifAdminRef.id,
+        agencyId: 'admin',
+        title: 'Nouvelle réservation Voyage Organisé',
+        message: `${resData.agencyName || 'Une agence'} a réservé ${peopleCount} place(s) pour « ${tripData.title} » (Client: ${resData.clientName || 'N/A'}).`.slice(0, 580),
+        type: 'info',
+        read: false,
+        createdAt: new Date().toISOString(),
+        link: '/admin/trips'
+      });
+      transaction.set(notifAgencyRef, {
+        id: notifAgencyRef.id,
+        agencyId: resData.agencyId,
+        title: 'Réservation Enregistrée avec Succès',
+        message: `Votre réservation pour « ${tripData.title} » (${peopleCount} personne(s)) est enregistrée sous la référence ${resId}.`.slice(0, 580),
+        type: 'success',
+        read: false,
+        createdAt: new Date().toISOString(),
+        link: '/agency/trips'
+      });
     });
-    batch.set(notifAgencyRef, {
-      id: notifAgencyRef.id,
-      agencyId: resData.agencyId,
-      title: 'Réservation Enregistrée avec Succès',
-      message: `Votre réservation pour « ${trip.title} » (${resData.numberOfPeople} personne(s)) est enregistrée sous la référence ${resId}.`,
-      type: 'success',
-      read: false,
-      createdAt: new Date().toISOString(),
-      link: '/agency/trips'
-    });
-    await batch.commit();
+
+    catalogService.invalidateCache('organizedTrips');
+
+    if (!finalReservation) {
+      throw new Error("Échec de l'enregistrement de la réservation.");
+    }
+
+    const committedReservation: TripReservation = finalReservation;
 
     // Mise à jour immédiate du store local
     set((state) => ({
-      tripReservations: [newReservation, ...state.tripReservations.filter(r => r.id !== resId)],
-      organizedTrips: state.organizedTrips.map(t => 
-        t.id === resData.tripId 
-          ? { ...t, availableSeats: updatedSeats }
+      tripReservations: [committedReservation, ...state.tripReservations.filter(r => r.id !== resId)],
+      organizedTrips: state.organizedTrips.map(t =>
+        t.id === resData.tripId
+          ? { ...t, availableSeats: finalUpdatedSeats }
           : t
       )
     }));
 
-    return newReservation;
+    return committedReservation;
   },
 
   updateTripReservationPayment: async (id, amount) => {
-    const reservation = get().tripReservations.find(r => r.id === id);
-    if (!reservation) return;
-    const newPaidAmount = (reservation.paidAmount || 0) + amount;
-    await updateDoc(doc(db, 'tripReservations', id), { paidAmount: newPaidAmount });
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error("Montant de paiement invalide.");
+    }
+    const resRef = doc(db, 'tripReservations', id);
+    await runTransaction(db, async (transaction) => {
+      const resSnap = await transaction.get(resRef);
+      if (!resSnap.exists()) throw new Error("Réservation introuvable.");
+      const data = resSnap.data() as TripReservation;
+      const newPaidAmount = Math.min(Number(data.totalPrice || 0), (Number(data.paidAmount || 0)) + amount);
+      transaction.update(resRef, { paidAmount: newPaidAmount });
+    });
   },
 
   updateTripReservationStatus: async (id, status) => {
-    const reservation = get().tripReservations.find(r => r.id === id);
-    if (!reservation) return;
+    const resRef = doc(db, 'tripReservations', id);
+    await runTransaction(db, async (transaction) => {
+      const resSnap = await transaction.get(resRef);
+      if (!resSnap.exists()) return;
+      const reservation = resSnap.data() as TripReservation;
 
-    await updateDoc(doc(db, 'tripReservations', id), { status });
+      const tripRef = doc(db, 'organizedTrips', reservation.tripId);
+      const tripSnap = await transaction.get(tripRef);
 
-    if (status === 'cancelled' && reservation.status !== 'cancelled') {
-      const trip = get().organizedTrips.find(t => t.id === reservation.tripId);
-      if (trip) {
-        await updateDoc(doc(db, 'organizedTrips', reservation.tripId), {
-          availableSeats: trip.availableSeats + reservation.numberOfPeople
+      transaction.update(resRef, { status });
+
+      if (status === 'cancelled' && reservation.status !== 'cancelled' && tripSnap.exists()) {
+        const tripData = tripSnap.data() as OrganizedTrip;
+        const maxSeats = Number(tripData.totalSeats || 0);
+        const restoredSeats = Number(tripData.availableSeats || 0) + Number(reservation.numberOfPeople || 0);
+        transaction.update(tripRef, {
+          availableSeats: maxSeats > 0 ? Math.min(maxSeats, restoredSeats) : restoredSeats
         });
       }
-    }
+    });
+    catalogService.invalidateCache('organizedTrips');
   },
 
   addCountry: async (country) => {
-    await setDoc(doc(db, 'countries', country.id), country);
+    await setDoc(doc(db, 'countries', country.id), sanitizeFirestoreData(country));
     catalogService.invalidateCache('countries');
+    set(state => ({
+      countries: [country, ...state.countries.filter(c => c.id !== country.id)]
+    }));
   },
 
   addStudyProgram: async (programData) => {
@@ -589,7 +694,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   addStudyApplication: async (application) => {
     const appId = (application as any).id || `ETUD-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-    const price = application.price || 0;
+    const price = Number(application.price || 0);
+    if (!Number.isFinite(price) || price < 0) {
+      throw new Error("Tarif du programme d'études invalide.");
+    }
 
     // Protection anti-dépassement Firestore (1 Mo) : normaliser les documents et pièces jointes
     const safeDocuments: Record<string, string> = {};
@@ -757,21 +865,30 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   updateCountry: async (id, data) => {
-    await updateDoc(doc(db, 'countries', id), data);
+    await updateDoc(doc(db, 'countries', id), sanitizeFirestoreData(data));
     catalogService.invalidateCache('countries');
+    set(state => ({
+      countries: state.countries.map(c => c.id === id ? { ...c, ...data } : c)
+    }));
   },
 
   removeCountry: async (id) => {
     await deleteDoc(doc(db, 'countries', id));
     catalogService.invalidateCache('countries');
+    set(state => ({
+      countries: state.countries.filter(c => c.id !== id)
+    }));
   },
 
   addVisaType: async (countryId, visaType) => {
     const country = get().countries.find(c => c.id === countryId);
     if (country) {
       const newVisaTypes = [...country.visaTypes, visaType];
-      await updateDoc(doc(db, 'countries', countryId), { visaTypes: newVisaTypes });
+      await updateDoc(doc(db, 'countries', countryId), { visaTypes: sanitizeFirestoreData(newVisaTypes) });
       catalogService.invalidateCache('countries');
+      set(state => ({
+        countries: state.countries.map(c => c.id === countryId ? { ...c, visaTypes: newVisaTypes } : c)
+      }));
     }
   },
 
@@ -779,8 +896,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const country = get().countries.find(c => c.id === countryId);
     if (country) {
       const newVisaTypes = country.visaTypes.map(v => v.id === visaId ? { ...v, ...data } : v);
-      await updateDoc(doc(db, 'countries', countryId), { visaTypes: newVisaTypes });
+      await updateDoc(doc(db, 'countries', countryId), { visaTypes: sanitizeFirestoreData(newVisaTypes) });
       catalogService.invalidateCache('countries');
+      set(state => ({
+        countries: state.countries.map(c => c.id === countryId ? { ...c, visaTypes: newVisaTypes } : c)
+      }));
     }
   },
 
@@ -788,54 +908,81 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const country = get().countries.find(c => c.id === countryId);
     if (country) {
       const newVisaTypes = country.visaTypes.filter(v => v.id !== visaId);
-      await updateDoc(doc(db, 'countries', countryId), { visaTypes: newVisaTypes });
+      await updateDoc(doc(db, 'countries', countryId), { visaTypes: sanitizeFirestoreData(newVisaTypes) });
       catalogService.invalidateCache('countries');
+      set(state => ({
+        countries: state.countries.map(c => c.id === countryId ? { ...c, visaTypes: newVisaTypes } : c)
+      }));
     }
   },
 
   addApplication: async (application) => {
     const appId = application.id || doc(collection(db, 'applications')).id;
     const userRef = doc(db, 'users', application.agencyId);
-    
+    const serviceId = application.customFormData?.serviceId
+      ? String(application.customFormData.serviceId)
+      : null;
+
     await runTransaction(db, async (transaction) => {
       const userDoc = await transaction.get(userRef);
       if (!userDoc.exists()) {
-        throw new Error("Agence introuvable");
+        throw new Error("Agence introuvable.");
       }
-      
-      const currentBalance = userDoc.data().balance || 0;
-      const price = application.price || 0;
-      
-      if (currentBalance < price) {
+
+      const userData = userDoc.data();
+      if (userData.status !== 'ACTIVE') {
+        throw new Error("Votre compte agence doit être actif pour soumettre une demande.");
+      }
+
+      // Vérification autoritaire du tarif depuis Firestore si un serviceId est lié
+      let authoritativePrice = Number(application.price ?? 0);
+      if (serviceId) {
+        const serviceDoc = await transaction.get(doc(db, 'services', serviceId));
+        if (!serviceDoc.exists() || serviceDoc.data().active === false) {
+          throw new Error("Cette prestation n'est plus disponible au catalogue.");
+        }
+        authoritativePrice = Number(serviceDoc.data().price ?? 0);
+      }
+
+      if (!Number.isFinite(authoritativePrice) || authoritativePrice < 0) {
+        throw new Error("Tarif de la prestation invalide.");
+      }
+
+      const currentBalance = Number(userData.balance || 0);
+      if (currentBalance < authoritativePrice) {
         throw new Error("Solde insuffisant pour cette opération.");
       }
-      
-      transaction.update(userRef, { balance: currentBalance - price });
-      transaction.set(doc(db, 'applications', appId), {
-        ...application,
-        id: appId
-      });
-      
-      // Also create a transaction record
+
+      transaction.update(userRef, { balance: currentBalance - authoritativePrice });
+      transaction.set(
+        doc(db, 'applications', appId),
+        sanitizeFirestoreData({
+          ...application,
+          id: appId,
+          price: authoritativePrice
+        })
+      );
+
+      // Enregistrement atomique du débit financier
       const txRef = doc(collection(db, 'transactions'));
       transaction.set(txRef, {
         id: txRef.id,
         agencyId: application.agencyId,
-        agencyName: application.agencyName || '',
-        amount: price,
+        agencyName: application.agencyName || userData.agencyName || '',
+        amount: authoritativePrice,
         type: 'debit',
         status: 'completed',
         date: new Date().toISOString().split('T')[0],
-        description: `Paiement pour visa ${application.visaType || 'Service'} (${application.travelerName || ''})`
+        description: `Paiement pour visa ${application.visaType || 'Service'} (${application.travelerName || ''})`.slice(0, 480)
       });
-      
-      // Notify Admin
+
+      // Notification Administrateur
       const notifRef = doc(collection(db, 'notifications'));
       transaction.set(notifRef, {
         id: notifRef.id,
         agencyId: 'admin',
         title: 'Nouvelle demande de Visa',
-        message: `${application.agencyName || 'Une agence'} a soumis une demande pour ${application.travelerName || 'un client'}.`,
+        message: `${application.agencyName || userData.agencyName || 'Une agence'} a soumis une demande pour ${application.travelerName || 'un client'}.`.slice(0, 580),
         type: 'info',
         read: false,
         createdAt: new Date().toISOString(),
@@ -883,7 +1030,13 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }
   },
   clearData: () => {
+    catalogService.invalidateCache();
     set({
+      authReady: true,
+      authUserUid: null,
+      authRole: null,
+      currentAgency: null,
+      agencyBalance: 0,
       agencies: [],
       notifications: [],
       supportTickets: [],
@@ -895,7 +1048,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
       organizedTrips: [],
       tripReservations: [],
       studyPrograms: [],
-      studyApplications: []
+      studyApplications: [],
+      catalogLoading: false,
+      catalogLoaded: false
     });
   }
 }));

@@ -10,13 +10,14 @@ export function AdminDashboard() {
   const { applications, agencies, transactions, rechargeRequests } = useAppStore();
   
   const today = new Date().toISOString().split("T")[0];
-  const appsToday = applications.filter(a => a.submissionDate?.startsWith(today)).length;
-  const pendingApps = applications.filter(a => a.status === "Pending" || a.status === "Processing").length;
-  const activeAgencies = agencies.filter(a => a.status === "ACTIVE").length;
+  const safeApps = applications || [];
+  const appsToday = safeApps.filter(a => a?.submissionDate?.startsWith(today)).length;
+  const pendingApps = safeApps.filter(a => a?.status === "Pending" || a?.status === "Processing").length;
+  const activeAgencies = (agencies || []).filter(a => a?.status === "ACTIVE").length;
   
-  const pendingRecharges = (rechargeRequests || []).filter(r => r.status === "Pending").length;
+  const pendingRecharges = (rechargeRequests || []).filter(r => r?.status === "Pending").length;
   
-  const totalVolume = transactions.reduce((acc, tx) => acc + (tx.amount || 0), 0);
+  const totalVolume = (transactions || []).reduce((acc, tx) => acc + (tx?.amount || 0), 0);
   const formattedVolume = totalVolume > 1000000 ? (totalVolume/1000000).toFixed(1) + "M" : totalVolume.toLocaleString();
 
   return (
@@ -134,7 +135,7 @@ export function AdminDashboard() {
                       <FileText className="w-5 h-5" />
                     </div>
                   <div>
-                    <div className="font-bold text-slate-900 text-sm">{app.agencyName.split('@')[0]}</div>
+                    <div className="font-bold text-slate-900 text-sm">{(app.agencyName || "Agence").split('@')[0]}</div>
                     <div className="text-xs font-medium text-slate-500 mt-0.5">
                       {isEn ? `Application ${app.serviceType} - ${app.travelerName}` : `Demande ${app.serviceType} - ${app.travelerName}`}
                     </div>

@@ -23,6 +23,7 @@ import { resolveAttachmentData, downloadFileSafe, uploadFileToServer } from '../
 import { getCountryFlag } from '../../src/utils/flags';
 import { useToast } from '../ui/toast';
 import { TablePagination } from '../common/TablePagination';
+import { CountryFlag } from '../common/CountryFlag';
 
 // Documents types fréquemment demandés par les universités
 const STANDARD_DOCUMENTS = [
@@ -36,107 +37,6 @@ const STANDARD_DOCUMENTS = [
   "Attestation de niveau de langue (si applicable)",
   "Extrait d'acte de naissance traduit",
   "Lettre de motivation"
-];
-
-// Destinations populaires par défaut si le catalogue est vide
-const DEFAULT_PRESET_PROGRAMS: Omit<StudyProgram, 'id' | 'createdAt'>[] = [
-  {
-    title: "Faculté de Médecine Générale & Dentaire",
-    country: "Russie",
-    countryFlag: "🇷🇺",
-    university: "Université d'État de Moscou (MGU - Lomonossov)",
-    city: "Moscou",
-    type: "Master",
-    description: "Formation d'excellence en médecine générale en cursus bilingue (russe et anglais). Laboratoires ultramodernes et hôpitaux universitaires affiliés.",
-    conditions: "Baccalauréat scientifique avec moyenne minimale de 12/20. Âge maximum 27 ans. Certificat médical complet exigé.",
-    processingTime: "25 à 35 jours ouvrés",
-    intake: "Septembre 2025",
-    languageOfStudy: "Russe / Anglais",
-    price: 65000,
-    tuitionFeeYear: "4 200 $ / an",
-    requiredDocuments: [
-      "Scan du Passeport (validité min. 18 mois)",
-      "Diplôme du Baccalauréat original",
-      "Traduction officielle du Baccalauréat",
-      "Relevés de notes des 3 années de lycée",
-      "Photo d'identité sur fond blanc (format passeport)",
-      "Certificat médical d'aptitude & Test VIH / Hépatite"
-    ],
-    image: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80",
-    status: "active"
-  },
-  {
-    title: "Année Préparatoire Linguistique (Faculté Zéro)",
-    country: "Russie",
-    countryFlag: "🇷🇺",
-    university: "Université Polytechnique Pierre-le-Grand de Saint-Pétersbourg",
-    city: "Saint-Pétersbourg",
-    type: "Préparatoire",
-    description: "Apprentissage intensif de la langue russe et mise à niveau en sciences (mathématiques, physique, informatique) avant intégration en faculté.",
-    conditions: "Accessible dès l'obtention du Baccalauréat toutes filières. Pas de test de langue préalable requis.",
-    processingTime: "20 à 30 jours ouvrés",
-    intake: "Septembre & Février",
-    languageOfStudy: "Russe (Apprentissage intensif)",
-    price: 45000,
-    tuitionFeeYear: "2 200 $ / an",
-    requiredDocuments: [
-      "Scan du Passeport (validité min. 18 mois)",
-      "Diplôme du Baccalauréat original",
-      "Traduction officielle du Baccalauréat",
-      "Photo d'identité sur fond blanc (format passeport)"
-    ],
-    image: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&q=80",
-    status: "active"
-  },
-  {
-    title: "Génie Informatique & Intelligence Artificielle",
-    country: "Malaisie",
-    countryFlag: "🇲🇾",
-    university: "Asia Pacific University of Technology & Innovation (APU)",
-    city: "Kuala Lumpur",
-    type: "Bachelor",
-    description: "Campus technologique de renommée mondiale, cours dispensés à 100% en anglais. Double diplôme britannique possible.",
-    conditions: "Baccalauréat scientifique ou technique, niveau d'anglais intermédiaire ou test d'entrée sur place.",
-    processingTime: "15 à 25 jours ouvrés",
-    intake: "Mars, Juillet & Novembre",
-    languageOfStudy: "Anglais",
-    price: 55000,
-    tuitionFeeYear: "5 500 $ / an",
-    requiredDocuments: [
-      "Scan du Passeport (validité min. 18 mois)",
-      "Diplôme du Baccalauréat original",
-      "Relevés de notes des 3 années de lycée",
-      "Photo d'identité sur fond blanc (format passeport)",
-      "Attestation de niveau de langue (si applicable)"
-    ],
-    image: "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&q=80",
-    status: "active"
-  },
-  {
-    title: "Faculté de Pharmacie & Odontologie",
-    country: "Roumanie",
-    countryFlag: "🇷🇴",
-    university: "Université de Médecine et Pharmacie Iuliu Hațieganu",
-    city: "Cluj-Napoca",
-    type: "Master",
-    description: "Diplôme d'État reconnu dans toute l'Union Européenne. Cursus en section francophone ou anglophone sans concours d'entrée.",
-    conditions: "Sélection sur dossier académique. Baccalauréat avec matières scientifiques (biologie/chimie).",
-    processingTime: "30 à 45 jours ouvrés",
-    intake: "Octobre 2025",
-    languageOfStudy: "Français / Anglais",
-    price: 70000,
-    tuitionFeeYear: "7 500 € / an",
-    requiredDocuments: [
-      "Scan du Passeport (validité min. 18 mois)",
-      "Diplôme du Baccalauréat original",
-      "Traduction officielle du Baccalauréat",
-      "Relevés de notes des 3 années de lycée",
-      "Extrait d'acte de naissance traduit",
-      "Certificat médical d'aptitude & Test VIH / Hépatite"
-    ],
-    image: "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?auto=format&fit=crop&q=80",
-    status: "active"
-  }
 ];
 
 export default function StudyProgramsManagement() {
@@ -245,20 +145,20 @@ export default function StudyProgramsManagement() {
   const [previewDoc, setPreviewDoc] = useState<PreviewDocData | null>(null);
   const [resolvingDocName, setResolvingDocName] = useState<string | null>(null);
 
-  // Initialisation automatique des programmes si la liste est vide
-  const allPrograms = studyPrograms.length > 0 ? studyPrograms : (DEFAULT_PRESET_PROGRAMS as StudyProgram[]);
+  // Catalogue réel publié uniquement (aucun programme fictif injecté)
+  const allPrograms = studyPrograms || [];
 
   // Liste unique de tous les pays représentés
   const availableCountries = useMemo(() => {
     const set = new Set<string>();
-    allPrograms.forEach(p => { if (p.country) set.add(p.country); });
+    allPrograms.forEach(p => { if (p?.country) set.add(p.country); });
     return Array.from(set).sort();
   }, [allPrograms]);
 
   // Liste des universités par pays pour le filtre
   const availableUniversitiesForApp = useMemo(() => {
-    const list = studyApplications
-      .filter(a => appCountryFilter === 'all' || a.country === appCountryFilter)
+    const list = (studyApplications || [])
+      .filter(a => a && (appCountryFilter === 'all' || a.country === appCountryFilter))
       .map(a => a.university || 'Non spécifié')
       .filter(Boolean);
     return Array.from(new Set(list)).sort();
@@ -270,13 +170,15 @@ export default function StudyProgramsManagement() {
 
   // Programmes filtrés
   const filteredPrograms = useMemo(() => {
+    const search = (programSearchTerm || '').toLowerCase();
     return allPrograms.filter(prog => {
-      const matchCountry = selectedCountryFilter === 'all' || prog.country.toLowerCase() === selectedCountryFilter.toLowerCase();
+      if (!prog) return false;
+      const matchCountry = selectedCountryFilter === 'all' || (prog.country || '').toLowerCase() === selectedCountryFilter.toLowerCase();
       const matchSearch = 
-        prog.title.toLowerCase().includes(programSearchTerm.toLowerCase()) ||
-        prog.university.toLowerCase().includes(programSearchTerm.toLowerCase()) ||
-        (prog.city && prog.city.toLowerCase().includes(programSearchTerm.toLowerCase())) ||
-        prog.country.toLowerCase().includes(programSearchTerm.toLowerCase());
+        (prog.title || '').toLowerCase().includes(search) ||
+        (prog.university || '').toLowerCase().includes(search) ||
+        (prog.city || '').toLowerCase().includes(search) ||
+        (prog.country || '').toLowerCase().includes(search);
       return matchCountry && matchSearch;
     });
   }, [allPrograms, selectedCountryFilter, programSearchTerm]);
@@ -291,15 +193,17 @@ export default function StudyProgramsManagement() {
 
   // Candidatures filtrées
   const filteredApplications = useMemo(() => {
+    const search = (appSearchTerm || '').toLowerCase();
     return (studyApplications || []).filter(app => {
+      if (!app) return false;
       const matchCountry = appCountryFilter === 'all' || (app.country && app.country.toLowerCase() === appCountryFilter.toLowerCase());
       const matchUniv = appUnivFilter === 'all' || app.university === appUnivFilter;
       const matchStatus = appStatusFilter === 'all' || app.status === appStatusFilter;
       const matchSearch = 
-        app.studentName.toLowerCase().includes(appSearchTerm.toLowerCase()) ||
-        app.passportNumber.toLowerCase().includes(appSearchTerm.toLowerCase()) ||
-        app.agencyName.toLowerCase().includes(appSearchTerm.toLowerCase()) ||
-        app.id.toLowerCase().includes(appSearchTerm.toLowerCase());
+        (app.studentName || '').toLowerCase().includes(search) ||
+        (app.passportNumber || '').toLowerCase().includes(search) ||
+        (app.agencyName || '').toLowerCase().includes(search) ||
+        (app.id || '').toLowerCase().includes(search);
       return matchCountry && matchUniv && matchStatus && matchSearch;
     });
   }, [studyApplications, appCountryFilter, appUnivFilter, appStatusFilter, appSearchTerm]);
@@ -693,7 +597,8 @@ export default function StudyProgramsManagement() {
                     : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                 }`}
               >
-                <span>🌍 Tous les pays</span>
+                <Globe2 className="w-3.5 h-3.5" />
+                <span>Tous les pays</span>
                 <span className="text-[10px] opacity-80 font-mono">({allPrograms.length})</span>
               </button>
 
@@ -710,6 +615,7 @@ export default function StudyProgramsManagement() {
                         : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                     }`}
                   >
+                    <CountryFlag country={country} size="xs" />
                     <span>{country}</span>
                     <span className="text-[10px] opacity-80 font-mono">({count})</span>
                   </button>
@@ -736,8 +642,8 @@ export default function StudyProgramsManagement() {
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent"></div>
 
                     <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                      <span className="bg-white/90 backdrop-blur-md text-slate-900 text-xs font-black px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1">
-                        <span>{prog.countryFlag || "🎓"}</span>
+                      <span className="bg-white/90 backdrop-blur-md text-slate-900 text-xs font-black px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1.5">
+                        <CountryFlag country={prog.country} fallbackCode={prog.countryFlag} size="sm" />
                         <span>{prog.country}</span>
                       </span>
                       {prog.city && (
@@ -1537,8 +1443,9 @@ export default function StudyProgramsManagement() {
                     <span className="bg-white/20 px-2.5 py-0.5 rounded text-xs font-mono font-bold tracking-wide">
                       #{selectedApp.id}
                     </span>
-                    <span className="bg-white/20 px-3 py-0.5 rounded-full text-xs font-bold">
-                      {selectedApp.countryFlag || '🎓'} {selectedApp.country || 'Destination'}
+                    <span className="bg-white/20 px-3 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5">
+                      <CountryFlag country={selectedApp.country} fallbackCode={selectedApp.countryFlag} size="xs" />
+                      <span>{selectedApp.country || 'Destination'}</span>
                     </span>
                     {getStatusBadge(selectedApp.status)}
                   </div>

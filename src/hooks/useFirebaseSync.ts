@@ -4,15 +4,20 @@ import { db, auth } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { catalogService } from '../services/catalogService';
 
+const VERIFIED_ADMIN_EMAILS = new Set<string>([
+  'adel.saycom@gmail.com',
+  'admin@cle-dor.com',
+  'admin@lacle-dor.com',
+]);
+
 export function useFirebaseSync() {
   const setStore = useAppStore.setState;
   const unsubsRef = useRef<(() => void)[]>([]);
   const currentUidRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // 1. Chargement ponctuel et ultra-économe du catalogue (Cache TTL 15 min)
-    // Évite 4 écouteurs onSnapshot continus sur les collections statiques
     const loadCachedCatalog = async () => {
+      setStore({ catalogLoading: true });
       try {
         const [countries, services, trips, programs] = await Promise.all([
           catalogService.getCountries(),
@@ -25,16 +30,16 @@ export function useFirebaseSync() {
           countries: countries as any,
           services: services as any,
           organizedTrips: trips as any,
-          studyPrograms: programs as any
+          studyPrograms: programs as any,
+          catalogLoading: false,
+          catalogLoaded: true
         });
       } catch (err) {
         console.warn('[Catalog] Erreur initialisation catalogue:', err);
+        setStore({ catalogLoading: false, catalogLoaded: true });
       }
     };
 
-    loadCachedCatalog();
-
-    // 2. Synchronisation sélective et ciblée pour l'utilisateur connecté
     const unsubAuth = auth.onAuthStateChanged(async user => {
       // Nettoyer les écouteurs précédents de manière synchrone
       unsubsRef.current.forEach(fn => {
@@ -48,7 +53,6 @@ export function useFirebaseSync() {
         if (err?.code === 'resource-exhausted' || err?.message?.includes('Quota exceeded')) {
           console.warn(`[Firestore Quota] Quota journalier atteint sur '${collectionName}'. Maintien du cache local.`);
           setStore({ quotaExceeded: true });
-          // Déconnexion préventive des écouteurs pour ne pas saturer le quota
           unsubsRef.current.forEach(fn => {
             try { fn(); } catch (_) {}
           });
@@ -59,31 +63,83 @@ export function useFirebaseSync() {
       };
 
       if (user) {
-        let role = 'agency';
+        // Éviter toute redirection prématurée de ProtectedRoute pendant la résolution du profil
+        const currentState = useAppStore.getState();
+        const isAlreadyResolved =
+          currentState.authReady &&
+          currentState.authUserUid === user.uid &&
+          currentState.authRole !== null;
+
+        if (!isAlreadyResolved) {
+          setStore({ authReady: false });
+        }
+
+        let resolvedRole: 'admin' | 'agency' | null = null;
+        let initialAgencyData: any = null;
+
         try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          let userDoc = await getDoc(doc(db, 'users', user.uid));
+          // Court retry en cas d'inscription toute récente (création Auth juste avant setDoc)
+          if (!userDoc.exists()) {
+            await new Promise(resolve => setTimeout(resolve, 350));
+            if (currentUidRef.current !== expectedUid) return;
+            userDoc = await getDoc(doc(db, 'users', user.uid));
+          }
+
           if (userDoc.exists()) {
-            role = userDoc.data().role || 'agency';
+            initialAgencyData = { id: userDoc.id, ...userDoc.data() };
+            const normalizedRole = String(initialAgencyData.role || '').trim().toLowerCase();
+            if (normalizedRole === 'admin') {
+              resolvedRole = 'admin';
+            } else if (normalizedRole === 'agency') {
+              resolvedRole = 'agency';
+            }
+          } else if (user.emailVerified && user.email && VERIFIED_ADMIN_EMAILS.has(user.email.toLowerCase())) {
+            resolvedRole = 'admin';
           }
         } catch (err: any) {
           if (err?.code === 'resource-exhausted' || err?.message?.includes('Quota exceeded')) {
             console.warn('[Firestore Quota] Quota atteint lors de la vérification du profil.');
             setStore({ quotaExceeded: true });
           }
-          if (user.email === 'adel.saycom@gmail.com' || user.email?.startsWith('admin@')) {
-            role = 'admin';
+          if (user.emailVerified && user.email && VERIFIED_ADMIN_EMAILS.has(user.email.toLowerCase())) {
+            resolvedRole = 'admin';
           }
         }
 
         if (currentUidRef.current !== expectedUid) return;
 
-        // Fonction de construction des requêtes strictement paginées
+        // Si Login.tsx a déjà pré-peuplé un profil valide pour ce même UID et que getDoc a échoué temporairement, préserver les données valides
+        if (!resolvedRole && isAlreadyResolved) {
+          resolvedRole = currentState.authRole;
+          initialAgencyData = currentState.currentAgency;
+        }
+
+        setStore({
+          authReady: true,
+          authUserUid: user.uid,
+          authRole: resolvedRole,
+          currentAgency: initialAgencyData,
+          agencyBalance: Number(initialAgencyData?.balance || 0),
+          b2cMarginPercent: typeof initialAgencyData?.b2cMarginPercent === 'number' ? initialAgencyData.b2cMarginPercent : 15
+        });
+
+        const normalizedStatus = String(initialAgencyData?.status || 'ACTIVE').trim().toUpperCase();
+
+        // Si le rôle n'est pas valide ou que le compte est en attente, ne pas ouvrir d'écouteurs protégés
+        if (!resolvedRole || (resolvedRole === 'agency' && normalizedStatus === 'PENDING')) {
+          return;
+        }
+
+        // Chargement du catalogue uniquement pour les utilisateurs authentifiés et autorisés
+        loadCachedCatalog();
+
         const getQuery = (collName: string, maxItems = 40) => {
-          if (role === 'admin') return query(collection(db, collName), limit(maxItems));
+          if (resolvedRole === 'admin') return query(collection(db, collName), limit(maxItems));
           return query(collection(db, collName), where('agencyId', '==', user.uid), limit(maxItems));
         };
 
-        // Écouteur temps réel 1 : Solde et profil de l'utilisateur actif (1 seul document !)
+        // Écouteur temps réel 1 : Solde et profil de l'utilisateur actif
         try {
           unsubsRef.current.push(
             onSnapshot(
@@ -91,9 +147,13 @@ export function useFirebaseSync() {
               docSnap => {
                 if (docSnap.exists()) {
                   const data = docSnap.data();
-                  setStore({ 
-                    agencyBalance: data.balance || 0,
+                  const liveRoleRaw = String(data.role || '').trim().toLowerCase();
+                  const liveRole: 'admin' | 'agency' | null =
+                    liveRoleRaw === 'admin' ? 'admin' : liveRoleRaw === 'agency' ? 'agency' : null;
+                  setStore({
+                    agencyBalance: Number(data.balance || 0),
                     currentAgency: { id: docSnap.id, ...data } as any,
+                    authRole: liveRole,
                     b2cMarginPercent: typeof data.b2cMarginPercent === 'number' ? data.b2cMarginPercent : 15
                   });
                 }
@@ -105,8 +165,8 @@ export function useFirebaseSync() {
           handleSnapshotError('currentUser', e);
         }
 
-        // Écouteur temps réel 2 : Notifications non lues (limité à 25)
-        const notifQuery = role === 'admin'
+        // Écouteur temps réel 2 : Notifications (limité à 25)
+        const notifQuery = resolvedRole === 'admin'
           ? query(collection(db, 'notifications'), where('agencyId', '==', 'admin'), limit(25))
           : getQuery('notifications', 25);
 
@@ -125,11 +185,11 @@ export function useFirebaseSync() {
           handleSnapshotError('notifications', e);
         }
 
-        // Écouteur temps réel 3 : Dossiers de visas récents (limité à 30)
+        // Écouteur temps réel 3 : Dossiers de visas récents (limité à 40)
         try {
           unsubsRef.current.push(
             onSnapshot(
-              getQuery('applications', 30),
+              getQuery('applications', 40),
               snapshot => {
                 const apps = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 setStore({ applications: apps as any });
@@ -141,12 +201,44 @@ export function useFirebaseSync() {
           handleSnapshotError('applications', e);
         }
 
-        // Écouteurs conditionnels pour l'administration (recharges en attente et tickets)
-        if (role === 'admin') {
+        // Écouteur temps réel 4 : Transactions financières
+        try {
+          unsubsRef.current.push(
+            onSnapshot(
+              getQuery('transactions', 50),
+              snapshot => {
+                const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                setStore({ transactions: docs as any });
+              },
+              err => handleSnapshotError('transactions', err)
+            )
+          );
+        } catch (e) {
+          handleSnapshotError('transactions', e);
+        }
+
+        // Écouteur temps réel 5 : Tickets de support
+        try {
+          unsubsRef.current.push(
+            onSnapshot(
+              getQuery('supportTickets', 40),
+              snapshot => {
+                const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                setStore({ supportTickets: docs as any });
+              },
+              err => handleSnapshotError('supportTickets', err)
+            )
+          );
+        } catch (e) {
+          handleSnapshotError('supportTickets', e);
+        }
+
+        // Écouteurs conditionnels pour l'administration vs agence
+        if (resolvedRole === 'admin') {
           try {
             unsubsRef.current.push(
               onSnapshot(
-                query(collection(db, 'rechargeRequests'), where('status', '==', 'pending'), limit(20)),
+                query(collection(db, 'rechargeRequests'), limit(50)),
                 snapshot => {
                   const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                   setStore({ rechargeRequests: docs as any });
@@ -161,7 +253,7 @@ export function useFirebaseSync() {
           try {
             unsubsRef.current.push(
               onSnapshot(
-                query(collection(db, 'users'), limit(50)),
+                query(collection(db, 'users'), limit(100)),
                 snapshot => {
                   const users = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                   setStore({ agencies: users as any });
@@ -173,11 +265,10 @@ export function useFirebaseSync() {
             handleSnapshotError('users', e);
           }
         } else {
-          // Pour l'agence : recharges et tickets propres (limités à 15)
           try {
             unsubsRef.current.push(
               onSnapshot(
-                getQuery('rechargeRequests', 15),
+                getQuery('rechargeRequests', 25),
                 snapshot => {
                   const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                   setStore({ rechargeRequests: docs as any });
@@ -194,7 +285,7 @@ export function useFirebaseSync() {
         try {
           unsubsRef.current.push(
             onSnapshot(
-              getQuery('studyApplications', 25),
+              getQuery('studyApplications', 35),
               snapshot => {
                 const apps = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 setStore({ studyApplications: apps as any });
@@ -210,7 +301,7 @@ export function useFirebaseSync() {
         try {
           unsubsRef.current.push(
             onSnapshot(
-              getQuery('tripReservations', 25),
+              getQuery('tripReservations', 35),
               snapshot => {
                 const res = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 setStore({ tripReservations: res as any });
@@ -223,15 +314,22 @@ export function useFirebaseSync() {
         }
 
       } else {
-        // En cas de déconnexion, vider uniquement les données privées
         setStore({
+          authReady: true,
+          authUserUid: null,
+          authRole: null,
+          currentAgency: null,
+          agencyBalance: 0,
           agencies: [],
           applications: [],
           supportTickets: [],
           transactions: [],
           rechargeRequests: [],
           tripReservations: [],
-          studyApplications: []
+          studyApplications: [],
+          notifications: [],
+          catalogLoading: false,
+          catalogLoaded: false
         });
       }
     });

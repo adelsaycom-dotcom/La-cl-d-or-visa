@@ -12,6 +12,7 @@ import {
   Globe2
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { CountryFlag } from "../common/CountryFlag";
 
 export interface CountryVisaInfo {
   id: string;
@@ -354,8 +355,8 @@ export function CountriesSection({ initialSearchQuery = "", selectedCountryName 
                 
                 {/* Flag + Country Name */}
                 <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl drop-shadow">{country.flag}</span>
+                  <div className="flex items-center gap-2.5">
+                    <CountryFlag country={country.name} fallbackCode={country.flag} size="lg" />
                     <span className="font-black text-lg text-white drop-shadow-md">{country.name}</span>
                   </div>
                 </div>
@@ -418,8 +419,8 @@ export function CountriesSection({ initialSearchQuery = "", selectedCountryName 
               >
                 {/* Modal Header */}
                 <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-10">
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl">{selectedCountry.flag}</span>
+                  <div className="flex items-center gap-3.5">
+                    <CountryFlag country={selectedCountry.name} fallbackCode={selectedCountry.flag} size="xl" />
                     <div>
                       <h3 className="text-2xl font-black text-slate-900">{selectedCountry.name}</h3>
                       <div className="text-xs text-amber-600 font-bold">{selectedCountry.categoryLabel}</div>

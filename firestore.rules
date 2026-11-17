@@ -1,207 +1,633 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // Sécurité par défaut : rejet systématique de tout document non explicitement autorisé
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Fonctions globales d'authentification et de validation
-    function isSignedIn() { 
-      return request.auth != null; 
+    // =========================================================================
+    // Fonctions globales d'authentification, d'identité et de validation
+    // =========================================================================
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    function isAdmin() { 
-      return isSignedIn() && (
-        request.auth.token.email in ['adel.saycom@gmail.com', 'admin@cle-dor.com', 'admin@lacle-dor.com'] ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
-      ); 
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    function isAgency() { 
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agency'; 
+    function incoming() {
+      return request.resource.data;
     }
 
-    function incoming() { return request.resource.data; }
-    function existing() { return resource.data; }
+    function existing() {
+      return resource.data;
+    }
 
-    // 1. Profils Utilisateurs & Agences
+    // Privilège Admin par email UNIQUEMENT si email_verified == true (anti-spoofing)
+    function isAdminByEmail() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['adel.saycom@gmail.com', 'admin@cle-dor.com', 'admin@lacle-dor.com'];
+    }
+
+    function isAdminByDoc() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isAdmin() {
+      return isAdminByEmail() || isAdminByDoc();
+    }
+
+    // Vérifie que le compte agence existe ET possède le statut ACTIVE (bloque PENDING et SUSPENDED)
+    function isActiveAgency() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agency'
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'ACTIVE';
+    }
+
+    function isNonEmptyString(val, maxLen) {
+      return val is string && val.size() >= 1 && val.size() <= maxLen;
+    }
+
+    function isOptionalString(data, field, maxLen) {
+      return !(field in data) || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    // =========================================================================
+    // Helpers de validation de schéma par entité (Anti-Update-Gap)
+    // =========================================================================
+    function isValidUserCreate(data, userId) {
+      return data.keys().hasAll(['id', 'email', 'role', 'agencyName', 'balance', 'status', 'createdAt'])
+        && data.keys().hasOnly([
+          'id', 'email', 'role', 'agencyName', 'rcNumber', 'nifNumber',
+          'managerName', 'managerFirstName', 'managerLastName', 'phone',
+          'code', 'balance', 'status', 'createdAt', 'notes'
+        ])
+        && data.id == userId
+        && data.email is string
+        && data.email.size() <= 160
+        && data.email.lower() == request.auth.token.email.lower()
+        && data.role == 'agency'
+        && data.status == 'PENDING'
+        && data.balance == 0
+        && isNonEmptyString(data.agencyName, 160)
+        && isNonEmptyString(data.createdAt, 64)
+        && isOptionalString(data, 'rcNumber', 64)
+        && isOptionalString(data, 'nifNumber', 64)
+        && isOptionalString(data, 'managerName', 120)
+        && isOptionalString(data, 'managerFirstName', 80)
+        && isOptionalString(data, 'managerLastName', 80)
+        && isOptionalString(data, 'phone', 40)
+        && isOptionalString(data, 'code', 40)
+        && isOptionalString(data, 'notes', 500);
+    }
+
+    function isValidApplication(data) {
+      return data.keys().hasAll([
+          'id', 'agencyId', 'serviceType', 'country', 'visaType',
+          'travelerName', 'passportNumber', 'status', 'price', 'submissionDate'
+        ])
+        && data.keys().hasOnly([
+          'id', 'agencyId', 'agencyName', 'serviceType', 'country', 'countryFlag',
+          'visaType', 'travelerName', 'applicantName', 'passportNumber', 'status',
+          'price', 'submissionDate', 'attachments', 'customFormData', 'timeline',
+          'createdAt', 'updatedAt', 'extraData', 'adminNotes', 'approvedDocumentUrl',
+          'finalDocument', 'finalDocumentName', 'finalDocumentDate', 'rejectionReason'
+        ])
+        && isNonEmptyString(data.id, 128)
+        && isNonEmptyString(data.agencyId, 128)
+        && isNonEmptyString(data.serviceType, 80)
+        && isNonEmptyString(data.country, 100)
+        && isNonEmptyString(data.visaType, 160)
+        && isNonEmptyString(data.travelerName, 150)
+        && isNonEmptyString(data.passportNumber, 30)
+        && data.status in ['Pending', 'Processing', 'ActionRequired', 'Approved', 'Rejected']
+        && data.price is number && data.price >= 0 && data.price <= 50000000
+        && isNonEmptyString(data.submissionDate, 64)
+        && isOptionalString(data, 'agencyName', 160)
+        && isOptionalString(data, 'applicantName', 150)
+        && isOptionalString(data, 'countryFlag', 32)
+        && isOptionalString(data, 'createdAt', 64)
+        && isOptionalString(data, 'updatedAt', 64)
+        && isOptionalString(data, 'finalDocument', 950000)
+        && isOptionalString(data, 'finalDocumentName', 255)
+        && isOptionalString(data, 'finalDocumentDate', 64)
+        && isOptionalString(data, 'adminNotes', 4000)
+        && (!('attachments' in data) || (data.attachments is list && data.attachments.size() <= 30))
+        && (!('timeline' in data) || (data.timeline is list && data.timeline.size() <= 100))
+        && (!('customFormData' in data) || data.customFormData is map);
+    }
+
+    function isValidTripReservation(data) {
+      return data.keys().hasAll([
+          'id', 'tripId', 'agencyId', 'numberOfPeople', 'status', 'totalPrice', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'tripId', 'agencyId', 'agencyName', 'clientName', 'clientEmail',
+          'clientPhone', 'numberOfPeople', 'notes', 'customFormData',
+          'passengerNames', 'status', 'totalPrice', 'paidAmount', 'createdAt'
+        ])
+        && isNonEmptyString(data.id, 128)
+        && isValidId(data.tripId)
+        && isNonEmptyString(data.agencyId, 128)
+        && data.numberOfPeople is number && data.numberOfPeople >= 1 && data.numberOfPeople <= 50
+        && data.status in ['pending', 'confirmed', 'cancelled']
+        && data.totalPrice is number && data.totalPrice >= 0 && data.totalPrice <= 500000000
+        && (!('paidAmount' in data) || (data.paidAmount is number && data.paidAmount >= 0 && data.paidAmount <= data.totalPrice))
+        && isNonEmptyString(data.createdAt, 64)
+        && isOptionalString(data, 'agencyName', 160)
+        && isOptionalString(data, 'clientName', 150)
+        && isOptionalString(data, 'clientEmail', 160)
+        && isOptionalString(data, 'clientPhone', 40)
+        && isOptionalString(data, 'notes', 1000)
+        && (!('passengerNames' in data) || (data.passengerNames is list && data.passengerNames.size() <= 50))
+        && (!('customFormData' in data) || data.customFormData is map);
+    }
+
+    function isValidStudyApplication(data) {
+      return data.keys().hasAll([
+          'id', 'programId', 'agencyId', 'studentName', 'passportNumber', 'status', 'price', 'submissionDate'
+        ])
+        && data.keys().hasOnly([
+          'id', 'programId', 'programTitle', 'country', 'countryFlag', 'university', 'city',
+          'agencyId', 'agencyName', 'studentName', 'passportNumber', 'email', 'phone',
+          'status', 'price', 'paidAmount', 'paymentStatus', 'documents',
+          'attachments', 'timeline', 'submissionDate', 'adminNotes',
+          'finalDocument', 'finalDocumentName', 'finalDocumentDate', 'createdAt', 'updatedAt'
+        ])
+        && isNonEmptyString(data.id, 128)
+        && isValidId(data.programId)
+        && isNonEmptyString(data.agencyId, 128)
+        && isNonEmptyString(data.studentName, 150)
+        && isNonEmptyString(data.passportNumber, 30)
+        && data.status in ['Pending', 'Processing', 'ActionRequired', 'Approved', 'Rejected']
+        && data.price is number && data.price >= 0 && data.price <= 50000000
+        && (!('paidAmount' in data) || (data.paidAmount is number && data.paidAmount >= 0 && data.paidAmount <= data.price))
+        && (!('paymentStatus' in data) || data.paymentStatus in ['unpaid', 'partial', 'paid'])
+        && isNonEmptyString(data.submissionDate, 64)
+        && isOptionalString(data, 'programTitle', 200)
+        && isOptionalString(data, 'country', 100)
+        && isOptionalString(data, 'countryFlag', 32)
+        && isOptionalString(data, 'university', 180)
+        && isOptionalString(data, 'city', 120)
+        && isOptionalString(data, 'agencyName', 160)
+        && isOptionalString(data, 'email', 160)
+        && isOptionalString(data, 'phone', 40)
+        && isOptionalString(data, 'finalDocument', 950000)
+        && isOptionalString(data, 'finalDocumentName', 255)
+        && isOptionalString(data, 'finalDocumentDate', 64)
+        && isOptionalString(data, 'adminNotes', 4000)
+        && (!('documents' in data) || data.documents is map)
+        && (!('attachments' in data) || (data.attachments is list && data.attachments.size() <= 30))
+        && (!('timeline' in data) || (data.timeline is list && data.timeline.size() <= 100));
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['id', 'agencyId', 'type', 'amount', 'date'])
+        && data.keys().hasOnly([
+          'id', 'agencyId', 'agencyName', 'type', 'amount', 'date',
+          'ref', 'note', 'description', 'status', 'createdAt'
+        ])
+        && isNonEmptyString(data.id, 128)
+        && isNonEmptyString(data.agencyId, 128)
+        && data.type in ['credit', 'debit', 'CREDIT', 'DEBIT']
+        && data.amount is number && data.amount >= 0 && data.amount <= 500000000
+        && isNonEmptyString(data.date, 64)
+        && isOptionalString(data, 'agencyName', 160)
+        && isOptionalString(data, 'ref', 120)
+        && isOptionalString(data, 'note', 500)
+        && isOptionalString(data, 'description', 500)
+        && isOptionalString(data, 'status', 40)
+        && isOptionalString(data, 'createdAt', 64);
+    }
+
+    function isValidRechargeRequest(data) {
+      return data.keys().hasAll(['id', 'agencyId', 'amount', 'status', 'date', 'createdAt'])
+        && data.keys().hasOnly([
+          'id', 'agencyId', 'agencyName', 'amount', 'note',
+          'status', 'date', 'createdAt', 'updatedAt'
+        ])
+        && isNonEmptyString(data.id, 128)
+        && isNonEmptyString(data.agencyId, 128)
+        && data.amount is number && data.amount > 0 && data.amount <= 50000000
+        && data.status in ['Pending', 'Approved', 'Rejected', 'pending', 'approved', 'rejected']
+        && isNonEmptyString(data.date, 64)
+        && isNonEmptyString(data.createdAt, 64)
+        && isOptionalString(data, 'updatedAt', 64)
+        && isOptionalString(data, 'agencyName', 160)
+        && isOptionalString(data, 'note', 500000);
+    }
+
+    function isValidSupportTicket(data) {
+      return data.keys().hasAll(['id', 'agencyId', 'subject', 'category', 'priority', 'status', 'messages', 'createdAt'])
+        && data.keys().hasOnly([
+          'id', 'agencyId', 'agencyName', 'agency', 'isUrgent', 'subject',
+          'description', 'date', 'category', 'priority', 'status',
+          'applicationId', 'applicationRef', 'applicationSummary', 'attachments',
+          'messages', 'createdAt'
+        ])
+        && isNonEmptyString(data.id, 128)
+        && isNonEmptyString(data.agencyId, 128)
+        && isNonEmptyString(data.subject, 200)
+        && isNonEmptyString(data.category, 80)
+        && data.priority in ['Faible', 'Moyenne', 'Haute', 'Critique', 'Low', 'Medium', 'High', 'Urgent']
+        && data.status in ['Ouvert', 'En cours', 'Résolu', 'OPEN', 'IN_PROGRESS', 'RESOLVED']
+        && data.messages is list && data.messages.size() <= 100
+        && isNonEmptyString(data.createdAt, 64)
+        && isOptionalString(data, 'agencyName', 160)
+        && isOptionalString(data, 'description', 4000)
+        && (!('attachments' in data) || (data.attachments is list && data.attachments.size() <= 20));
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['id', 'agencyId', 'title', 'message', 'type', 'read', 'createdAt'])
+        && data.keys().hasOnly(['id', 'agencyId', 'title', 'message', 'type', 'read', 'createdAt', 'link'])
+        && isNonEmptyString(data.id, 128)
+        && isNonEmptyString(data.agencyId, 128)
+        && isNonEmptyString(data.title, 150)
+        && isNonEmptyString(data.message, 600)
+        && data.type in ['success', 'error', 'info', 'warning']
+        && data.read is bool
+        && isNonEmptyString(data.createdAt, 64)
+        && isOptionalString(data, 'link', 200);
+    }
+
+    function isValidAttachment(data) {
+      return data.keys().hasAll(['id', 'agencyId', 'name', 'type', 'size', 'category', 'data', 'createdAt'])
+        && data.keys().hasOnly(['id', 'agencyId', 'name', 'type', 'size', 'category', 'data', 'createdAt', 'isChunked', 'chunkCount'])
+        && isNonEmptyString(data.id, 128)
+        && isNonEmptyString(data.agencyId, 128)
+        && isNonEmptyString(data.name, 255)
+        && isNonEmptyString(data.type, 100)
+        && data.size is number && data.size > 0 && data.size <= 8388608
+        && isNonEmptyString(data.category, 100)
+        && data.data is string && data.data.size() <= 950000
+        && isNonEmptyString(data.createdAt, 64)
+        && (!('isChunked' in data) || data.isChunked is bool)
+        && (!('chunkCount' in data) || (data.chunkCount is number && data.chunkCount >= 1 && data.chunkCount <= 30));
+    }
+
+    // =========================================================================
+    // 1. Profils Utilisateurs & Agences (Isolation PII stricte)
+    // =========================================================================
     match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      // L'agence ne peut pas manipuler son rôle ni s'attribuer un solde initial supérieur à 0
-      allow create: if isAdmin() || (
-        isSignedIn() && 
-        request.auth.uid == userId && 
-        (incoming().role == 'agency' || (incoming().role == 'admin' && (request.auth.token.email in ['adel.saycom@gmail.com', 'admin@cle-dor.com', 'admin@lacle-dor.com']))) && 
-        incoming().balance == 0
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+
+      // Auto-inscription agence uniquement en statut PENDING et solde 0
+      allow create: if isValidId(userId) && (
+        isAdmin() || (
+          isSignedIn()
+          && request.auth.uid == userId
+          && isValidUserCreate(incoming(), userId)
+        )
       );
-      // L'agence ne peut que diminuer son solde lors des transactions atomiques
-      allow update: if isAdmin() || (
-        request.auth.uid == userId && 
-        incoming().role == existing().role && 
-        incoming().balance <= existing().balance
+
+      // L'agence ne peut JAMAIS modifier son role, status, banReason, bannedUntil ou augmenter son solde
+      allow update: if isValidId(userId) && (
+        isAdmin() || (
+          isSignedIn()
+          && request.auth.uid == userId
+          && incoming().role == existing().role
+          && incoming().status == existing().status
+          && (
+            // Action 1 : Mise à jour marge B2C personnelle
+            (
+              incoming().diff(existing()).affectedKeys().hasOnly(['b2cMarginPercent'])
+              && incoming().b2cMarginPercent is number
+              && incoming().b2cMarginPercent >= 0
+              && incoming().b2cMarginPercent <= 500
+            ) ||
+            // Action 2 : Débit atomique du solde par une agence ACTIVE uniquement
+            (
+              existing().status == 'ACTIVE'
+              && incoming().diff(existing()).affectedKeys().hasOnly(['balance'])
+              && incoming().balance is number
+              && incoming().balance >= 0
+              && incoming().balance <= existing().balance
+            )
+          )
+        )
       );
-      allow delete: if isAdmin();
+
+      allow delete: if isValidId(userId) && isAdmin();
     }
 
+    // =========================================================================
     // 2. Catalogue des Pays
+    // =========================================================================
     match /countries/{countryId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow get: if isSignedIn() && isValidId(countryId);
+      allow list: if isSignedIn();
+      allow create, update, delete: if isValidId(countryId) && isAdmin();
     }
 
+    // =========================================================================
     // 3. Catalogue des Services & Tarifs B2B
+    // =========================================================================
     match /services/{serviceId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow get: if isSignedIn() && isValidId(serviceId);
+      allow list: if isSignedIn();
+      allow create, update, delete: if isValidId(serviceId) && isAdmin();
     }
 
-    // 4. Dossiers de Demandes de Visas
+    // =========================================================================
+    // 4. Dossiers de Demandes de Visas & Services
+    // =========================================================================
     match /applications/{applicationId} {
-      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      allow create: if isSignedIn() && (
+      allow get: if isSignedIn() && isValidId(applicationId) && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdmin() || resource.data.agencyId == request.auth.uid);
+
+      allow create: if isValidId(applicationId) && isValidApplication(incoming()) && (
         isAdmin() || (
-          incoming().agencyId == request.auth.uid && 
-          incoming().status.lower() == 'pending' &&
-          incoming().travelerName is string &&
-          incoming().travelerName.size() <= 150 &&
-          incoming().passportNumber is string &&
-          incoming().passportNumber.size() <= 30
+          isActiveAgency()
+          && incoming().agencyId == request.auth.uid
+          && incoming().status == 'Pending'
+          && !('adminNotes' in incoming())
+          && !('approvedDocumentUrl' in incoming())
+          && !('finalDocument' in incoming())
+          && !('finalDocumentName' in incoming())
+          && !('finalDocumentDate' in incoming())
+          && !('rejectionReason' in incoming())
+          && (
+            // Cas A : Dossier Études synchronisé sans débit immédiat (vérifie le tarif du programme)
+            (
+              incoming().serviceType == 'Etude'
+              && existsAfter(/databases/$(database)/documents/studyApplications/$(applicationId))
+              && 'customFormData' in incoming()
+              && 'programId' in incoming().customFormData
+              && exists(/databases/$(database)/documents/studyPrograms/$(incoming().customFormData.programId))
+              && incoming().price == get(/databases/$(database)/documents/studyPrograms/$(incoming().customFormData.programId)).data.price
+            ) ||
+            // Cas B : Dossier Visa/Service avec débit atomique exact du portefeuille agence
+            (
+              incoming().serviceType != 'Etude'
+              && (
+                incoming().price == 0 ||
+                getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.balance
+                  == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.balance - incoming().price
+              )
+            )
+          )
         )
       );
-      allow update: if isSignedIn() && (
+
+      // L'agence ne peut mettre à jour que pièces jointes, timeline, et repasser de ActionRequired à Processing
+      allow update: if isValidId(applicationId) && isValidApplication(incoming()) && (
         isAdmin() || (
-          existing().agencyId == request.auth.uid && 
-          incoming().status == existing().status &&
-          incoming().agencyId == existing().agencyId
+          isActiveAgency()
+          && existing().agencyId == request.auth.uid
+          && incoming().agencyId == existing().agencyId
+          && incoming().price == existing().price
+          && !(existing().status in ['Approved', 'Rejected'])
+          && incoming().diff(existing()).affectedKeys().hasOnly(['attachments', 'status', 'timeline'])
+          && (
+            incoming().status == existing().status ||
+            (existing().status == 'ActionRequired' && incoming().status == 'Processing')
+          )
         )
       );
-      allow delete: if isAdmin();
+
+      allow delete: if isValidId(applicationId) && isAdmin();
     }
 
+    // =========================================================================
     // 5. Voyages Organisés
+    // =========================================================================
     match /organizedTrips/{tripId} {
-      allow read: if isSignedIn();
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin() || (
-        isSignedIn() && 
-        incoming().diff(existing()).affectedKeys().hasOnly(['availableSeats']) &&
-        incoming().availableSeats >= 0
+      allow get: if isSignedIn() && isValidId(tripId);
+      allow list: if isSignedIn();
+      allow create, delete: if isValidId(tripId) && isAdmin();
+
+      // Une agence ACTIVE ne peut que décrémenter availableSeats (jamais l'augmenter)
+      allow update: if isValidId(tripId) && (
+        isAdmin() || (
+          isActiveAgency()
+          && incoming().diff(existing()).affectedKeys().hasOnly(['availableSeats'])
+          && incoming().availableSeats is number
+          && incoming().availableSeats >= 0
+          && incoming().availableSeats < existing().availableSeats
+          && incoming().availableSeats <= existing().totalSeats
+        )
       );
     }
 
-    // 6. Réservations de Voyages
+    // =========================================================================
+    // 6. Réservations de Voyages (Prix et places vérifiés côté Firestore)
+    // =========================================================================
     match /tripReservations/{reservationId} {
-      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      allow create: if isSignedIn() && (
+      allow get: if isSignedIn() && isValidId(reservationId) && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdmin() || resource.data.agencyId == request.auth.uid);
+
+      allow create: if isValidId(reservationId) && isValidTripReservation(incoming()) && (
         isAdmin() || (
-          incoming().agencyId == request.auth.uid &&
-          incoming().status.lower() == 'pending' &&
-          incoming().numberOfPeople is number &&
-          incoming().numberOfPeople > 0 &&
-          incoming().numberOfPeople <= 50
+          isActiveAgency()
+          && incoming().agencyId == request.auth.uid
+          && incoming().status == 'pending'
+          && (!('paidAmount' in incoming()) || incoming().paidAmount == 0)
+          && exists(/databases/$(database)/documents/organizedTrips/$(incoming().tripId))
+          && get(/databases/$(database)/documents/organizedTrips/$(incoming().tripId)).data.availableSeats >= incoming().numberOfPeople
+          && incoming().totalPrice == get(/databases/$(database)/documents/organizedTrips/$(incoming().tripId)).data.price * incoming().numberOfPeople
+          && getAfter(/databases/$(database)/documents/organizedTrips/$(incoming().tripId)).data.availableSeats
+             == get(/databases/$(database)/documents/organizedTrips/$(incoming().tripId)).data.availableSeats - incoming().numberOfPeople
         )
       );
-      allow update: if isSignedIn() && (
-        isAdmin() || (
-          existing().agencyId == request.auth.uid &&
-          incoming().agencyId == existing().agencyId
-        )
-      );
-      allow delete: if isAdmin();
+
+      // Seul l'administrateur peut modifier statut ou montant payé d'une réservation
+      allow update, delete: if isValidId(reservationId) && isAdmin();
     }
 
+    // =========================================================================
     // 7. Programmes Universitaires & Études
+    // =========================================================================
     match /studyPrograms/{programId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow get: if isSignedIn() && isValidId(programId);
+      allow list: if isSignedIn();
+      allow create, update, delete: if isValidId(programId) && isAdmin();
     }
 
+    // =========================================================================
     // 8. Candidatures Visa Études
+    // =========================================================================
     match /studyApplications/{applicationId} {
-      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      allow create: if isSignedIn() && (
+      allow get: if isSignedIn() && isValidId(applicationId) && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdmin() || resource.data.agencyId == request.auth.uid);
+
+      allow create: if isValidId(applicationId) && isValidStudyApplication(incoming()) && (
         isAdmin() || (
-          incoming().agencyId == request.auth.uid && 
-          incoming().status.lower() == 'pending' &&
-          incoming().studentName is string &&
-          incoming().studentName.size() <= 150 &&
-          incoming().passportNumber is string &&
-          incoming().passportNumber.size() <= 30
+          isActiveAgency()
+          && incoming().agencyId == request.auth.uid
+          && incoming().status == 'Pending'
+          && (!('paidAmount' in incoming()) || incoming().paidAmount == 0)
+          && (!('paymentStatus' in incoming()) || incoming().paymentStatus == 'unpaid')
+          && !('adminNotes' in incoming())
+          && !('finalDocument' in incoming())
+          && !('finalDocumentName' in incoming())
+          && !('finalDocumentDate' in incoming())
+          && exists(/databases/$(database)/documents/studyPrograms/$(incoming().programId))
+          && incoming().price == get(/databases/$(database)/documents/studyPrograms/$(incoming().programId)).data.price
         )
       );
-      allow update: if isSignedIn() && (
+
+      // L'agence ne peut jamais modifier price, paidAmount, paymentStatus ou finalDocument
+      allow update: if isValidId(applicationId) && isValidStudyApplication(incoming()) && (
         isAdmin() || (
-          existing().agencyId == request.auth.uid && 
-          incoming().status == existing().status &&
-          incoming().agencyId == existing().agencyId
+          isActiveAgency()
+          && existing().agencyId == request.auth.uid
+          && incoming().agencyId == existing().agencyId
+          && incoming().price == existing().price
+          && !(existing().status in ['Approved', 'Rejected'])
+          && incoming().diff(existing()).affectedKeys().hasOnly(['documents', 'attachments', 'status', 'timeline'])
+          && (
+            incoming().status == existing().status ||
+            (existing().status == 'ActionRequired' && incoming().status == 'Processing')
+          )
         )
       );
-      allow delete: if isAdmin();
+
+      allow delete: if isValidId(applicationId) && isAdmin();
     }
 
-    // 9. Transactions Financières
+    // =========================================================================
+    // 9. Transactions Financières (Création débit liée atomiquement au solde)
+    // =========================================================================
     match /transactions/{transactionId} {
-      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      allow create: if isAdmin() || (
-        isSignedIn() && 
-        incoming().agencyId == request.auth.uid && 
-        incoming().type == 'debit' &&
-        incoming().amount is number &&
-        incoming().amount >= 0
-      );
-      allow update, delete: if isAdmin();
-    }
+      allow get: if isSignedIn() && isValidId(transactionId) && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdmin() || resource.data.agencyId == request.auth.uid);
 
-    // 10. Demandes de Recharge de Solde
-    match /rechargeRequests/{requestId} {
-      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      allow create: if isSignedIn() && (
+      allow create: if isValidId(transactionId) && isValidTransaction(incoming()) && (
         isAdmin() || (
-          incoming().agencyId == request.auth.uid && 
-          incoming().status.lower() == 'pending' &&
-          incoming().amount is number &&
-          incoming().amount > 0
+          isActiveAgency()
+          && incoming().agencyId == request.auth.uid
+          && incoming().type == 'debit'
+          && (!('status' in incoming()) || incoming().status == 'completed')
+          && (
+            incoming().amount == 0 ||
+            getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.balance
+              == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.balance - incoming().amount
+          )
         )
       );
-      allow update: if isAdmin() || (
-        isSignedIn() && 
-        existing().agencyId == request.auth.uid && 
-        incoming().status == existing().status
-      );
-      allow delete: if isAdmin();
+
+      allow update, delete: if isValidId(transactionId) && isAdmin();
     }
 
+    // =========================================================================
+    // 10. Demandes de Recharge de Solde (Anti-TOCTOU : modification bloquée après envoi)
+    // =========================================================================
+    match /rechargeRequests/{requestId} {
+      allow get: if isSignedIn() && isValidId(requestId) && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdmin() || resource.data.agencyId == request.auth.uid);
+
+      allow create: if isValidId(requestId) && isValidRechargeRequest(incoming()) && (
+        isAdmin() || (
+          isActiveAgency()
+          && incoming().agencyId == request.auth.uid
+          && incoming().status == 'Pending'
+        )
+      );
+
+      allow update, delete: if isValidId(requestId) && isAdmin();
+    }
+
+    // =========================================================================
     // 11. Tickets de Support
+    // =========================================================================
     match /supportTickets/{ticketId} {
-      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      allow create: if isSignedIn() && (isAdmin() || incoming().agencyId == request.auth.uid);
-      allow update: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      allow delete: if isAdmin();
-    }
+      allow get: if isSignedIn() && isValidId(ticketId) && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdmin() || resource.data.agencyId == request.auth.uid);
 
-    // 12. Notifications
-    match /notifications/{notifId} {
-      allow read: if isSignedIn() && (isAdmin() || existing().agencyId == request.auth.uid);
-      allow create: if isSignedIn() && (isAdmin() || incoming().agencyId == request.auth.uid || incoming().agencyId == 'admin');
-      allow update: if isSignedIn() && (isAdmin() || (existing().agencyId == request.auth.uid && incoming().read == true));
-      allow delete: if isAdmin() || (isSignedIn() && existing().agencyId == request.auth.uid);
-    }
-
-    // 13. Pièces Jointes & Documents Cloud
-    match /attachments/{attachmentId} {
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn() && (
-        incoming().size is number && 
-        incoming().size <= 8388608
+      allow create: if isValidId(ticketId) && isValidSupportTicket(incoming()) && (
+        isAdmin() || (
+          isSignedIn()
+          && incoming().agencyId == request.auth.uid
+          && incoming().status in ['Ouvert', 'OPEN']
+        )
       );
-      allow delete: if isAdmin();
+
+      // L'agence ne peut pas supprimer les messages existants ni modifier subject/agencyId
+      allow update: if isValidId(ticketId) && isValidSupportTicket(incoming()) && (
+        isAdmin() || (
+          isSignedIn()
+          && existing().agencyId == request.auth.uid
+          && incoming().agencyId == existing().agencyId
+          && incoming().diff(existing()).affectedKeys().hasOnly(['messages', 'status'])
+          && incoming().status in ['Ouvert', 'En cours', 'OPEN', 'IN_PROGRESS']
+          && incoming().messages.size() >= existing().messages.size()
+        )
+      );
+
+      allow delete: if isValidId(ticketId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 12. Notifications
+    // =========================================================================
+    match /notifications/{notifId} {
+      allow get: if isSignedIn() && isValidId(notifId) && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdmin() || resource.data.agencyId == request.auth.uid);
+
+      allow create: if isValidId(notifId) && isValidNotification(incoming()) && (
+        isAdmin() || (
+          isActiveAgency()
+          && incoming().read == false
+          && (incoming().agencyId == request.auth.uid || incoming().agencyId == 'admin')
+        )
+      );
+
+      allow update: if isValidId(notifId) && isValidNotification(incoming()) && (
+        isAdmin() || (
+          isSignedIn()
+          && existing().agencyId == request.auth.uid
+          && incoming().diff(existing()).affectedKeys().hasOnly(['read'])
+          && incoming().read == true
+        )
+      );
+
+      allow delete: if isValidId(notifId) && (isAdmin() || (isSignedIn() && existing().agencyId == request.auth.uid));
+    }
+
+    // =========================================================================
+    // 13. Pièces Jointes & Documents Cloud (Isolation stricte par agencyId)
+    // =========================================================================
+    match /attachments/{attachmentId} {
+      allow get: if isSignedIn() && isValidId(attachmentId) && (isAdmin() || existing().agencyId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdmin() || resource.data.agencyId == request.auth.uid);
+
+      allow create: if isSignedIn()
+        && isValidId(attachmentId)
+        && isValidAttachment(incoming())
+        && (isAdmin() || incoming().agencyId == request.auth.uid);
+
+      allow update: if isValidId(attachmentId) && isAdmin();
+      allow delete: if isValidId(attachmentId) && (isAdmin() || (isSignedIn() && existing().agencyId == request.auth.uid));
 
       match /chunks/{chunkId} {
-        allow read, write: if isSignedIn();
+        allow get: if isSignedIn() && isValidId(chunkId) && (
+          isAdmin() || get(/databases/$(database)/documents/attachments/$(attachmentId)).data.agencyId == request.auth.uid
+        );
+        allow list: if isSignedIn() && (
+          isAdmin() || get(/databases/$(database)/documents/attachments/$(attachmentId)).data.agencyId == request.auth.uid
+        );
+        allow create: if isSignedIn()
+          && isValidId(chunkId)
+          && incoming().keys().hasAll(['index', 'agencyId', 'data'])
+          && incoming().keys().hasOnly(['index', 'agencyId', 'data'])
+          && incoming().index is number && incoming().index >= 0 && incoming().index < 30
+          && incoming().data is string && incoming().data.size() <= 700000
+          && (
+            isAdmin() || (
+              incoming().agencyId == request.auth.uid
+              && get(/databases/$(database)/documents/attachments/$(attachmentId)).data.agencyId == request.auth.uid
+            )
+          );
+        allow update, delete: if isValidId(chunkId) && isAdmin();
       }
     }
   }

@@ -72,8 +72,11 @@ export function formatFileSize(bytes: number): string {
 
 export function useVisaWizard() {
   const services = useAppStore((s) => s.services);
+  const catalogLoading = useAppStore((s) => s.catalogLoading);
+  const catalogLoaded = useAppStore((s) => s.catalogLoaded);
   const addApplication = useAppStore((s) => s.addApplication);
   const agencyBalance = useAppStore((s) => s.agencyBalance);
+  const currentAgency = useAppStore((s) => s.currentAgency);
   const b2cMode = useAppStore((s) => s.b2cMode);
   const setB2cMode = useAppStore((s) => s.setB2cMode);
   const b2cMarginPercent = useAppStore((s) => s.b2cMarginPercent);
@@ -160,8 +163,8 @@ export function useVisaWizard() {
     if (!selectedFamily && !urlServiceParam) return [];
     const paramLower = (urlServiceParam || "").toLowerCase().trim();
 
-    return services.filter((s) => {
-      if (!s.active) return false;
+    return (services || []).filter((s) => {
+      if (!s || !s.active) return false;
       if (selectedFamily) {
         return doesServiceMatchFamily(s, selectedFamily);
       }
@@ -443,7 +446,7 @@ export function useVisaWizard() {
       const newApp: Application = {
         id: newAppId,
         agencyId: auth.currentUser?.uid || "unknown",
-        agencyName: "Mon Agence B2B",
+        agencyName: currentAgency?.agencyName || currentAgency?.name || auth.currentUser?.email || "Mon Agence B2B",
         serviceType: resolveApplicationServiceType(selectedOption.type),
         country: selectedOption.destination,
         visaType: selectedOption.title,
@@ -453,6 +456,7 @@ export function useVisaWizard() {
         price: selectedOption.price,
         attachments: allAttachmentsList,
         customFormData: {
+          serviceId: selectedOption.id,
           applicantDetails: {
             ...applicant,
             fullName: `${applicant.lastName.toUpperCase()} ${applicant.firstName}`
@@ -491,6 +495,7 @@ export function useVisaWizard() {
   }, [
     selectedOption,
     agencyBalance,
+    currentAgency,
     passportFile,
     attachments,
     applicant,
@@ -512,6 +517,8 @@ export function useVisaWizard() {
   return {
     // Store state & actions
     agencyBalance,
+    catalogLoading,
+    catalogLoaded,
     b2cMode,
     setB2cMode,
     b2cMarginPercent,

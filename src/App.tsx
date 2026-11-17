@@ -1,90 +1,85 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useFirebaseSync } from "./hooks/useFirebaseSync";
-import { BrowserRouter as Router, Routes, Route, Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { Globe2, LayoutDashboard, FileText, Users, DollarSign, HelpCircle, Bell, Menu, LogOut, Settings, MapPin, GraduationCap, X, ChevronRight } from "lucide-react";
+import { BrowserRouter as Router, Routes, Route, Outlet, Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Globe2, LayoutDashboard, FileText, Users, DollarSign, HelpCircle, Bell, Menu, LogOut, Settings, MapPin, GraduationCap, X, ChevronRight, AlertTriangle, RefreshCw } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import React, { useState, useEffect, lazy, Suspense, useMemo, useCallback } from "react";
+import React, { useState, useEffect, lazy, Suspense, useMemo, useCallback, ComponentType } from "react";
 import { useAppStore } from "./store/useAppStore";
 import { Logo } from '@/components/Logo';
 import { LanguageProvider, useLanguage } from "./i18n/LanguageContext";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 import { ToastProvider } from "@/components/ui/toast";
+import { signOut } from "firebase/auth";
+import { auth } from "./firebase";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { ErrorBoundary, isChunkLoadError } from "@/components/common/ErrorBoundary";
 
-// Code Splitting & Lazy Loading for all entry pages
-const LandingPage = lazy(() => import("@/components/LandingPage").then(m => ({ default: m.LandingPage })));
-const Login = lazy(() => import("@/components/auth/Login").then(m => ({ default: m.Login })));
-const Register = lazy(() => import("@/components/auth/Register").then(m => ({ default: m.Register })));
+const CHUNK_RELOAD_KEY = "cldor_chunk_reload_ts";
+
+/**
+ * Enveloppe React.lazy avec rechargement automatique sécurisé (1 fois max)
+ * lorsque les chunks Vite changent suite à un déploiement sur Hostinger.
+ */
+function lazyWithRetry<T extends ComponentType<any>>(
+  factory: () => Promise<{ default: T }>
+) {
+  return lazy(async () => {
+    try {
+      const mod = await factory();
+      try {
+        sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+      } catch {
+        // Ignorer
+      }
+      return mod;
+    } catch (error) {
+      if (isChunkLoadError(error)) {
+        try {
+          const lastReload = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) || "0");
+          if (Date.now() - lastReload > 15000) {
+            sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()));
+            window.location.reload();
+            return new Promise<{ default: T }>(() => {});
+          }
+        } catch {
+          // Ignorer si sessionStorage bloqué
+        }
+      }
+      throw error;
+    }
+  });
+}
+
+// Code Splitting & Lazy Loading avec reprise automatique sur Hostinger
+const LandingPage = lazyWithRetry(() => import("@/components/LandingPage").then(m => ({ default: m.LandingPage })));
+const Login = lazyWithRetry(() => import("@/components/auth/Login").then(m => ({ default: m.Login })));
+const Register = lazyWithRetry(() => import("@/components/auth/Register").then(m => ({ default: m.Register })));
 
 // Lazy loaded page components
-const AgencyManagement = lazy(() => import("@/components/admin/AgencyManagement").then(m => ({ default: m.AgencyManagement })));
-const FinancesManagement = lazy(() => import("@/components/admin/FinancesManagement").then(m => ({ default: m.FinancesManagement })));
-const ApplicationManagement = lazy(() => import("@/components/admin/ApplicationManagement").then(m => ({ default: m.ApplicationManagement })));
-const SupportManagement = lazy(() => import("@/components/admin/SupportManagement").then(m => ({ default: m.SupportManagement })));
-const AdminDashboard = lazy(() => import("@/components/admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
-const AdminSettings = lazy(() => import("@/components/admin/AdminSettings").then(m => ({ default: m.AdminSettings })));
-const ServiceCatalog = lazy(() => import("@/components/admin/ServiceCatalog").then(m => ({ default: m.ServiceCatalog })));
-const OrganizedTripsManagement = lazy(() => import("@/components/admin/OrganizedTripsManagement"));
-const StudyProgramsManagement = lazy(() => import("@/components/admin/StudyProgramsManagement"));
+const AgencyManagement = lazyWithRetry(() => import("@/components/admin/AgencyManagement").then(m => ({ default: m.AgencyManagement })));
+const FinancesManagement = lazyWithRetry(() => import("@/components/admin/FinancesManagement").then(m => ({ default: m.FinancesManagement })));
+const ApplicationManagement = lazyWithRetry(() => import("@/components/admin/ApplicationManagement").then(m => ({ default: m.ApplicationManagement })));
+const SupportManagement = lazyWithRetry(() => import("@/components/admin/SupportManagement").then(m => ({ default: m.SupportManagement })));
+const AdminDashboard = lazyWithRetry(() => import("@/components/admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
+const AdminSettings = lazyWithRetry(() => import("@/components/admin/AdminSettings").then(m => ({ default: m.AdminSettings })));
+const ServiceCatalog = lazyWithRetry(() => import("@/components/admin/ServiceCatalog").then(m => ({ default: m.ServiceCatalog })));
+const OrganizedTripsManagement = lazyWithRetry(() => import("@/components/admin/OrganizedTripsManagement"));
+const StudyProgramsManagement = lazyWithRetry(() => import("@/components/admin/StudyProgramsManagement"));
 
-const AgencyLayout = lazy(() => import("@/components/agency/AgencyLayout").then(m => ({ default: m.AgencyLayout })));
-const VisaWizard = lazy(() => import("@/components/agency/VisaWizard").then(m => ({ default: m.VisaWizard })));
-const AgencyDashboard = lazy(() => import("@/components/agency/Dashboard").then(m => ({ default: m.AgencyDashboard })));
-const AgencyApplications = lazy(() => import("@/components/agency/AgencyApplications").then(m => ({ default: m.AgencyApplications })));
-const AgencyWallet = lazy(() => import("@/components/agency/AgencyWallet").then(m => ({ default: m.AgencyWallet })));
-const AgencySupport = lazy(() => import("@/components/agency/AgencySupport").then(m => ({ default: m.AgencySupport })));
-const AgencySettings = lazy(() => import("@/components/agency/AgencySettings").then(m => ({ default: m.AgencySettings })));
-const PassportIndex = lazy(() => import("@/components/agency/PassportIndex").then(m => ({ default: m.PassportIndex })));
-const OrganizedTrips = lazy(() => import("@/components/agency/OrganizedTrips"));
-const StudyPrograms = lazy(() => import("@/components/agency/StudyPrograms"));
-
-interface ErrorBoundaryProps {
-  children: React.ReactNode;
-}
-
-interface ErrorBoundaryState {
-  hasError: boolean;
-}
-
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(): ErrorBoundaryState {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    console.error("ErrorBoundary a intercepté une erreur d'exécution:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl max-w-md w-full space-y-4">
-            <h2 className="text-xl font-black text-slate-900">Actualisation requise</h2>
-            <p className="text-xs text-slate-500">
-              Une mise à jour de la plateforme a été chargée. Veuillez recharger la page pour poursuivre.
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full h-11 bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs rounded-xl transition-all shadow-md cursor-pointer"
-            >
-              Recharger la page
-            </button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+const AgencyLayout = lazyWithRetry(() => import("@/components/agency/AgencyLayout").then(m => ({ default: m.AgencyLayout })));
+const VisaWizard = lazyWithRetry(() => import("@/components/agency/VisaWizard").then(m => ({ default: m.VisaWizard })));
+const AgencyDashboard = lazyWithRetry(() => import("@/components/agency/Dashboard").then(m => ({ default: m.AgencyDashboard })));
+const AgencyApplications = lazyWithRetry(() => import("@/components/agency/AgencyApplications").then(m => ({ default: m.AgencyApplications })));
+const AgencyWallet = lazyWithRetry(() => import("@/components/agency/AgencyWallet").then(m => ({ default: m.AgencyWallet })));
+const AgencySupport = lazyWithRetry(() => import("@/components/agency/AgencySupport").then(m => ({ default: m.AgencySupport })));
+const AgencySettings = lazyWithRetry(() => import("@/components/agency/AgencySettings").then(m => ({ default: m.AgencySettings })));
+const PassportIndex = lazyWithRetry(() => import("@/components/agency/PassportIndex").then(m => ({ default: m.PassportIndex })));
+const OrganizedTrips = lazyWithRetry(() => import("@/components/agency/OrganizedTrips"));
+const StudyPrograms = lazyWithRetry(() => import("@/components/agency/StudyPrograms"));
 
 const SuspenseFallback = () => (
   <div className="flex justify-center items-center h-full w-full p-8 text-gray-500 min-h-[400px]">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-gold"></div>
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7B1B38]"></div>
   </div>
 );
 
@@ -135,6 +130,16 @@ function AdminLayout() {
   const handleMarkAllRead = useCallback(() => {
     markAllNotificationsAsRead('admin');
   }, [markAllNotificationsAsRead]);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await signOut(auth);
+    } catch {
+      // Ignorer
+    }
+    useAppStore.getState().clearData();
+    navigate("/login", { replace: true });
+  }, [navigate]);
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
@@ -195,10 +200,14 @@ function AdminLayout() {
 
         {/* Bottom Actions */}
         <div className="p-3 border-t border-slate-100 shrink-0">
-          <Link to="/login" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-600 hover:bg-rose-50 hover:text-rose-700 transition-colors group font-semibold text-sm">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-600 hover:bg-rose-50 hover:text-rose-700 transition-colors group font-semibold text-sm cursor-pointer"
+          >
             <LogOut className="w-5 h-5 text-slate-400 group-hover:text-rose-600 transition-colors" />
             <span>{t("nav.logout")}</span>
-          </Link>
+          </button>
         </div>
       </aside>
 
@@ -282,7 +291,9 @@ function AdminLayout() {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
               >
-                <Outlet />
+                <ErrorBoundary scoped key={location.pathname}>
+                  <Outlet />
+                </ErrorBoundary>
               </motion.div>
             </AnimatePresence>
           </div>
@@ -325,31 +336,37 @@ export default function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               
-              {/* Admin Space */}
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
-                <Route path="countries" element={<ServiceCatalog />} />
-                <Route path="agencies" element={<AgencyManagement />} />
-                <Route path="applications" element={<ApplicationManagement />} />
-                <Route path="trips" element={<OrganizedTripsManagement />} />
-                <Route path="study" element={<StudyProgramsManagement />} />
-                <Route path="finances" element={<FinancesManagement />} />
-                <Route path="support" element={<SupportManagement />} />
-                <Route path="settings" element={<AdminSettings />} />
+              {/* Admin Space - Protected */}
+              <Route element={<ProtectedRoute requiredRole="admin" />}>
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="countries" element={<ServiceCatalog />} />
+                  <Route path="agencies" element={<AgencyManagement />} />
+                  <Route path="applications" element={<ApplicationManagement />} />
+                  <Route path="trips" element={<OrganizedTripsManagement />} />
+                  <Route path="study" element={<StudyProgramsManagement />} />
+                  <Route path="finances" element={<FinancesManagement />} />
+                  <Route path="support" element={<SupportManagement />} />
+                  <Route path="settings" element={<AdminSettings />} />
+                </Route>
               </Route>
 
-              {/* Agency Space */}
-              <Route path="/agency" element={<AgencyLayout />}>
-                <Route index element={<AgencyDashboard />} />
-                <Route path="apply" element={<VisaWizard />} />
-                <Route path="applications" element={<AgencyApplications />} />
-                <Route path="trips" element={<OrganizedTrips />} />
-                <Route path="study" element={<StudyPrograms />} />
-                <Route path="wallet" element={<AgencyWallet />} />
-                <Route path="support" element={<AgencySupport />} />
-                <Route path="settings" element={<AgencySettings />} />
-                <Route path="passport-index" element={<PassportIndex />} />
+              {/* Agency Space - Protected */}
+              <Route element={<ProtectedRoute requiredRole="agency" />}>
+                <Route path="/agency" element={<AgencyLayout />}>
+                  <Route index element={<AgencyDashboard />} />
+                  <Route path="apply" element={<VisaWizard />} />
+                  <Route path="applications" element={<AgencyApplications />} />
+                  <Route path="trips" element={<OrganizedTrips />} />
+                  <Route path="study" element={<StudyPrograms />} />
+                  <Route path="wallet" element={<AgencyWallet />} />
+                  <Route path="support" element={<AgencySupport />} />
+                  <Route path="settings" element={<AgencySettings />} />
+                  <Route path="passport-index" element={<PassportIndex />} />
+                </Route>
               </Route>
+              {/* Route fallback 404 */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
           </Router>

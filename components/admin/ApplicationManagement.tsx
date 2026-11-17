@@ -14,10 +14,12 @@ import { AttachmentThumbnail } from "../common/AttachmentThumbnail";
 import { DocumentPreviewModal, PreviewDocData } from "../common/DocumentPreviewModal";
 import { useApplicationFilters } from "../../src/hooks/useApplicationFilters";
 import { TablePagination } from "../common/TablePagination";
+import { useToast } from "@/components/ui/toast";
 
 export function ApplicationManagement() {
   const { language, t } = useLanguage();
   const isEn = language === "en";
+  const toast = useToast();
 
   const applications = useAppStore(state => state.applications);
   const updateApplication = useAppStore(state => state.updateApplication);
@@ -100,7 +102,7 @@ export function ApplicationManagement() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert("Le document dépasse la limite de 5 Mo.");
+        toast.error("Fichier trop volumineux", "Le document dépasse la limite de 5 Mo.");
         return;
       }
       setFinalDocFile(file);
@@ -109,7 +111,7 @@ export function ApplicationManagement() {
         setFinalDocUrl(uploadRes.dataUrl || uploadRes.url);
       } catch (err) {
         console.error("Erreur enregistrement visa:", err);
-        alert("Erreur lors de l'enregistrement du document sur le serveur.");
+        toast.error("Erreur d'enregistrement", "Erreur lors de l'enregistrement du document sur le serveur.");
       }
     }
   };

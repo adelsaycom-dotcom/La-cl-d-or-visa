@@ -20,115 +20,8 @@ import { DocumentPreviewModal, PreviewDocData } from '../common/DocumentPreviewM
 import { useToast } from '../ui/toast';
 import { parseConditionsList } from '../../src/utils/conditions';
 import { TablePagination } from '../common/TablePagination';
-
-// Données de secours réalistes si Firestore est vide
-const DEFAULT_PRESET_PROGRAMS: StudyProgram[] = [
-  {
-    id: "prog_ru_1",
-    title: "Faculté de Médecine Générale & Dentaire",
-    country: "Russie",
-    countryFlag: "🇷🇺",
-    university: "Université d'État de Moscou (MGU - Lomonossov)",
-    city: "Moscou",
-    type: "Master",
-    description: "Formation d'excellence en médecine générale en cursus bilingue (russe et anglais). Laboratoires ultramodernes et hôpitaux universitaires affiliés.",
-    conditions: "Baccalauréat scientifique avec moyenne minimale de 12/20. Âge maximum 27 ans. Certificat médical complet exigé.",
-    processingTime: "25 à 35 jours ouvrés",
-    intake: "Septembre 2025",
-    languageOfStudy: "Russe / Anglais",
-    price: 65000,
-    tuitionFeeYear: "4 200 $ / an",
-    requiredDocuments: [
-      "Scan du Passeport (validité min. 18 mois)",
-      "Diplôme du Baccalauréat original",
-      "Traduction officielle du Baccalauréat",
-      "Relevés de notes des 3 années de lycée",
-      "Photo d'identité sur fond blanc (format passeport)",
-      "Certificat médical d'aptitude & Test VIH / Hépatite"
-    ],
-    image: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80",
-    status: "active",
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "prog_ru_2",
-    title: "Année Préparatoire Linguistique (Faculté Zéro)",
-    country: "Russie",
-    countryFlag: "🇷🇺",
-    university: "Université Polytechnique Pierre-le-Grand de Saint-Pétersbourg",
-    city: "Saint-Pétersbourg",
-    type: "Préparatoire",
-    description: "Apprentissage intensif de la langue russe et mise à niveau en sciences (mathématiques, physique, informatique) avant intégration en faculté.",
-    conditions: "Accessible dès l'obtention du Baccalauréat toutes filières. Pas de test de langue préalable requis.",
-    processingTime: "20 à 30 jours ouvrés",
-    intake: "Septembre & Février",
-    languageOfStudy: "Russe (Apprentissage intensif)",
-    price: 45000,
-    tuitionFeeYear: "2 200 $ / an",
-    requiredDocuments: [
-      "Scan du Passeport (validité min. 18 mois)",
-      "Diplôme du Baccalauréat original",
-      "Traduction officielle du Baccalauréat",
-      "Photo d'identité sur fond blanc (format passeport)"
-    ],
-    image: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&q=80",
-    status: "active",
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "prog_my_1",
-    title: "Génie Informatique & Intelligence Artificielle",
-    country: "Malaisie",
-    countryFlag: "🇲🇾",
-    university: "Asia Pacific University of Technology & Innovation (APU)",
-    city: "Kuala Lumpur",
-    type: "Bachelor",
-    description: "Campus technologique de renommée mondiale, cours dispensés à 100% en anglais. Double diplôme britannique possible.",
-    conditions: "Baccalauréat scientifique ou technique, niveau d'anglais intermédiaire ou test d'entrée sur place.",
-    processingTime: "15 à 25 jours ouvrés",
-    intake: "Mars, Juillet & Novembre",
-    languageOfStudy: "Anglais",
-    price: 55000,
-    tuitionFeeYear: "5 500 $ / an",
-    requiredDocuments: [
-      "Scan du Passeport (validité min. 18 mois)",
-      "Diplôme du Baccalauréat original",
-      "Relevés de notes des 3 années de lycée",
-      "Photo d'identité sur fond blanc (format passeport)",
-      "Attestation de niveau de langue (si applicable)"
-    ],
-    image: "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&q=80",
-    status: "active",
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "prog_ro_1",
-    title: "Faculté de Pharmacie & Odontologie",
-    country: "Roumanie",
-    countryFlag: "🇷🇴",
-    university: "Université de Médecine et Pharmacie Iuliu Hațieganu",
-    city: "Cluj-Napoca",
-    type: "Master",
-    description: "Diplôme d'État reconnu dans toute l'Union Européenne. Cursus en section francophone ou anglophone sans concours d'entrée.",
-    conditions: "Sélection sur dossier académique. Baccalauréat avec matières scientifiques (biologie/chimie).",
-    processingTime: "30 à 45 jours ouvrés",
-    intake: "Octobre 2025",
-    languageOfStudy: "Français / Anglais",
-    price: 70000,
-    tuitionFeeYear: "7 500 € / an",
-    requiredDocuments: [
-      "Scan du Passeport (validité min. 18 mois)",
-      "Diplôme du Baccalauréat original",
-      "Traduction officielle du Baccalauréat",
-      "Relevés de notes des 3 années de lycée",
-      "Extrait d'acte de naissance traduit",
-      "Certificat médical d'aptitude & Test VIH / Hépatite"
-    ],
-    image: "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?auto=format&fit=crop&q=80",
-    status: "active",
-    createdAt: new Date().toISOString()
-  }
-];
+import { escapeHtml } from '../../src/utils/sanitizeHtml';
+import { CountryFlag } from '../common/CountryFlag';
 
 export default function StudyPrograms() {
   const { language } = useLanguage();
@@ -136,6 +29,8 @@ export default function StudyPrograms() {
   const toast = useToast();
 
   const studyPrograms = useAppStore(state => state.studyPrograms);
+  const catalogLoading = useAppStore(state => state.catalogLoading);
+  const catalogLoaded = useAppStore(state => state.catalogLoaded);
   const studyApplications = useAppStore(state => state.studyApplications);
   const addStudyApplication = useAppStore(state => state.addStudyApplication);
   const currentAgencyId = auth.currentUser?.uid || 'unknown';
@@ -196,11 +91,9 @@ export default function StudyPrograms() {
   const [myAppStatusFilter, setMyAppStatusFilter] = useState('all');
   const [appPage, setAppPage] = useState(1);
 
-  // Catalogue effectif mémoïsé
+  // Catalogue effectif mémoïsé : uniquement les vrais programmes publiés par l'admin
   const activePrograms = useMemo(() => (
-    studyPrograms && studyPrograms.length > 0
-      ? studyPrograms.filter(p => p.status === 'active')
-      : DEFAULT_PRESET_PROGRAMS
+    (studyPrograms || []).filter(p => p && String(p.status || 'active').toLowerCase() === 'active')
   ), [studyPrograms]);
 
   // Validation intelligente en temps réel
@@ -266,39 +159,42 @@ export default function StudyPrograms() {
   const countrySummaries = useMemo(() => {
     const map = new Map<string, { country: string; flag: string; count: number; universities: Set<string>; minPrice: number }>();
     activePrograms.forEach(p => {
-      const c = p.country || "Autre";
+      const c = (p.country || "Autre").trim();
+      const priceVal = Number(p.price || 0);
       if (!map.has(c)) {
         map.set(c, {
           country: c,
-          flag: p.countryFlag || "🎓",
+          flag: p.countryFlag || "",
           count: 0,
           universities: new Set(),
-          minPrice: p.price || 0
+          minPrice: priceVal
         });
       }
       const entry = map.get(c)!;
       entry.count += 1;
-      entry.universities.add(p.university);
-      if (p.price && (entry.minPrice === 0 || p.price < entry.minPrice)) {
-        entry.minPrice = p.price;
+      if (p.university) entry.universities.add(p.university);
+      if (priceVal > 0 && (entry.minPrice === 0 || priceVal < entry.minPrice)) {
+        entry.minPrice = priceVal;
       }
     });
 
+    const term = (countrySearchTerm || '').toLowerCase();
     return Array.from(map.values())
-      .filter(item => item.country.toLowerCase().includes(countrySearchTerm.toLowerCase()))
+      .filter(item => (item.country || '').toLowerCase().includes(term))
       .sort((a, b) => b.count - a.count);
   }, [activePrograms, countrySearchTerm]);
 
   // Universités pour le pays sélectionné
   const programsForSelectedCountry = useMemo(() => {
     if (!selectedCountry) return [];
-    const term = programSearchTerm.trim().toLowerCase();
+    const term = (programSearchTerm || '').trim().toLowerCase();
+    const targetCountry = selectedCountry.toLowerCase();
     return activePrograms.filter(p => {
-      const matchCountry = p.country.toLowerCase() === selectedCountry.toLowerCase();
+      const matchCountry = (p.country || '').trim().toLowerCase() === targetCountry;
       const matchSearch = !term ||
-        p.university.toLowerCase().includes(term) ||
-        p.title.toLowerCase().includes(term) ||
-        (p.city && p.city.toLowerCase().includes(term));
+        (p.university || '').toLowerCase().includes(term) ||
+        (p.title || '').toLowerCase().includes(term) ||
+        (p.city || '').toLowerCase().includes(term);
       return matchCountry && matchSearch;
     });
   }, [activePrograms, selectedCountry, programSearchTerm]);
@@ -313,18 +209,18 @@ export default function StudyPrograms() {
 
   // Candidatures de l'agence
   const myApplications = useMemo(() => {
-    const term = myAppSearch.trim().toLowerCase();
+    const term = (myAppSearch || '').trim().toLowerCase();
     return (studyApplications || []).filter(a => 
-      a.agencyId === currentAgencyId || a.agencyName === auth.currentUser?.email
+      a && (a.agencyId === currentAgencyId || (auth.currentUser?.email && a.agencyName === auth.currentUser.email))
     ).filter(app => {
       const matchStatus = myAppStatusFilter === 'all' || app.status === myAppStatusFilter;
       const matchSearch = !term ||
-        app.studentName.toLowerCase().includes(term) ||
-        app.passportNumber.toLowerCase().includes(term) ||
-        (app.university && app.university.toLowerCase().includes(term)) ||
-        (app.country && app.country.toLowerCase().includes(term));
+        (app.studentName || '').toLowerCase().includes(term) ||
+        (app.passportNumber || '').toLowerCase().includes(term) ||
+        (app.university || '').toLowerCase().includes(term) ||
+        (app.country || '').toLowerCase().includes(term);
       return matchStatus && matchSearch;
-    }).sort((a, b) => new Date(b.submissionDate).getTime() - new Date(a.submissionDate).getTime());
+    }).sort((a, b) => (new Date(b.submissionDate || 0).getTime() || 0) - (new Date(a.submissionDate || 0).getTime() || 0));
   }, [studyApplications, currentAgencyId, myAppSearch, myAppStatusFilter]);
 
   const appPageSize = 6;
@@ -395,11 +291,10 @@ export default function StudyPrograms() {
       clearInterval(timer);
       setUploadProgress(100);
 
-      // Référence légère : URL physique /uploads/... ou identifiant cloud storageId
-      // Évite impérativement d'injecter des mégaoctets de base64 dans le document Firestore
-      const fileRef = uploadRes.url && uploadRes.url.startsWith("/uploads/") 
-        ? uploadRes.url 
-        : uploadRes.storageId;
+      const fileRef =
+        uploadRes.url && (uploadRes.url.startsWith("/api/files/") || uploadRes.url.startsWith("/uploads/"))
+          ? uploadRes.url
+          : uploadRes.storageId;
 
       setDocuments(prev => ({ ...prev, [docName]: fileRef }));
       setUploadedAttachments(prev => ({
@@ -553,12 +448,26 @@ export default function StudyPrograms() {
       toast.warning("Impression bloquée", "Veuillez autoriser les fenêtres pop-up pour imprimer le récépissé.");
       return;
     }
+    printWindow.opener = null;
+
+    const safeRef = escapeHtml(submittedAppRef);
+    const safeStudent = escapeHtml(formData.studentName);
+    const safePassport = escapeHtml(formData.passportNumber);
+    const safeUniv = escapeHtml(selectedProgram.university);
+    const safeCountry = escapeHtml(selectedProgram.country);
+    const safeProgTitle = escapeHtml(selectedProgram.title);
+    const safeProgType = escapeHtml(selectedProgram.type);
+    const safeAgency = escapeHtml(auth.currentUser?.email || "Mon Agence Partenaire");
+    const safeDate = escapeHtml(new Date().toLocaleString());
+    const safePrice = escapeHtml((selectedProgram.price || 0).toLocaleString());
+    const docKeys = Object.keys(documents);
 
     const html = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Récépissé Officiel B2B - ${submittedAppRef}</title>
+          <meta charset="utf-8">
+          <title>Récépissé Officiel B2B - ${safeRef}</title>
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 40px; color: #1e293b; max-width: 800px; margin: 0 auto; }
             .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #7B1B38; padding-bottom: 20px; margin-bottom: 30px; }
@@ -582,7 +491,7 @@ export default function StudyPrograms() {
               <div class="brand">VISA B2B PLATFORM</div>
               <div style="font-size: 12px; color: #64748b; margin-top: 3px;">Pôle International & Admissions Universitaires</div>
             </div>
-            <div class="badge">RÉF : ${submittedAppRef}</div>
+            <div class="badge">RÉF : ${safeRef}</div>
           </div>
 
           <div class="title">RÉCÉPISSÉ OFFICIEL DE DÉPÔT DE CANDIDATURE</div>
@@ -591,36 +500,36 @@ export default function StudyPrograms() {
             <div class="grid">
               <div>
                 <div class="label">Étudiant Candidat</div>
-                <div class="val" style="font-size: 15px;">${formData.studentName}</div>
+                <div class="val" style="font-size: 15px;">${safeStudent}</div>
               </div>
               <div>
                 <div class="label">Numéro de Passeport</div>
-                <div class="val" style="font-family: monospace;">${formData.passportNumber}</div>
+                <div class="val" style="font-family: monospace;">${safePassport}</div>
               </div>
               <div>
                 <div class="label">Université Cible</div>
-                <div class="val">${selectedProgram.university} (${selectedProgram.country})</div>
+                <div class="val">${safeUniv} (${safeCountry})</div>
               </div>
               <div>
                 <div class="label">Formation & Niveau</div>
-                <div class="val">${selectedProgram.title} (${selectedProgram.type})</div>
+                <div class="val">${safeProgTitle} (${safeProgType})</div>
               </div>
               <div>
                 <div class="label">Agence Dépositaire</div>
-                <div class="val">${auth.currentUser?.email || "Mon Agence Partenaire"}</div>
+                <div class="val">${safeAgency}</div>
               </div>
               <div>
                 <div class="label">Date & Heure de Dépôt</div>
-                <div class="val">${new Date().toLocaleString()}</div>
+                <div class="val">${safeDate}</div>
               </div>
             </div>
           </div>
 
           <div class="box">
-            <div class="label">Pièces Justificatives Transmises (${Object.keys(documents).length})</div>
+            <div class="label">Pièces Justificatives Transmises (${docKeys.length})</div>
             <div class="docs-list">
-              ${Object.keys(documents).map(d => `<div class="doc-item"><span>• ${d}</span><span style="color: #10b981; font-weight: bold;">✓ Reçu conforme</span></div>`).join('')}
-              ${Object.keys(documents).length === 0 ? '<div style="color: #94a3b8; font-style: italic;">Aucune pièce téléversée lors du dépôt initial.</div>' : ''}
+              ${docKeys.map(d => `<div class="doc-item"><span>• ${escapeHtml(d)}</span><span style="color: #10b981; font-weight: bold;">✓ Reçu conforme</span></div>`).join('')}
+              ${docKeys.length === 0 ? '<div style="color: #94a3b8; font-style: italic;">Aucune pièce téléversée lors du dépôt initial.</div>' : ''}
             </div>
           </div>
 
@@ -628,7 +537,7 @@ export default function StudyPrograms() {
             <div class="grid">
               <div>
                 <div class="label" style="color: #065f46;">Frais de Traitement Agence</div>
-                <div class="val" style="font-size: 16px; color: #065f46;">${(selectedProgram.price || 0).toLocaleString()} DZD</div>
+                <div class="val" style="font-size: 16px; color: #065f46;">${safePrice} DZD</div>
               </div>
               <div>
                 <div class="label" style="color: #065f46;">Statut Financier</div>
@@ -653,6 +562,7 @@ export default function StudyPrograms() {
       </html>
     `;
 
+    printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
   };
@@ -795,58 +705,78 @@ export default function StudyPrograms() {
               </div>
 
               {/* Grille des Pays */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {countrySummaries.map((item) => (
-                  <div
-                    key={item.country}
-                    onClick={() => {
-                      setSelectedCountry(item.country);
-                      setProgramSearchTerm('');
-                      setProgPage(1);
-                    }}
-                    className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs hover:shadow-lg hover:border-[#7B1B38]/40 transition-all cursor-pointer group flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-4xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
-                          {item.flag}
-                        </span>
-                        <span className="text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full group-hover:bg-[#7B1B38]/10 group-hover:text-[#7B1B38] transition-colors">
-                          {item.count} {item.count > 1 ? "Universités" : "Université"}
-                        </span>
+              {catalogLoading && !catalogLoaded && activePrograms.length === 0 ? (
+                <div className="py-20 text-center bg-white rounded-3xl border border-slate-200">
+                  <Loader2 className="w-9 h-9 mx-auto text-[#7B1B38] animate-spin mb-3" />
+                  <p className="font-bold text-slate-800 text-sm">Chargement du catalogue universitaire...</p>
+                  <p className="text-xs text-slate-400 mt-1">Synchronisation des destinations et universités publiées.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                  {countrySummaries.map((item) => (
+                    <div
+                      key={item.country}
+                      onClick={() => {
+                        setSelectedCountry(item.country);
+                        setProgramSearchTerm('');
+                        setProgPage(1);
+                      }}
+                      className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs hover:shadow-lg hover:border-[#7B1B38]/40 transition-all cursor-pointer group flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-4">
+                          <CountryFlag
+                            country={item.country}
+                            fallbackCode={item.flag}
+                            size="xl"
+                            className="group-hover:scale-110 transition-transform"
+                          />
+                          <span className="text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full group-hover:bg-[#7B1B38]/10 group-hover:text-[#7B1B38] transition-colors">
+                            {item.count} {item.count > 1 ? "Universités" : "Université"}
+                          </span>
+                        </div>
+
+                        <h4 className="text-lg font-black text-slate-900 group-hover:text-[#7B1B38] transition-colors">
+                          {item.country}
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                          {Array.from(item.universities).slice(0, 2).join(' • ')}
+                          {item.universities.size > 2 ? ' ...' : ''}
+                        </p>
                       </div>
 
-                      <h4 className="text-lg font-black text-slate-900 group-hover:text-[#7B1B38] transition-colors">
-                        {item.country}
-                      </h4>
-                      <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                        {Array.from(item.universities).slice(0, 2).join(' • ')}
-                        {item.universities.size > 2 ? ' ...' : ''}
+                      <div className="pt-5 mt-5 border-t border-slate-100 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase block">Frais dès</span>
+                          <span className="text-sm font-black font-mono text-slate-900">
+                            {Number(item.minPrice || 0).toLocaleString()} DZD
+                          </span>
+                        </div>
+
+                        <div className="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-[#7B1B38] group-hover:text-white flex items-center justify-center transition-colors">
+                          <ChevronRight className="w-4 h-4" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {countrySummaries.length === 0 && (
+                    <div className="col-span-full py-16 text-center bg-white rounded-3xl border border-slate-200 border-dashed">
+                      <Globe2 className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                      <p className="font-bold text-slate-700 text-sm">
+                        {activePrograms.length === 0
+                          ? "Aucun programme d'études publié pour le moment"
+                          : "Aucune destination trouvée"}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        {activePrograms.length === 0
+                          ? "Les offres universitaires apparaîtront ici dès leur publication par l'administration."
+                          : "Essayez de modifier votre terme de recherche."}
                       </p>
                     </div>
-
-                    <div className="pt-5 mt-5 border-t border-slate-100 flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase block">Frais dès</span>
-                        <span className="text-sm font-black font-mono text-slate-900">
-                          {item.minPrice.toLocaleString()} DZD
-                        </span>
-                      </div>
-
-                      <div className="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-[#7B1B38] group-hover:text-white flex items-center justify-center transition-colors">
-                        <ChevronRight className="w-4 h-4" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                {countrySummaries.length === 0 && (
-                  <div className="col-span-full py-16 text-center bg-white rounded-3xl border border-slate-200 border-dashed">
-                    <Globe2 className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                    <p className="font-bold text-slate-700 text-sm">Aucune destination trouvée</p>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             /* CAS 2 : PAYS SÉLECTIONNÉ -> LISTE DES UNIVERSITÉS DE CE PAYS */
@@ -868,9 +798,11 @@ export default function StudyPrograms() {
 
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xl">
-                        {programsForSelectedCountry[0]?.countryFlag || "🎓"}
-                      </span>
+                      <CountryFlag
+                        country={selectedCountry}
+                        fallbackCode={programsForSelectedCountry[0]?.countryFlag}
+                        size="lg"
+                      />
                       <h3 className="text-base font-black text-slate-900">
                         Universités en {selectedCountry}
                       </h3>
@@ -993,18 +925,18 @@ export default function StudyPrograms() {
                         {/* Bloc Documents à téléverser */}
                         <div className="space-y-1.5">
                           <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                            Dossier à téléverser pour cette université ({prog.requiredDocuments?.length || 0}) :
+                            Dossier à téléverser pour cette université ({Array.isArray(prog.requiredDocuments) ? prog.requiredDocuments.length : 0}) :
                           </span>
                           <div className="space-y-1">
-                            {(prog.requiredDocuments || []).slice(0, 4).map((doc, idx) => (
+                            {(Array.isArray(prog.requiredDocuments) ? prog.requiredDocuments : []).slice(0, 4).map((doc, idx) => (
                               <div key={idx} className="flex items-center gap-1.5 text-[11px] text-slate-700 font-medium truncate">
                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                                 <span className="truncate">{doc}</span>
                               </div>
                             ))}
-                            {(prog.requiredDocuments?.length || 0) > 4 && (
+                            {(Array.isArray(prog.requiredDocuments) ? prog.requiredDocuments.length : 0) > 4 && (
                               <span className="text-[10px] font-bold text-slate-400 pl-4.5 block">
-                                + {(prog.requiredDocuments?.length || 0) - 4} autres pièces obligatoires
+                                + {(Array.isArray(prog.requiredDocuments) ? prog.requiredDocuments.length : 0) - 4} autres pièces obligatoires
                               </span>
                             )}
                           </div>
@@ -1017,7 +949,7 @@ export default function StudyPrograms() {
                       <div>
                         <span className="text-[10px] font-bold text-slate-400 uppercase block">Frais Traitement</span>
                         <span className="text-base font-black font-mono text-slate-900">
-                          {(prog.price || 0).toLocaleString()} <span className="text-xs text-slate-500">DZD</span>
+                          {Number(prog.price || 0).toLocaleString()} <span className="text-xs text-slate-500">DZD</span>
                         </span>
                         <span className="text-[9px] font-bold text-emerald-700 block">
                           Sans débit immédiat
@@ -1137,8 +1069,9 @@ export default function StudyPrograms() {
                       <span className="font-mono text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
                         #{app.id}
                       </span>
-                      <span className="font-bold text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full">
-                        {app.country || 'Destination'}
+                      <span className="font-bold text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5">
+                        <CountryFlag country={app.country} size="xs" />
+                        <span>{app.country || 'Destination'}</span>
                       </span>
                       {getStatusBadge(app.status)}
                     </div>
@@ -1153,10 +1086,10 @@ export default function StudyPrograms() {
                   <div className="text-right sm:border-l sm:pl-6 border-slate-100">
                     <span className="text-[10px] font-bold text-slate-400 uppercase block">Frais de dossier</span>
                     <span className="text-base font-black font-mono text-slate-900">
-                      {(app.price || 0).toLocaleString()} DZD
+                      {Number(app.price || 0).toLocaleString()} DZD
                     </span>
                     <span className="text-[10px] font-bold text-slate-500 block">
-                      Déposé le {new Date(app.submissionDate).toLocaleDateString()}
+                      Déposé le {app.submissionDate ? new Date(app.submissionDate).toLocaleDateString('fr-FR') : '—'}
                     </span>
                   </div>
                 </div>
@@ -1277,7 +1210,7 @@ export default function StudyPrograms() {
 
                 <div className="absolute top-4 left-4 flex items-center gap-2">
                   <span className="bg-black/60 backdrop-blur-md text-white text-xs font-bold px-3 py-1 rounded-xl flex items-center gap-1.5 shadow-sm">
-                    <span className="text-base">{detailedProgram.countryFlag || "🎓"}</span>
+                    <CountryFlag country={detailedProgram.country} fallbackCode={detailedProgram.countryFlag} size="md" />
                     <span>{detailedProgram.country}</span>
                     {detailedProgram.city && <span>• {detailedProgram.city}</span>}
                   </span>
@@ -1739,7 +1672,10 @@ export default function StudyPrograms() {
                         <div className="space-y-2 text-xs">
                           <div className="flex justify-between items-center text-slate-700">
                             <span className="text-slate-400">Destination :</span>
-                            <span className="font-bold">{selectedProgram.country} {selectedProgram.countryFlag || "🎓"}</span>
+                            <span className="font-bold inline-flex items-center gap-1.5">
+                              <CountryFlag country={selectedProgram.country} fallbackCode={selectedProgram.countryFlag} size="sm" />
+                              <span>{selectedProgram.country}</span>
+                            </span>
                           </div>
                           <div className="flex justify-between items-center text-slate-700">
                             <span className="text-slate-400">Établissement :</span>

@@ -10,6 +10,7 @@ import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { TablePagination } from '../common/TablePagination';
+import { CountryFlag } from '../common/CountryFlag';
 
 export default function OrganizedTripsManagement() {
   const { language, t } = useLanguage();
@@ -36,9 +37,10 @@ export default function OrganizedTripsManagement() {
   });
 
   const filteredTrips = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
+    const term = (searchTerm || '').trim().toLowerCase();
     return (organizedTrips || []).filter(t => {
-      const matchesSearch = !term || t.title.toLowerCase().includes(term) || t.destination.toLowerCase().includes(term);
+      if (!t) return false;
+      const matchesSearch = !term || (t.title || '').toLowerCase().includes(term) || (t.destination || '').toLowerCase().includes(term);
       const matchesStatus = statusFilter === 'all' || (t.status || 'active') === statusFilter;
       return matchesSearch && matchesStatus;
     });
@@ -335,7 +337,9 @@ export default function OrganizedTripsManagement() {
           const tripResData = reservationsByTripMap[trip.id] || { total: 0, confirmed: 0, list: [] };
           const totalReserved = tripResData.total;
           const tripRes = tripResData.list;
-          const occupancyPercentage = Math.round((totalReserved / trip.totalSeats) * 100) || 0;
+          const occupancyPercentage = (trip.totalSeats || 0) > 0
+            ? Math.round((totalReserved / trip.totalSeats) * 100) || 0
+            : 0;
 
           return (
             <div key={trip.id} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
@@ -391,8 +395,9 @@ export default function OrganizedTripsManagement() {
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-slate-900/80 to-transparent p-4">
                   <h3 className="text-white font-bold text-lg leading-tight">{trip.title}</h3>
-                  <p className="text-blue-100 text-sm flex items-center gap-1 mt-1">
-                    <MapPin className="w-3 h-3" /> {trip.destination}
+                  <p className="text-blue-100 text-sm flex items-center gap-1.5 mt-1">
+                    <CountryFlag country={trip.destination} size="sm" />
+                    <span>{trip.destination}</span>
                   </p>
                 </div>
               </div>
@@ -400,11 +405,11 @@ export default function OrganizedTripsManagement() {
                 <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-sm text-slate-600 mb-4">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-blue-500" />
-                    <span>{new Date(trip.startDate).toLocaleDateString(isEn ? 'en-US' : 'fr-FR')}</span>
+                    <span>{trip.startDate ? new Date(trip.startDate).toLocaleDateString(isEn ? 'en-US' : 'fr-FR') : '—'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-emerald-500" />
-                    <span className="font-semibold text-slate-800">{trip.price} DZD</span>
+                    <span className="font-semibold text-slate-800">{Number(trip.price || 0).toLocaleString()} DZD</span>
                   </div>
                   <div className="flex items-center gap-2 col-span-2">
                     <Users className="w-4 h-4 text-purple-500" />
