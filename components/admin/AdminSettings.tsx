@@ -10,8 +10,7 @@ import {
   Save, AlertTriangle, Trash2, RefreshCw, CheckCircle2,
   Database, ArrowRightLeft, Server
 } from "lucide-react";
-import { db, auth } from "../../src/firebase";
-import { collection, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { auth, getFirestoreDb } from "../../src/firebase";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { useToast } from "@/components/ui/toast";
 import { getBackendMode, apiFetch, type BackendDatabaseMode } from "../../src/services/apiClient";
@@ -91,6 +90,11 @@ export function AdminSettings() {
         { firestoreKey: "notifications", payloadKey: "notifications", label: "Notifications" },
       ];
 
+      const [{ collection, getDocs }, db] = await Promise.all([
+        import("firebase/firestore"),
+        getFirestoreDb(),
+      ]);
+
       const summary: Record<string, number> = {};
       const CHUNK_SIZE = 25;
 
@@ -148,8 +152,12 @@ export function AdminSettings() {
       if (currentMode === "mysql") {
         await apiFetch("/api/db/admin/reset", { method: "POST" });
         clearData();
-        await useAppStore.getState().refreshAllFromMysql();
+        await useAppStore.getState().refreshAllFromMysql(true);
       } else {
+        const [{ collection, getDocs, deleteDoc, doc, updateDoc }, db] = await Promise.all([
+          import("firebase/firestore"),
+          getFirestoreDb(),
+        ]);
         const collectionsToPurge = [
           'applications',
           'studyApplications',

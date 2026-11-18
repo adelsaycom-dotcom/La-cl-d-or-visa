@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { collection, onSnapshot, query, where, doc, getDoc, limit } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { auth, getFirestoreDb } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { catalogService } from '../services/catalogService';
 import { getBackendMode, apiFetch } from '../services/apiClient';
@@ -140,6 +139,8 @@ export function useFirebaseSync() {
               agencies: boot.agencies || [],
               catalogLoading: false,
               catalogLoaded: true,
+              lastMysqlSyncVersion: boot.syncVersion || null,
+              lastMysqlCatalogVersion: boot.catalogVersion || null,
               quotaExceeded: false,
               databaseMode: 'mysql',
             });
@@ -179,6 +180,12 @@ export function useFirebaseSync() {
         // =====================================================================
         // MODE 2 : FIRESTORE (SECOURS QUAND MYSQL N'EST PAS CONFIGURÉ)
         // =====================================================================
+        const [{ collection, onSnapshot, query, where, doc, getDoc, limit }, db] = await Promise.all([
+          import('firebase/firestore'),
+          getFirestoreDb(),
+        ]);
+        if (currentUidRef.current !== expectedUid) return;
+
         let resolvedRole: 'admin' | 'agency' | null = null;
         let initialAgencyData: any = null;
 

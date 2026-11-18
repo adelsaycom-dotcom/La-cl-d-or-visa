@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { auth, db } from "../../src/firebase";
+import { auth, getFirestoreDb } from "../../src/firebase";
 import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -7,7 +7,6 @@ import {
   browserLocalPersistence,
   browserSessionPersistence
 } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppStore } from "../../src/store/useAppStore";
 import { getBackendMode, apiFetch } from "../../src/services/apiClient";
@@ -108,6 +107,10 @@ export function Login() {
           userData = null;
         }
       } else {
+        const [{ doc, getDoc, setDoc }, db] = await Promise.all([
+          import("firebase/firestore"),
+          getFirestoreDb(),
+        ]);
         const userDoc = await getDoc(doc(db, "users", uid));
         if (userDoc.exists()) {
           userData = { id: userDoc.id, ...userDoc.data() };

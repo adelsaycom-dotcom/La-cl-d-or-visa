@@ -108,7 +108,7 @@ export function ApplicationManagement() {
       setFinalDocFile(file);
       try {
         const uploadRes = await uploadFileToServer(file, "Visa");
-        setFinalDocUrl(uploadRes.dataUrl || uploadRes.url);
+        setFinalDocUrl(uploadRes.url?.startsWith("/api/files/") ? uploadRes.url : (uploadRes.dataUrl || uploadRes.url));
       } catch (err) {
         console.error("Erreur enregistrement visa:", err);
         toast.error("Erreur d'enregistrement", "Erreur lors de l'enregistrement du document sur le serveur.");

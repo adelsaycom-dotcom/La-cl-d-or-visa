@@ -116,7 +116,7 @@ export default function StudyProgramsManagement() {
     setIsUploadingPhoto(true);
     try {
       const res = await uploadFileToServer(file, `photo_campus_${Date.now()}`);
-      const finalUrl = res.url || res.dataUrl;
+      const finalUrl = res.dataUrl || res.url;
       setNewProgram(prev => ({ ...prev, image: finalUrl }));
       toast.success("Photo enregistrée", "L'image du campus a été téléversée avec succès.");
     } catch (err: any) {
@@ -392,7 +392,7 @@ export default function StudyProgramsManagement() {
     setUploadingFinalDoc(true);
     try {
       const uploadRes = await uploadFileToServer(file, `Lettre_Admission_${selectedApp.studentName.replace(/\s+/g, '_')}`);
-      const fileUrl = uploadRes.dataUrl || uploadRes.url;
+      const fileUrl = uploadRes.url?.startsWith("/api/files/") ? uploadRes.url : (uploadRes.dataUrl || uploadRes.url);
       await updateStudyApplication(selectedApp.id, {
         finalDocument: fileUrl,
         finalDocumentName: file.name,

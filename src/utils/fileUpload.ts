@@ -9,8 +9,7 @@
  * 3. En local ou serveur Node, la sauvegarde disque /uploads/ est également conservée en complément.
  */
 
-import { doc, setDoc, getDoc } from "firebase/firestore";
-import { db, auth } from "../firebase";
+import { auth, getFirestoreDb } from "../firebase";
 import { getBackendMode } from "../services/apiClient";
 
 // Cache mémoire pour l'affichage ultra-rapide des aperçus
@@ -198,6 +197,10 @@ export async function uploadFileToServer(
   // 4. Sauvegarde Firestore 'attachments' UNIQUEMENT en mode secours (si pas de MySQL et pas déjà stocké sur le serveur)
   if (!localServerUrl && backendMode !== "mysql") {
     try {
+      const [{ doc, setDoc }, db] = await Promise.all([
+        import("firebase/firestore"),
+        getFirestoreDb(),
+      ]);
       if (base64Data.length <= 700000) {
         await setDoc(doc(db, "attachments", attId), {
           id: attId,
@@ -282,6 +285,10 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
         return cached;
       }
       try {
+        const [{ doc, getDoc }, db] = await Promise.all([
+          import("firebase/firestore"),
+          getFirestoreDb(),
+        ]);
         const snap = await getDoc(doc(db, "attachments", attId));
         if (snap.exists()) {
           const docData = snap.data();
@@ -356,6 +363,10 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
     }
 
     try {
+      const [{ doc, getDoc }, db] = await Promise.all([
+        import("firebase/firestore"),
+        getFirestoreDb(),
+      ]);
       const snap = await getDoc(doc(db, "attachments", storageId));
       if (snap.exists()) {
         const docData = snap.data();

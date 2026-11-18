@@ -15,15 +15,17 @@ import { useLanguage } from "../../src/i18n/LanguageContext";
 import { useToast } from "@/components/ui/toast";
 import { TablePagination } from "../common/TablePagination";
 import { DocumentPreviewModal, type PreviewDocData } from "../common/DocumentPreviewModal";
+import { ProtectedImage } from "../common/ProtectedImage";
+import { compressImageIfPossible, uploadFileToServer } from "../../src/utils/fileUpload";
 import {
-  isImageBase64,
+  isReceiptAsset,
   getSafeTimestamp,
   sortTransactionsDesc,
   extractErrorMessage
 } from "../../src/utils/financeHelpers";
 
 const PAGE_SIZE = 10;
-const MAX_RECEIPT_SIZE_BYTES = 2 * 1024 * 1024;
+const MAX_RECEIPT_SIZE_BYTES = 5 * 1024 * 1024;
 
 export function AgencyWallet() {
   const { language, t } = useLanguage();
@@ -60,6 +62,7 @@ export function AgencyWallet() {
   const [amount, setAmount] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("ccp");
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -105,7 +108,7 @@ export function AgencyWallet() {
   }, [myTransactions, transactionsPage]);
 
   const readReceiptFile = useCallback(
-    (file: File) => {
+    async (file: File) => {
       if (!file.type.startsWith("image/")) {
         toast.warning(
           isEn ? "Invalid format" : "Format invalide",
@@ -116,18 +119,16 @@ export function AgencyWallet() {
       if (file.size > MAX_RECEIPT_SIZE_BYTES) {
         toast.warning(
           isEn ? "File too large" : "Fichier trop volumineux",
-          isEn ? "Maximum receipt image size is 2MB." : "L'image est trop volumineuse (Max 2MB)."
+          isEn ? "Maximum receipt image size is 5MB." : "L'image est trop volumineuse (Max 5MB)."
         );
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (!isMountedRef.current) return;
-        if (typeof reader.result === "string") {
-          setReceiptImage(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
+      setReceiptFile(file);
+      const compressed = await compressImageIfPossible(file, 1200, 1200, 0.78);
+      if (!isMountedRef.current) return;
+      if (compressed) {
+        setReceiptImage(compressed);
+      }
     },
     [isEn, toast]
   );
@@ -159,11 +160,25 @@ export function AgencyWallet() {
 
     setIsSubmitting(true);
     try {
+      let noteValue = receiptImage || `Méthode: ${paymentMethod}`;
+      if (receiptFile) {
+        try {
+          const uploadRes = await uploadFileToServer(receiptFile, "Justificatif Recharge");
+          if (uploadRes.url && uploadRes.url.startsWith("/api/files/")) {
+            noteValue = uploadRes.url;
+          } else if (uploadRes.dataUrl) {
+            noteValue = uploadRes.dataUrl;
+          }
+        } catch {
+          // Conserver la version compressée locale en secours
+        }
+      }
+
       const payload = {
         agencyId: auth.currentUser?.uid || "mock-id",
         agencyName: currentAgency?.agencyName || currentAgency?.name || auth.currentUser?.email || "Agence",
         amount: parsedAmount,
-        note: receiptImage || `Méthode: ${paymentMethod}`,
+        note: noteValue,
         status: "Pending",
         date: new Date().toISOString(),
       };
@@ -178,6 +193,7 @@ export function AgencyWallet() {
       setRechargeOpen(false);
       setAmount("");
       setReceiptImage(null);
+      setReceiptFile(null);
       setPaymentMethod("ccp");
     } catch (err: unknown) {
       if (!isMountedRef.current) return;
@@ -188,7 +204,7 @@ export function AgencyWallet() {
     } finally {
       if (isMountedRef.current) setIsSubmitting(false);
     }
-  }, [amount, currentAgency, receiptImage, paymentMethod, addRechargeRequest, isEn, toast]);
+  }, [amount, currentAgency, receiptFile, receiptImage, paymentMethod, addRechargeRequest, isEn, toast]);
 
   const handleOpenReceiptPreview = useCallback(
     (src: string) => {
@@ -404,7 +420,7 @@ export function AgencyWallet() {
                           <div className="text-xs text-slate-500">{new Date(req.date || req.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
                         </TableCell>
                         <TableCell>
-                          {isImageBase64(req.note) ? (
+                          {isReceiptAsset(req.note) ? (
                             <div className="flex items-center gap-3">
                               <button
                                 type="button"
@@ -412,7 +428,7 @@ export function AgencyWallet() {
                                 onClick={() => handleOpenReceiptPreview(req.note)}
                                 title={isEn ? "View receipt" : "Agrandir le justificatif"}
                               >
-                                <img src={req.note} alt="Reçu" className="w-full h-full object-cover" />
+                                <ProtectedImage src={req.note} alt="Reçu" className="w-full h-full object-cover" />
                               </button>
                               <span className="text-sm font-medium text-slate-600">
                                 {isEn ? "Attached receipt" : "Reçu joint"}

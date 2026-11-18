@@ -306,12 +306,13 @@ function AdminLayout() {
 export default function App() {
   useFirebaseSync();
   const quotaExceeded = useAppStore(state => state.quotaExceeded);
+  const databaseMode = useAppStore(state => state.databaseMode);
 
   return (
     <ErrorBoundary>
       <LanguageProvider>
         <ToastProvider>
-          {quotaExceeded && (
+          {databaseMode !== 'mysql' && quotaExceeded && (
             <div className="bg-amber-500/15 border-b border-amber-500/30 text-amber-950 px-4 py-2 text-xs flex items-center justify-between gap-3 sticky top-0 z-[999] backdrop-blur-md">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>

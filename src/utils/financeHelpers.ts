@@ -11,6 +11,13 @@ export function isImageBase64(value: unknown): value is string {
   return typeof value === 'string' && value.startsWith('data:image/');
 }
 
+export function isReceiptAsset(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    (value.startsWith('data:image/') || value.startsWith('/api/files/'))
+  );
+}
+
 export function getSafeTimestamp(dateStr?: string, fallbackStr?: string): number {
   const raw = dateStr || fallbackStr;
   if (!raw) return 0;

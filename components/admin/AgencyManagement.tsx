@@ -16,8 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "../../src/i18n/LanguageContext";
-import { db } from "../../src/firebase";
-import { collection, doc, runTransaction } from "firebase/firestore";
+import { getFirestoreDb } from "../../src/firebase";
 import { useToast } from "@/components/ui/toast";
 import { getBackendMode, apiFetch } from "../../src/services/apiClient";
 
@@ -195,8 +194,12 @@ export function AgencyManagement() {
           }),
         });
         updatedBalance = Number(res?.newBalance ?? 0);
-        await useAppStore.getState().refreshAllFromMysql();
+        await useAppStore.getState().refreshAllFromMysql(true);
       } else {
+        const [{ collection, doc, runTransaction }, db] = await Promise.all([
+          import("firebase/firestore"),
+          getFirestoreDb(),
+        ]);
         await runTransaction(db, async (transaction) => {
           const agencyRef = doc(db, "users", selectedAgency.id);
           const agencySnap = await transaction.get(agencyRef);
@@ -1319,9 +1322,12 @@ export function AgencyManagement() {
                         method: "POST",
                         body: JSON.stringify(agencyPayload),
                       });
-                      await useAppStore.getState().refreshAllFromMysql();
+                      await useAppStore.getState().refreshAllFromMysql(true);
                     } else {
-                      const { doc, setDoc } = await import("firebase/firestore");
+                      const [{ doc, setDoc }, db] = await Promise.all([
+                        import("firebase/firestore"),
+                        getFirestoreDb(),
+                      ]);
                       await setDoc(doc(db, "users", userCred.user.uid), agencyPayload);
                     }
                     await secondaryAuth.signOut();

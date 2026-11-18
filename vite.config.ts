@@ -19,6 +19,7 @@ export default defineConfig(() => {
         output: {
           manualChunks: {
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            'firebase-auth': ['firebase/app', 'firebase/auth'],
             'ui-vendor': ['lucide-react', 'framer-motion', 'motion'],
             'map-vendor': ['react-simple-maps', 'd3', 'd3-scale', 'topojson-client'],
             'utils-vendor': ['zod', 'zustand', 'clsx', 'tailwind-merge']

@@ -22,10 +22,17 @@ export interface Agency {
   createdAt?: string;
 }
 import { create } from "zustand";
-import { collection, doc, setDoc, updateDoc, deleteDoc, runTransaction, writeBatch, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { getFirestoreDb } from '../firebase';
 import { catalogService } from '../services/catalogService';
 import { apiFetch, getBackendMode } from '../services/apiClient';
+
+async function fs() {
+  const [firestore, db] = await Promise.all([
+    import('firebase/firestore'),
+    getFirestoreDb(),
+  ]);
+  return { ...firestore, db };
+}
 
 export function sanitizeFirestoreData<T>(data: T): T {
   if (data === null || data === undefined) {
@@ -300,7 +307,9 @@ export interface AppState {
   refreshCatalog: (force?: boolean) => Promise<void>;
 
   databaseMode: 'mysql' | 'firestore';
-  refreshAllFromMysql: () => Promise<void>;
+  lastMysqlSyncVersion: string | null;
+  lastMysqlCatalogVersion: string | null;
+  refreshAllFromMysql: (force?: boolean) => Promise<void>;
 
   quotaExceeded: boolean;
   setQuotaExceeded: (exceeded: boolean) => void;
@@ -319,13 +328,37 @@ export const useAppStore = create<AppState>()((set, get) => ({
   catalogLoading: false,
   catalogLoaded: false,
   databaseMode: 'firestore',
+  lastMysqlSyncVersion: null,
+  lastMysqlCatalogVersion: null,
   quotaExceeded: false,
   setQuotaExceeded: (exceeded) => set({ quotaExceeded: exceeded }),
 
-  refreshAllFromMysql: async () => {
+  refreshAllFromMysql: async (force = false) => {
     const mode = await getBackendMode();
     if (mode !== 'mysql') return;
-    const boot = await apiFetch('/api/db/bootstrap');
+
+    const currentState = get();
+    let latestCatalogVersion: string | null = null;
+
+    if (!force && currentState.lastMysqlSyncVersion) {
+      try {
+        const ver = await apiFetch('/api/db/sync-version');
+        if (ver?.syncVersion && ver.syncVersion === currentState.lastMysqlSyncVersion) {
+          return;
+        }
+        latestCatalogVersion = ver?.catalogVersion || null;
+      } catch {
+        // En cas d'erreur transitoire, poursuivre avec le bootstrap complet
+      }
+    }
+
+    const includeCatalog =
+      force ||
+      !currentState.catalogLoaded ||
+      !currentState.lastMysqlCatalogVersion ||
+      (latestCatalogVersion !== null && latestCatalogVersion !== currentState.lastMysqlCatalogVersion);
+
+    const boot = await apiFetch(`/api/db/bootstrap?includeCatalog=${includeCatalog ? '1' : '0'}`);
     const agency = boot.currentAgency || null;
     const roleRaw = String(boot.role || agency?.role || '').trim().toLowerCase();
     const resolvedRole: 'admin' | 'agency' | null =
@@ -343,15 +376,19 @@ export const useAppStore = create<AppState>()((set, get) => ({
       return;
     }
 
-    set({
+    set((state) => ({
       currentAgency: agency,
       authRole: resolvedRole,
       agencyBalance: Number(agency?.balance || 0),
       b2cMarginPercent: typeof agency?.b2cMarginPercent === 'number' ? agency.b2cMarginPercent : 15,
-      countries: boot.countries || [],
-      services: boot.services || [],
-      organizedTrips: boot.organizedTrips || [],
-      studyPrograms: boot.studyPrograms || [],
+      ...(boot.catalogOmitted
+        ? {}
+        : {
+            countries: boot.countries || [],
+            services: boot.services || [],
+            organizedTrips: boot.organizedTrips || [],
+            studyPrograms: boot.studyPrograms || [],
+          }),
       applications: boot.applications || [],
       studyApplications: boot.studyApplications || [],
       tripReservations: boot.tripReservations || [],
@@ -363,8 +400,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
       catalogLoading: false,
       catalogLoaded: true,
       databaseMode: 'mysql',
+      lastMysqlSyncVersion: boot.syncVersion || state.lastMysqlSyncVersion,
+      lastMysqlCatalogVersion: boot.catalogVersion || state.lastMysqlCatalogVersion,
       quotaExceeded: false
-    });
+    }));
   },
 
   refreshCatalog: async (force = true) => {
@@ -415,6 +454,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { doc, updateDoc, db } = await fs();
     const sanitized = sanitizeFirestoreData(updates);
     await updateDoc(doc(db, "users", id), sanitized);
     set((state) => ({
@@ -438,6 +478,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { collection, doc, setDoc, db } = await fs();
     const id = doc(collection(db, 'supportTickets')).id;
     await setDoc(doc(db, 'supportTickets', id), sanitizeFirestoreData({ ...ticket, id, createdAt: new Date().toISOString() }));
   },
@@ -452,6 +493,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { collection, doc, setDoc, updateDoc, db } = await fs();
     await updateDoc(doc(db, 'supportTickets', id), sanitizeFirestoreData(updates));
     
     // Check if new message was added by agency
@@ -500,6 +542,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { collection, doc, setDoc, db } = await fs();
     const id = doc(collection(db, 'transactions')).id;
     await setDoc(doc(db, 'transactions', id), { ...tx, id, createdAt: new Date().toISOString() });
   },
@@ -514,6 +557,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { collection, doc, setDoc, db } = await fs();
     const id = doc(collection(db, 'rechargeRequests')).id;
     await setDoc(doc(db, 'rechargeRequests', id), { ...req, id, createdAt: new Date().toISOString() });
   },
@@ -534,6 +578,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       await get().refreshAllFromMysql();
       return;
     }
+    const { collection, doc, setDoc, updateDoc, db } = await fs();
     await updateDoc(doc(db, 'rechargeRequests', id), { status });
     // Add Notification
     const req = get().rechargeRequests.find(r => r.id === id);
@@ -560,6 +605,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { doc, updateDoc, db } = await fs();
     await updateDoc(doc(db, 'notifications', id), { read: true });
   },
   markAllNotificationsAsRead: async (agencyId) => {
@@ -573,6 +619,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { collection, query, where, getDocs, writeBatch, db } = await fs();
     // This will be done in the component by looping or batch, but we can do a simple batch here
     const q = query(collection(db, 'notifications'), where('agencyId', '==', agencyId), where('read', '==', false));
     const snap = await getDocs(q);
@@ -593,6 +640,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { doc, updateDoc, db } = await fs();
     await updateDoc(doc(db, "users", id), { status }); 
     set((state) => ({
       agencies: state.agencies.map(a => a.id === id ? { ...a, status } : a)
@@ -618,6 +666,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { collection, doc, setDoc, db } = await fs();
     const sId = s.id || doc(collection(db, 'services')).id;
     const finalService = { ...s, id: sId };
     await setDoc(doc(db, 'services', sId), sanitizeFirestoreData(finalService));
@@ -638,6 +687,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { doc, updateDoc, db } = await fs();
     await updateDoc(doc(db, 'services', id), sanitizeFirestoreData(s));
     catalogService.invalidateCache('services');
     set(state => ({
@@ -653,6 +703,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { doc, deleteDoc, db } = await fs();
     await deleteDoc(doc(db, 'services', id));
     catalogService.invalidateCache('services');
     set(state => ({
@@ -672,6 +723,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { collection, doc, setDoc, db } = await fs();
     const tripId = doc(collection(db, 'organizedTrips')).id;
     const newTrip: OrganizedTrip = {
       ...tripData,
@@ -698,6 +750,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { doc, updateDoc, db } = await fs();
     await updateDoc(doc(db, 'organizedTrips', id), sanitizeFirestoreData(tripData));
     catalogService.invalidateCache('organizedTrips');
     set(state => ({
@@ -714,6 +767,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { doc, deleteDoc, db } = await fs();
     await deleteDoc(doc(db, 'organizedTrips', id));
     catalogService.invalidateCache('organizedTrips');
     set(state => ({
@@ -741,6 +795,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       throw new Error("Le nombre de voyageurs doit être un entier compris entre 1 et 50.");
     }
 
+    const { collection, doc, runTransaction, db } = await fs();
     const resId = `RES-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const tripRef = doc(db, 'organizedTrips', resData.tripId);
     const resRef = doc(db, 'tripReservations', resId);
@@ -845,6 +900,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { doc, runTransaction, db } = await fs();
     const resRef = doc(db, 'tripReservations', id);
     await runTransaction(db, async (transaction) => {
       const resSnap = await transaction.get(resRef);
@@ -865,6 +921,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       await get().refreshAllFromMysql();
       return;
     }
+    const { doc, runTransaction, db } = await fs();
     const resRef = doc(db, 'tripReservations', id);
     await runTransaction(db, async (transaction) => {
       const resSnap = await transaction.get(resRef);
@@ -900,6 +957,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { doc, setDoc, db } = await fs();
     await setDoc(doc(db, 'countries', country.id), sanitizeFirestoreData(country));
     catalogService.invalidateCache('countries');
     set(state => ({
@@ -919,6 +977,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { collection, doc, setDoc, db } = await fs();
     const progId = doc(collection(db, 'studyPrograms')).id;
     const newProg: StudyProgram = {
       ...programData,
@@ -945,6 +1004,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { doc, updateDoc, db } = await fs();
     const sanitized = sanitizeFirestoreData(programData);
     await updateDoc(doc(db, 'studyPrograms', id), sanitized);
     catalogService.invalidateCache('studyPrograms');
@@ -962,6 +1022,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { doc, deleteDoc, db } = await fs();
     await deleteDoc(doc(db, 'studyPrograms', id));
     catalogService.invalidateCache('studyPrograms');
     set(state => ({
@@ -1061,6 +1122,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       timeline: newStudyApp.timeline
     });
 
+    const { collection, doc, writeBatch, db } = await fs();
     const notifAdminRef = doc(collection(db, 'notifications'));
     const notifAgencyRef = doc(collection(db, 'notifications'));
 
@@ -1108,6 +1170,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { collection, doc, setDoc, updateDoc, db } = await fs();
     await updateDoc(doc(db, 'studyApplications', id), { status });
     set(state => ({
       studyApplications: state.studyApplications.map(a => a.id === id ? { ...a, status } : a)
@@ -1141,6 +1204,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }
     const app = get().studyApplications.find(a => a.id === id);
     if (!app) return;
+    const { doc, updateDoc, db } = await fs();
     const newPaidAmount = (app.paidAmount || 0) + amount;
     const paymentStatus = newPaidAmount >= app.price ? 'paid' : (newPaidAmount > 0 ? 'partial' : 'unpaid');
     await updateDoc(doc(db, 'studyApplications', id), {
@@ -1165,6 +1229,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { doc, updateDoc, db } = await fs();
     await updateDoc(doc(db, 'studyApplications', id), updates);
   },
 
@@ -1187,6 +1252,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         }));
         return;
       }
+      const { doc, updateDoc, db } = await fs();
       await updateDoc(doc(db, 'studyApplications', id), { timeline: newTimeline });
     }
   },
@@ -1203,6 +1269,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { doc, updateDoc, db } = await fs();
     await updateDoc(doc(db, 'countries', id), sanitizeFirestoreData(data));
     catalogService.invalidateCache('countries');
     set(state => ({
@@ -1219,6 +1286,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { doc, deleteDoc, db } = await fs();
     await deleteDoc(doc(db, 'countries', id));
     catalogService.invalidateCache('countries');
     set(state => ({
@@ -1236,6 +1304,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
           body: JSON.stringify({ visaTypes: newVisaTypes }),
         });
       } else {
+        const { doc, updateDoc, db } = await fs();
         await updateDoc(doc(db, 'countries', countryId), { visaTypes: sanitizeFirestoreData(newVisaTypes) });
       }
       catalogService.invalidateCache('countries');
@@ -1255,6 +1324,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
           body: JSON.stringify({ visaTypes: newVisaTypes }),
         });
       } else {
+        const { doc, updateDoc, db } = await fs();
         await updateDoc(doc(db, 'countries', countryId), { visaTypes: sanitizeFirestoreData(newVisaTypes) });
       }
       catalogService.invalidateCache('countries');
@@ -1274,6 +1344,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
           body: JSON.stringify({ visaTypes: newVisaTypes }),
         });
       } else {
+        const { doc, updateDoc, db } = await fs();
         await updateDoc(doc(db, 'countries', countryId), { visaTypes: sanitizeFirestoreData(newVisaTypes) });
       }
       catalogService.invalidateCache('countries');
@@ -1296,6 +1367,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { collection, doc, runTransaction, db } = await fs();
     const appId = application.id || doc(collection(db, 'applications')).id;
     const userRef = doc(db, 'users', application.agencyId);
     const serviceId = application.customFormData?.serviceId
@@ -1381,6 +1453,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { collection, doc, setDoc, updateDoc, db } = await fs();
     await updateDoc(doc(db, 'applications', id), { status });
     // Add Notification
     const app = get().applications.find(a => a.id === id);
@@ -1410,10 +1483,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
       }));
       return;
     }
+    const { doc, updateDoc, db } = await fs();
     await updateDoc(doc(db, 'applications', id), sanitizeFirestoreData(updates));
   },
   addApplicationTimelineEntry: async (id, entry) => {
-    const appRef = doc(db, 'applications', id);
     const newEntry = {
       ...entry,
       id: Math.random().toString(36).substring(2, 9),
@@ -1433,6 +1506,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
         }));
         return;
       }
+      const { doc, updateDoc, db } = await fs();
+      const appRef = doc(db, 'applications', id);
       await updateDoc(appRef, { timeline: newTimeline });
     }
   },
@@ -1457,7 +1532,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
       studyPrograms: [],
       studyApplications: [],
       catalogLoading: false,
-      catalogLoaded: false
+      catalogLoaded: false,
+      lastMysqlSyncVersion: null,
+      lastMysqlCatalogVersion: null
     });
   }
 }));

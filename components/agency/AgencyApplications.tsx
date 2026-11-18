@@ -102,8 +102,8 @@ export function AgencyApplications() {
     });
   };
 
-  const isImageBase64 = (str: any) => typeof str === 'string' && (str.startsWith('data:image/') || str.endsWith('.png') || str.endsWith('.jpg') || str.endsWith('.jpeg'));
-  const isPdfBase64 = (str: any) => typeof str === 'string' && (str.startsWith('data:application/pdf') || str.endsWith('.pdf'));
+  const isImageBase64 = (str: any) => typeof str === 'string' && (str.startsWith('data:image/') || /\.(png|jpe?g|webp)$/i.test(str));
+  const isPdfBase64 = (str: any) => typeof str === 'string' && (str.startsWith('data:application/pdf') || str.toLowerCase().endsWith('.pdf'));
 
   // Extraction mémoïsée des pièces jointes du dossier
   const appAttachments = useMemo(() => {
@@ -167,13 +167,14 @@ export function AgencyApplications() {
     setIsUploadingMissingDoc(true);
     try {
       const uploadRes = await uploadFileToServer(file, missingDocCategory || "Complément");
+      const hasServerFile = Boolean(uploadRes.url && uploadRes.url.startsWith("/api/files/"));
       const newAttachment = {
         id: uploadRes.storageId || `doc_supp_${Date.now()}`,
         name: file.name,
         category: missingDocCategory || "Document complémentaire",
         type: file.type || "application/octet-stream",
         size: uploadRes.size,
-        dataUrl: uploadRes.dataUrl || uploadRes.url,
+        dataUrl: hasServerFile ? "" : (uploadRes.dataUrl || uploadRes.url),
         url: uploadRes.url,
         storageId: uploadRes.storageId,
         uploadedAt: new Date().toISOString(),

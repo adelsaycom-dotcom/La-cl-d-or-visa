@@ -2,10 +2,24 @@ import { auth } from "../firebase";
 
 export type BackendDatabaseMode = "mysql" | "firestore";
 
-let cachedMode: BackendDatabaseMode | null = null;
-let cachedAt = 0;
+const SESSION_MODE_KEY = "cldor_db_mode";
+
+function readSessionMode(): BackendDatabaseMode | null {
+  try {
+    if (typeof window !== "undefined" && window.sessionStorage) {
+      const val = window.sessionStorage.getItem(SESSION_MODE_KEY);
+      if (val === "mysql" || val === "firestore") return val;
+    }
+  } catch {
+    // Ignorer
+  }
+  return null;
+}
+
+let cachedMode: BackendDatabaseMode | null = readSessionMode();
+let cachedAt = cachedMode ? Date.now() : 0;
 let pendingProbe: Promise<BackendDatabaseMode> | null = null;
-const MODE_CACHE_TTL_MS = 60 * 1000;
+const MODE_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export function isMysqlModeCached(): boolean {
   return cachedMode === "mysql";
@@ -18,6 +32,13 @@ export function getCachedBackendMode(): BackendDatabaseMode {
 export function setCachedBackendMode(mode: BackendDatabaseMode) {
   cachedMode = mode;
   cachedAt = Date.now();
+  try {
+    if (typeof window !== "undefined" && window.sessionStorage) {
+      window.sessionStorage.setItem(SESSION_MODE_KEY, mode);
+    }
+  } catch {
+    // Ignorer
+  }
 }
 
 export async function getBackendMode(forceRefresh = false): Promise<BackendDatabaseMode> {
@@ -31,7 +52,7 @@ export async function getBackendMode(forceRefresh = false): Promise<BackendDatab
   pendingProbe = (async () => {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 4500);
+      const timer = setTimeout(() => controller.abort(), 6000);
       const res = await fetch("/api/health", {
         method: "GET",
         cache: "no-store",
@@ -45,7 +66,14 @@ export async function getBackendMode(forceRefresh = false): Promise<BackendDatab
         return mode;
       }
     } catch {
-      // Fallback silencieux si serveur indisponible
+      // Conserver MySQL si déjà confirmé dans la session (évite de retomber sur Firestore lors d'une micro-coupure)
+      if (cachedMode === "mysql") {
+        cachedAt = Date.now();
+        return "mysql";
+      }
+    }
+    if (cachedMode === "mysql") {
+      return "mysql";
     }
     setCachedBackendMode("firestore");
     return "firestore";

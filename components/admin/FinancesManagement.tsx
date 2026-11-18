@@ -6,8 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { db } from "../../src/firebase";
-import { doc, collection, runTransaction } from "firebase/firestore";
+import { getFirestoreDb } from "../../src/firebase";
 import {
   Check, X, FileText, Wallet, History, PlusSquare, Building, AlertCircle
 } from "lucide-react";
@@ -15,10 +14,11 @@ import { useLanguage } from "../../src/i18n/LanguageContext";
 import { useToast } from "@/components/ui/toast";
 import { TablePagination } from "../common/TablePagination";
 import { DocumentPreviewModal, type PreviewDocData } from "../common/DocumentPreviewModal";
+import { ProtectedImage } from "../common/ProtectedImage";
 import {
   computeRechargeSummary,
   sortTransactionsDesc,
-  isImageBase64,
+  isReceiptAsset,
   extractErrorMessage
 } from "../../src/utils/financeHelpers";
 import { getBackendMode, apiFetch } from "../../src/services/apiClient";
@@ -126,8 +126,12 @@ export function FinancesManagement() {
           method: "POST",
           body: JSON.stringify({ amount: finalAmount }),
         });
-        await useAppStore.getState().refreshAllFromMysql();
+        await useAppStore.getState().refreshAllFromMysql(true);
       } else {
+        const [{ doc, collection, runTransaction }, db] = await Promise.all([
+          import("firebase/firestore"),
+          getFirestoreDb(),
+        ]);
         await runTransaction(db, async (transaction) => {
           const agencyRef = doc(db, "users", selectedReq.agencyId);
           const reqRef = doc(db, "rechargeRequests", selectedReq.id);
@@ -154,8 +158,8 @@ export function FinancesManagement() {
             type: "credit",
             amount: finalAmount,
             description: isEn
-              ? `Top-up validation ${selectedReq.note && !isImageBase64(selectedReq.note) ? "- " + selectedReq.note : ""}`
-              : `Validation de recharge ${selectedReq.note && !isImageBase64(selectedReq.note) ? "- " + selectedReq.note : ""}`,
+              ? `Top-up validation ${selectedReq.note && !isReceiptAsset(selectedReq.note) ? "- " + selectedReq.note : ""}`
+              : `Validation de recharge ${selectedReq.note && !isReceiptAsset(selectedReq.note) ? "- " + selectedReq.note : ""}`,
             date: new Date().toISOString(),
           });
 
@@ -207,8 +211,12 @@ export function FinancesManagement() {
           method: "POST",
           body: JSON.stringify({ reason }),
         });
-        await useAppStore.getState().refreshAllFromMysql();
+        await useAppStore.getState().refreshAllFromMysql(true);
       } else {
+        const [{ doc, collection, runTransaction }, db] = await Promise.all([
+          import("firebase/firestore"),
+          getFirestoreDb(),
+        ]);
         await runTransaction(db, async (transaction) => {
           const reqRef = doc(db, "rechargeRequests", rejectTarget.id);
           transaction.update(reqRef, {
@@ -272,8 +280,12 @@ export function FinancesManagement() {
             reason: manualNote.trim(),
           }),
         });
-        await useAppStore.getState().refreshAllFromMysql();
+        await useAppStore.getState().refreshAllFromMysql(true);
       } else {
+        const [{ doc, collection, runTransaction }, db] = await Promise.all([
+          import("firebase/firestore"),
+          getFirestoreDb(),
+        ]);
         await runTransaction(db, async (transaction) => {
           const agencyRef = doc(db, "users", agency.id);
           const agencyDoc = await transaction.get(agencyRef);
@@ -455,7 +467,7 @@ export function FinancesManagement() {
                             {req.amount.toLocaleString()} DZD
                           </TableCell>
                           <TableCell className="max-w-xs">
-                            {isImageBase64(req.note) ? (
+                            {isReceiptAsset(req.note) ? (
                               <button
                                 type="button"
                                 className="inline-flex items-center gap-1.5 text-xs text-blue-600 font-bold hover:underline cursor-pointer bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100"
@@ -657,10 +669,10 @@ export function FinancesManagement() {
 
               <div className="p-6 space-y-6">
                 <div className="bg-slate-50 p-4 rounded-xl text-sm border border-slate-100">
-                  {isImageBase64(selectedReq.note) ? (
+                  {isReceiptAsset(selectedReq.note) ? (
                     <div className="mb-3 text-center">
                       <span className="text-slate-500 block mb-2 font-bold">{isEn ? "Provided Proof:" : "Justificatif fourni :"}</span>
-                      <img
+                      <ProtectedImage
                         src={selectedReq.note}
                         className="max-h-32 object-contain mx-auto rounded-lg border border-slate-200 cursor-pointer hover:opacity-80 transition"
                         onClick={() => handleOpenReceipt(selectedReq.note, selectedReq.agencyName)}

@@ -141,13 +141,20 @@ async function startServer() {
       : initializeAdminApp(projectId ? { projectId } : undefined);
 
   const adminAuth = getAdminAuth(adminApp);
+  const hasGcpAdc = Boolean(
+    process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+      process.env.K_SERVICE ||
+      process.env.CLOUD_RUN_JOB
+  );
   let adminDb: ReturnType<typeof getAdminFirestore> | null = null;
-  try {
-    adminDb = firestoreDatabaseId
-      ? getAdminFirestore(adminApp, firestoreDatabaseId)
-      : getAdminFirestore(adminApp);
-  } catch {
-    adminDb = null;
+  if (hasGcpAdc) {
+    try {
+      adminDb = firestoreDatabaseId
+        ? getAdminFirestore(adminApp, firestoreDatabaseId)
+        : getAdminFirestore(adminApp);
+    } catch {
+      adminDb = null;
+    }
   }
 
   // Initialisation MySQL Hostinger (crée automatiquement les 12 tables si configuré)
@@ -295,10 +302,13 @@ async function startServer() {
         }
       }
 
-      if (!isAdmin && adminDb) {
+      if (!isAdmin && !isMysqlActive() && adminDb) {
         try {
-          const userSnap = await adminDb.collection("users").doc(decoded.uid).get();
-          if (userSnap.exists && String(userSnap.data()?.role || "").toLowerCase() === "admin") {
+          const userSnap = await Promise.race([
+            adminDb.collection("users").doc(decoded.uid).get(),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+          ]);
+          if (userSnap && userSnap.exists && String(userSnap.data()?.role || "").toLowerCase() === "admin") {
             isAdmin = true;
           }
         } catch {
@@ -467,6 +477,31 @@ Si un champ est absent ou illisible, renvoie une chaîne vide "". Réponds UNIQU
       await fs.promises.writeFile(filePath, buffer);
       await fs.promises.writeFile(metaPath, JSON.stringify(metadata), "utf8");
 
+      if (isMysqlActive()) {
+        try {
+          await getMysqlPool().query(
+            `INSERT INTO attachments (id, ownerUid, mimeType, originalName, size, data, createdAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+               mimeType = VALUES(mimeType),
+               originalName = VALUES(originalName),
+               size = VALUES(size),
+               data = VALUES(data)`,
+            [
+              uniqueName,
+              metadata.ownerUid,
+              metadata.mimeType,
+              metadata.originalName,
+              metadata.size,
+              buffer,
+              metadata.createdAt,
+            ]
+          );
+        } catch (mysqlErr) {
+          console.warn("[Upload] Persistance MySQL attachments ignorée (stockage disque OK):", mysqlErr);
+        }
+      }
+
       return res.json({
         success: true,
         url: `/api/files/${uniqueName}`,
@@ -499,10 +534,6 @@ Si un champ est absent ou illisible, renvoie une chaîne vide "". Réponds UNIQU
       return res.status(403).json({ error: "Accès refusé." });
     }
 
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: "Document introuvable." });
-    }
-
     const metaPath = path.resolve(privateUploadsDir, `${safeName}.meta.json`);
     let meta: UploadMetadata | null = null;
     if (fs.existsSync(metaPath)) {
@@ -513,9 +544,74 @@ Si un champ est absent ou illisible, renvoie une chaîne vide "". Réponds UNIQU
       }
     }
 
-    // Contrôle d'autorisation strict : propriétaire ou administrateur
-    const isOwner = Boolean(meta && meta.ownerUid === req.user?.uid);
-    if (!isOwner && !req.user?.isAdmin) {
+    let dbBuffer: Buffer | null = null;
+    const diskExists = fs.existsSync(filePath);
+
+    if ((!diskExists || !meta) && isMysqlActive()) {
+      try {
+        const [rows] = await getMysqlPool().query<any[]>(
+          "SELECT ownerUid, mimeType, originalName, size, createdAt, data FROM attachments WHERE id = ? LIMIT 1",
+          [safeName]
+        );
+        if (Array.isArray(rows) && rows.length > 0) {
+          const row = rows[0];
+          meta = {
+            ownerUid: String(row.ownerUid || ""),
+            mimeType: String(row.mimeType || "application/octet-stream"),
+            originalName: String(row.originalName || safeName),
+            size: Number(row.size || 0),
+            createdAt: String(row.createdAt || ""),
+          };
+          if (Buffer.isBuffer(row.data)) {
+            dbBuffer = row.data;
+            // Réchauffer le cache disque L1 en arrière-plan
+            fs.promises.writeFile(filePath, dbBuffer).catch(() => {});
+            fs.promises.writeFile(metaPath, JSON.stringify(meta), "utf8").catch(() => {});
+          }
+        }
+      } catch (err) {
+        console.warn("[Files] Lecture MySQL attachments échouée:", err);
+      }
+    }
+
+    if (!diskExists && !dbBuffer) {
+      return res.status(404).json({ error: "Document introuvable." });
+    }
+
+    // Contrôle d'autorisation strict : propriétaire, administrateur ou agence liée au dossier/justificatif
+    let isAuthorized = Boolean((meta && meta.ownerUid === req.user?.uid) || req.user?.isAdmin);
+    if (!isAuthorized && req.user?.uid && isMysqlActive()) {
+      try {
+        const fileUrl = `/api/files/${safeName}`;
+        const likePattern = `%${fileUrl}%`;
+        const pool = getMysqlPool();
+        const [[appMatch], [studyMatch], [rechargeMatch]] = await Promise.all([
+          pool.query<any[]>(
+            "SELECT id FROM applications WHERE agencyId = ? AND (finalDocument = ? OR attachments LIKE ?) LIMIT 1",
+            [req.user.uid, fileUrl, likePattern]
+          ),
+          pool.query<any[]>(
+            "SELECT id FROM study_applications WHERE agencyId = ? AND (finalDocument = ? OR attachments LIKE ? OR documents LIKE ?) LIMIT 1",
+            [req.user.uid, fileUrl, likePattern, likePattern]
+          ),
+          pool.query<any[]>(
+            "SELECT id FROM recharge_requests WHERE agencyId = ? AND note = ? LIMIT 1",
+            [req.user.uid, fileUrl]
+          ),
+        ]);
+        if (
+          (Array.isArray(appMatch) && appMatch.length > 0) ||
+          (Array.isArray(studyMatch) && studyMatch.length > 0) ||
+          (Array.isArray(rechargeMatch) && rechargeMatch.length > 0)
+        ) {
+          isAuthorized = true;
+        }
+      } catch {
+        // En cas d'erreur SQL, on conserve isAuthorized = false
+      }
+    }
+
+    if (!isAuthorized) {
       return res.status(403).json({ error: "Vous n'êtes pas autorisé à accéder à ce document." });
     }
 
@@ -524,7 +620,7 @@ Si un champ est absent ou illisible, renvoie une chaîne vide "". Réponds UNIQU
       (safeName.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/octet-stream");
 
     res.setHeader("X-Content-Type-Options", "nosniff");
-    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("Cache-Control", "private, max-age=1800");
     res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
     res.setHeader("Content-Type", mimeType);
 
@@ -540,7 +636,10 @@ Si un champ est absent ou illisible, renvoie une chaîne vide "". Réponds UNIQU
       res.setHeader("Content-Disposition", "inline");
     }
 
-    return fs.createReadStream(filePath).pipe(res);
+    if (diskExists) {
+      return fs.createReadStream(filePath).pipe(res);
+    }
+    return res.send(dbBuffer!);
   }
 
   app.get("/api/files/:filename", requireAuth, async (req: AuthenticatedRequest, res) => {

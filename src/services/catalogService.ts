@@ -5,9 +5,8 @@
  *   afin d'éviter de reconsommer ~260 lectures à chaque actualisation F5.
  */
 
-import { collection, getDocs, query, limit } from 'firebase/firestore';
-import { db } from '../firebase';
-import { Country, PrestationService, OrganizedTrip, StudyProgram } from '../store/useAppStore';
+import { getFirestoreDb } from '../firebase';
+import type { Country, PrestationService, OrganizedTrip, StudyProgram } from '../store/useAppStore';
 import { getBackendMode } from './apiClient';
 
 interface CacheEntry<T> {
@@ -69,7 +68,7 @@ function writePersistentCache<T>(key: keyof typeof memoryCache, data: T[]) {
 async function fetchMysqlCatalogBundle(): Promise<CatalogBundle> {
   if (pendingMysqlCatalogFetch) return pendingMysqlCatalogFetch;
   pendingMysqlCatalogFetch = (async () => {
-    const res = await fetch('/api/db/catalog', { cache: 'no-store' });
+    const res = await fetch('/api/db/catalog', { cache: 'no-cache' });
     if (!res.ok) {
       throw new Error(`Erreur catalogue MySQL (${res.status})`);
     }
@@ -83,6 +82,15 @@ async function fetchMysqlCatalogBundle(): Promise<CatalogBundle> {
     pendingMysqlCatalogFetch = null;
   });
   return pendingMysqlCatalogFetch;
+}
+
+async function fetchFirestoreCollection<T>(collName: string, maxItems: number): Promise<T[]> {
+  const [{ collection, getDocs, query, limit }, db] = await Promise.all([
+    import('firebase/firestore'),
+    getFirestoreDb(),
+  ]);
+  const snap = await getDocs(query(collection(db, collName), limit(maxItems)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })) as T[];
 }
 
 export const catalogService = {
@@ -103,8 +111,7 @@ export const catalogService = {
         return bundle.countries || [];
       }
 
-      const snap = await getDocs(query(collection(db, 'countries'), limit(50)));
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Country[];
+      const data = await fetchFirestoreCollection<Country>('countries', 50);
       writePersistentCache('countries', data);
       return data;
     } catch (err) {
@@ -130,8 +137,7 @@ export const catalogService = {
         return bundle.services || [];
       }
 
-      const snap = await getDocs(query(collection(db, 'services'), limit(100)));
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() })) as PrestationService[];
+      const data = await fetchFirestoreCollection<PrestationService>('services', 100);
       writePersistentCache('services', data);
       return data;
     } catch (err) {
@@ -157,8 +163,7 @@ export const catalogService = {
         return bundle.organizedTrips || [];
       }
 
-      const snap = await getDocs(query(collection(db, 'organizedTrips'), limit(50)));
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() })) as OrganizedTrip[];
+      const data = await fetchFirestoreCollection<OrganizedTrip>('organizedTrips', 50);
       writePersistentCache('organizedTrips', data);
       return data;
     } catch (err) {
@@ -184,8 +189,7 @@ export const catalogService = {
         return bundle.studyPrograms || [];
       }
 
-      const snap = await getDocs(query(collection(db, 'studyPrograms'), limit(60)));
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() })) as StudyProgram[];
+      const data = await fetchFirestoreCollection<StudyProgram>('studyPrograms', 60);
       writePersistentCache('studyPrograms', data);
       return data;
     } catch (err) {

@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { auth, db } from "../../src/firebase";
+import { auth, getFirestoreDb } from "../../src/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
 import { Link, useNavigate } from "react-router-dom";
 import { getBackendMode, apiFetch } from "../../src/services/apiClient";
 import { 
@@ -154,6 +153,10 @@ export function Register() {
           body: JSON.stringify(agencyProfilePayload),
         });
       } else {
+        const [{ doc, setDoc }, db] = await Promise.all([
+          import("firebase/firestore"),
+          getFirestoreDb(),
+        ]);
         await setDoc(doc(db, "users", uid), agencyProfilePayload);
       }
 

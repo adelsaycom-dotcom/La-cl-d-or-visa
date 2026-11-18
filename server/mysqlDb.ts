@@ -355,7 +355,30 @@ const SCHEMA_TABLES_SQL: string[] = [
     INDEX idx_tickets_agency (agencyId),
     INDEX idx_tickets_status (status)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS attachments (
+    id VARCHAR(191) NOT NULL PRIMARY KEY,
+    ownerUid VARCHAR(191) NOT NULL,
+    mimeType VARCHAR(128) NOT NULL,
+    originalName VARCHAR(255) NOT NULL,
+    size INT NOT NULL DEFAULT 0,
+    data LONGBLOB NOT NULL,
+    createdAt VARCHAR(64) NOT NULL,
+    INDEX idx_att_owner (ownerUid)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 ];
+
+let pendingInitPromise: Promise<boolean> | null = null;
+
+export async function ensureMysqlConnected(): Promise<boolean> {
+  if (isMysqlActive()) return true;
+  if (!isMysqlConfigured()) return false;
+  if (pendingInitPromise) return pendingInitPromise;
+  pendingInitPromise = initMysqlDatabase().finally(() => {
+    pendingInitPromise = null;
+  });
+  return pendingInitPromise;
+}
 
 export async function initMysqlDatabase(): Promise<boolean> {
   const cfg = resolveMysqlConfig();
@@ -370,7 +393,7 @@ export async function initMysqlDatabase(): Promise<boolean> {
       pool = mysql.createPool({
         uri: cfg.uri,
         waitForConnections: true,
-        connectionLimit: 10,
+        connectionLimit: 5,
         queueLimit: 0,
         connectTimeout: 10000,
         enableKeepAlive: true,
@@ -385,7 +408,7 @@ export async function initMysqlDatabase(): Promise<boolean> {
         password: cfg.password,
         database: cfg.database,
         waitForConnections: true,
-        connectionLimit: 10,
+        connectionLimit: 5,
         queueLimit: 0,
         connectTimeout: 10000,
         enableKeepAlive: true,
@@ -407,7 +430,7 @@ export async function initMysqlDatabase(): Promise<boolean> {
 
     mysqlReady = true;
     lastMysqlError = null;
-    console.log("[MySQL] Base de données MySQL connectée et 12 tables vérifiées.");
+    console.log("[MySQL] Base de données MySQL connectée et 13 tables vérifiées.");
     return true;
   } catch (err: any) {
     mysqlReady = false;

@@ -412,6 +412,7 @@ export function useVisaWizard() {
       const allAttachmentsList: NonNullable<Application["attachments"]> = [];
 
       if (passportFile) {
+        const hasServerFile = Boolean(passportFile.url && passportFile.url.startsWith("/api/files/"));
         allAttachmentsList.push({
           id: passportFile.id,
           name: passportFile.name,
@@ -420,13 +421,14 @@ export function useVisaWizard() {
           size: passportFile.size,
           storageId: passportFile.id,
           url: passportFile.url || passportFile.dataUrl,
-          dataUrl: passportFile.dataUrl || passportFile.url || "",
+          dataUrl: hasServerFile ? "" : (passportFile.dataUrl || passportFile.url || ""),
           uploadedAt: passportFile.uploadedAt,
           uploadedBy: "Agency"
         });
       }
 
       for (const att of Object.values(attachments)) {
+        const hasServerFile = Boolean(att.url && att.url.startsWith("/api/files/"));
         allAttachmentsList.push({
           id: att.id,
           name: att.name,
@@ -435,7 +437,7 @@ export function useVisaWizard() {
           size: att.size,
           storageId: att.id,
           url: att.url || att.dataUrl,
-          dataUrl: att.dataUrl || att.url || "",
+          dataUrl: hasServerFile ? "" : (att.dataUrl || att.url || ""),
           uploadedAt: att.uploadedAt,
           uploadedBy: "Agency"
         });

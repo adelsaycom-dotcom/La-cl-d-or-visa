@@ -33,6 +33,7 @@ export function AttachmentThumbnail({
     !isPdf && (
       attachment.type?.includes("image") ||
       /\.(jpe?g|png|webp|gif|bmp)$/i.test(attachment.name || "") ||
+      /\.(jpe?g|png|webp|gif|bmp)$/i.test(attachment.url || "") ||
       (attachment.dataUrl && attachment.dataUrl.startsWith("data:image/")) ||
       attachment.category?.toLowerCase().includes("passport") ||
       attachment.category?.toLowerCase().includes("scan") ||
@@ -42,7 +43,7 @@ export function AttachmentThumbnail({
   const initialSrc = 
     attachment.dataUrl && attachment.dataUrl.startsWith("data:image/") 
       ? attachment.dataUrl 
-      : (attachment.url && attachment.url.startsWith("http") ? attachment.url : "");
+      : (attachment.url && (attachment.url.startsWith("http") || attachment.url.startsWith("blob:")) ? attachment.url : "");
 
   const [resolvedSrc, setResolvedSrc] = useState<string>(initialSrc);
   const [loadError, setLoadError] = useState(false);
@@ -67,7 +68,7 @@ export function AttachmentThumbnail({
     resolveAttachmentData(attachment)
       .then((data) => {
         if (!isMounted) return;
-        if (data && (data.startsWith("data:image/") || data.startsWith("http"))) {
+        if (data && (data.startsWith("data:image/") || data.startsWith("http") || data.startsWith("blob:"))) {
           setResolvedSrc(data);
           setLoadError(false);
         } else {
