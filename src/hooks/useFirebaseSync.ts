@@ -9,6 +9,7 @@ const VERIFIED_ADMIN_EMAILS = new Set<string>([
   'adel.saycom@gmail.com',
   'admin@cle-dor.com',
   'admin@lacle-dor.com',
+  'admin@cle-dor-visa.com',
 ]);
 
 export function useFirebaseSync() {
@@ -161,7 +162,7 @@ export function useFirebaseSync() {
               setStore({ authReady: true, databaseMode: 'mysql' });
             } else {
               const fallbackAdmin =
-                user.emailVerified && user.email && VERIFIED_ADMIN_EMAILS.has(user.email.toLowerCase())
+                user.email && VERIFIED_ADMIN_EMAILS.has(user.email.toLowerCase())
                   ? ('admin' as const)
                   : null;
               setStore({
@@ -197,7 +198,7 @@ export function useFirebaseSync() {
             } else if (normalizedRole === 'agency') {
               resolvedRole = 'agency';
             }
-          } else if (user.emailVerified && user.email && VERIFIED_ADMIN_EMAILS.has(user.email.toLowerCase())) {
+          } else if (user.email && VERIFIED_ADMIN_EMAILS.has(user.email.toLowerCase())) {
             resolvedRole = 'admin';
           }
         } catch (err: any) {
@@ -205,7 +206,7 @@ export function useFirebaseSync() {
             console.warn('[Firestore Quota] Quota atteint lors de la vérification du profil.');
             setStore({ quotaExceeded: true });
           }
-          if (user.emailVerified && user.email && VERIFIED_ADMIN_EMAILS.has(user.email.toLowerCase())) {
+          if (user.email && VERIFIED_ADMIN_EMAILS.has(user.email.toLowerCase())) {
             resolvedRole = 'admin';
           }
         }

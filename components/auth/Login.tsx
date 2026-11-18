@@ -90,23 +90,28 @@ export function Login() {
       const isAdminEmail =
         userEmail === "adel.saycom@gmail.com" ||
         userEmail === "admin@cle-dor.com" ||
-        userEmail === "admin@lacle-dor.com";
+        userEmail === "admin@lacle-dor.com" ||
+        userEmail === "admin@cle-dor-visa.com";
 
-      const mode = await getBackendMode();
+      const mode = await getBackendMode(true);
       let userData: any = null;
 
       if (mode === "mysql") {
         try {
           const res = await apiFetch<{ user: any }>("/api/db/auth/me");
           userData = res?.user || null;
-        } catch {
+        } catch (err: any) {
+          const msg = String(err?.message || "");
+          if (!msg.toLowerCase().includes("introuvable")) {
+            throw err;
+          }
           userData = null;
         }
       } else {
         const userDoc = await getDoc(doc(db, "users", uid));
         if (userDoc.exists()) {
           userData = { id: userDoc.id, ...userDoc.data() };
-        } else if (isAdminEmail && userCred.user.emailVerified) {
+        } else if (isAdminEmail) {
           const adminProfile = {
             id: uid,
             email: userCred.user.email,
@@ -124,7 +129,7 @@ export function Login() {
         const role = String(userData.role || "").trim().toLowerCase();
         const status = String(userData.status || "ACTIVE").trim().toUpperCase();
 
-        if (role === "admin" || (isAdminEmail && userCred.user.emailVerified)) {
+        if (role === "admin" || isAdminEmail) {
           useAppStore.setState({
             authReady: true,
             authUserUid: uid,

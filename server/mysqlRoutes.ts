@@ -385,10 +385,20 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
   router.get("/auth/me", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const uid = req.user!.uid;
+      const email = (req.user!.email || "").toLowerCase();
       const pool = getMysqlPool();
-      const [rows] = await pool.query<any[]>("SELECT * FROM users WHERE id = ? LIMIT 1", [uid]);
+      let [rows] = await pool.query<any[]>("SELECT * FROM users WHERE id = ? LIMIT 1", [uid]);
+      if (rows.length === 0 && email) {
+        [rows] = await pool.query<any[]>("SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1", [email]);
+      }
       if (rows.length > 0) {
-        return res.json({ user: mapUserRow(rows[0]) });
+        const userObj = mapUserRow(rows[0])!;
+        if (req.user!.isAdmin && String(userObj.role || "").toLowerCase() !== "admin") {
+          userObj.role = "admin";
+          userObj.status = "ACTIVE";
+          await upsertUserRow(pool, userObj);
+        }
+        return res.json({ user: userObj });
       }
 
       if (req.user!.isAdmin) {
@@ -459,10 +469,14 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
   router.get("/bootstrap", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const uid = req.user!.uid;
+      const email = (req.user!.email || "").toLowerCase();
       const isAdmin = Boolean(req.user!.isAdmin);
       const pool = getMysqlPool();
 
-      const [userRows] = await pool.query<any[]>("SELECT * FROM users WHERE id = ? LIMIT 1", [uid]);
+      let [userRows] = await pool.query<any[]>("SELECT * FROM users WHERE id = ? LIMIT 1", [uid]);
+      if (userRows.length === 0 && email) {
+        [userRows] = await pool.query<any[]>("SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1", [email]);
+      }
       let currentUser: Record<string, any> | null =
         userRows.length > 0 ? mapUserRow(userRows[0]) : null;
 

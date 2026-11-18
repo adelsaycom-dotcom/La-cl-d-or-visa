@@ -37,6 +37,10 @@ const ADMIN_EMAILS = new Set<string>([
   "adel.saycom@gmail.com",
   "admin@cle-dor.com",
   "admin@lacle-dor.com",
+  "admin@cle-dor-visa.com",
+  ...(process.env.ADMIN_EMAILS
+    ? process.env.ADMIN_EMAILS.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
+    : []),
 ]);
 
 const ALLOWED_MIME_TYPES = new Set<string>([
@@ -128,7 +132,7 @@ async function startServer() {
   const isProd = process.env.NODE_ENV === "production" || (isBuiltBundle && fs.existsSync(distIndexPath));
 
   const fbConfig = loadFirebaseConfig();
-  const projectId = process.env.FIREBASE_PROJECT_ID || fbConfig.projectId;
+  const projectId = process.env.FIREBASE_PROJECT_ID || fbConfig.projectId || "project-ffd6a722-67cd-492b-a21";
   const firestoreDatabaseId = process.env.FIREBASE_DATABASE_ID || fbConfig.firestoreDatabaseId;
 
   const adminApp =
@@ -275,13 +279,13 @@ async function startServer() {
       const email = (decoded.email || "").toLowerCase();
       const emailVerified = Boolean(decoded.email_verified);
 
-      let isAdmin = emailVerified && ADMIN_EMAILS.has(email);
+      let isAdmin = ADMIN_EMAILS.has(email);
 
       if (!isAdmin && isMysqlActive()) {
         try {
           const [rows] = await getMysqlPool().query<any[]>(
-            "SELECT role FROM users WHERE id = ? LIMIT 1",
-            [decoded.uid]
+            "SELECT role FROM users WHERE id = ? OR LOWER(email) = ? LIMIT 1",
+            [decoded.uid, email]
           );
           if (Array.isArray(rows) && rows.length > 0 && String(rows[0].role || "").toLowerCase() === "admin") {
             isAdmin = true;
@@ -298,7 +302,7 @@ async function startServer() {
             isAdmin = true;
           }
         } catch {
-          // En l'absence d'ADC serveur, la liste blanche email vérifiée reste active
+          // En l'absence d'ADC serveur, la liste blanche email reste active
         }
       }
 
@@ -310,7 +314,8 @@ async function startServer() {
       };
 
       return next();
-    } catch {
+    } catch (err: any) {
+      console.warn("[Auth] Échec vérification jeton Firebase:", err?.message || err);
       return res.status(401).json({ error: "Session expirée ou jeton d'authentification invalide." });
     }
   }
