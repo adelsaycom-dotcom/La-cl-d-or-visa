@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppStore } from "../../src/store/useAppStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,14 +6,18 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, AlertTriangle, Trash2, RefreshCw, CheckCircle2 } from "lucide-react";
+import {
+  Save, AlertTriangle, Trash2, RefreshCw, CheckCircle2,
+  Database, ArrowRightLeft, Server
+} from "lucide-react";
 import { db, auth } from "../../src/firebase";
 import { collection, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { useToast } from "@/components/ui/toast";
+import { getBackendMode, apiFetch, type BackendDatabaseMode } from "../../src/services/apiClient";
 
 export function AdminSettings() {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const isEn = language === "en";
   const toast = useToast();
 
@@ -27,7 +31,109 @@ export function AdminSettings() {
   const [confirmText, setConfirmText] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // État base de données & Migration Firestore -> MySQL
+  const [dbMode, setDbMode] = useState<BackendDatabaseMode>("firestore");
+  const [isCheckingDb, setIsCheckingDb] = useState(true);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationStatus, setMigrationStatus] = useState<string>("");
+  const [migrationError, setMigrationError] = useState<string | null>(null);
+  const [migrationStats, setMigrationStats] = useState<Record<string, number> | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setIsCheckingDb(true);
+    getBackendMode(true)
+      .then((mode) => {
+        if (active) setDbMode(mode);
+      })
+      .finally(() => {
+        if (active) setIsCheckingDb(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const resetKeyword = isEn ? "RESET" : "REINITIALISER";
+
+  const handleMigrateFirestoreToMysql = async () => {
+    if (authRole !== "admin" || !auth.currentUser) {
+      toast.error("Accès refusé", "Action réservée aux administrateurs.");
+      return;
+    }
+
+    setIsMigrating(true);
+    setMigrationError(null);
+    setMigrationStats(null);
+    setMigrationStatus("Vérification de la connexion MySQL Hostinger...");
+
+    try {
+      const currentMode = await getBackendMode(true);
+      setDbMode(currentMode);
+      if (currentMode !== "mysql") {
+        throw new Error(
+          "MySQL n'est pas encore actif sur le serveur. Configurez MYSQL_HOST, MYSQL_DATABASE, MYSQL_USER et MYSQL_PASSWORD dans Hostinger avant de lancer la migration."
+        );
+      }
+
+      const collectionMap: Array<{ firestoreKey: string; payloadKey: string; label: string }> = [
+        { firestoreKey: "users", payloadKey: "users", label: "Comptes agences & admin" },
+        { firestoreKey: "countries", payloadKey: "countries", label: "Pays & visas" },
+        { firestoreKey: "services", payloadKey: "services", label: "Services catalogue" },
+        { firestoreKey: "organizedTrips", payloadKey: "organizedTrips", label: "Voyages organisés" },
+        { firestoreKey: "studyPrograms", payloadKey: "studyPrograms", label: "Programmes Visa Études" },
+        { firestoreKey: "applications", payloadKey: "applications", label: "Dossiers visas" },
+        { firestoreKey: "studyApplications", payloadKey: "studyApplications", label: "Dossiers études" },
+        { firestoreKey: "tripReservations", payloadKey: "tripReservations", label: "Réservations voyages" },
+        { firestoreKey: "transactions", payloadKey: "transactions", label: "Transactions financières" },
+        { firestoreKey: "rechargeRequests", payloadKey: "rechargeRequests", label: "Demandes de recharge" },
+        { firestoreKey: "supportTickets", payloadKey: "supportTickets", label: "Tickets support" },
+        { firestoreKey: "notifications", payloadKey: "notifications", label: "Notifications" },
+      ];
+
+      const summary: Record<string, number> = {};
+      const CHUNK_SIZE = 25;
+
+      for (const col of collectionMap) {
+        setMigrationStatus(`Lecture Firestore : ${col.label}...`);
+        const snap = await getDocs(collection(db, col.firestoreKey));
+        const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        summary[col.payloadKey] = docs.length;
+
+        if (docs.length === 0) continue;
+
+        for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
+          const batch = docs.slice(i, i + CHUNK_SIZE);
+          const partLabel =
+            docs.length > CHUNK_SIZE
+              ? ` (lot ${Math.floor(i / CHUNK_SIZE) + 1}/${Math.ceil(docs.length / CHUNK_SIZE)})`
+              : "";
+          setMigrationStatus(`Importation MySQL : ${col.label}${partLabel}...`);
+          await apiFetch("/api/db/admin/import-backup", {
+            method: "POST",
+            body: JSON.stringify({ [col.payloadKey]: batch }),
+          });
+        }
+      }
+
+      setMigrationStatus("Synchronisation finale de l'interface...");
+      await useAppStore.getState().refreshAllFromMysql();
+      setMigrationStats(summary);
+      setMigrationStatus("Migration terminée avec succès !");
+      toast.success(
+        "Migration Firestore → MySQL réussie",
+        "Toutes vos agences, soldes et dossiers ont été transférés sans aucune perte."
+      );
+    } catch (err: any) {
+      console.error("Erreur migration Firestore -> MySQL:", err);
+      const msg = err?.message || "Impossible de finaliser l'importation vers MySQL.";
+      setMigrationError(msg);
+      setMigrationStatus("");
+      toast.error("Échec de la migration", msg);
+    } finally {
+      setIsMigrating(false);
+    }
+  };
 
   const handleFullReset = async () => {
     if (authRole !== 'admin' || !auth.currentUser) {
@@ -38,43 +144,50 @@ export function AdminSettings() {
     setIsResetting(true);
     setResetError(null);
     try {
-      const collectionsToPurge = [
-        'applications',
-        'studyApplications',
-        'tripReservations',
-        'transactions',
-        'rechargeRequests',
-        'notifications',
-        'supportTickets',
-        'organizedTrips',
-        'studyPrograms',
-        'countries',
-        'services'
-      ];
+      const currentMode = await getBackendMode();
+      if (currentMode === "mysql") {
+        await apiFetch("/api/db/admin/reset", { method: "POST" });
+        clearData();
+        await useAppStore.getState().refreshAllFromMysql();
+      } else {
+        const collectionsToPurge = [
+          'applications',
+          'studyApplications',
+          'tripReservations',
+          'transactions',
+          'rechargeRequests',
+          'notifications',
+          'supportTickets',
+          'organizedTrips',
+          'studyPrograms',
+          'countries',
+          'services'
+        ];
 
-      for (const colName of collectionsToPurge) {
-        const snap = await getDocs(collection(db, colName));
-        for (const d of snap.docs) {
-          await deleteDoc(doc(db, colName, d.id));
+        for (const colName of collectionsToPurge) {
+          const snap = await getDocs(collection(db, colName));
+          for (const d of snap.docs) {
+            await deleteDoc(doc(db, colName, d.id));
+          }
         }
-      }
 
-      // Clean users except preserving current admin user
-      const usersSnap = await getDocs(collection(db, 'users'));
-      for (const d of usersSnap.docs) {
-        const uData = d.data();
-        if (d.id === auth.currentUser?.uid || uData.role === 'admin' || uData.email === 'adel.saycom@gmail.com') {
-          await updateDoc(doc(db, 'users', d.id), {
-            balance: 0,
-            applicationsCount: 0,
-            role: 'admin'
-          });
-        } else {
-          await deleteDoc(doc(db, 'users', d.id));
+        // Clean users except preserving current admin user
+        const usersSnap = await getDocs(collection(db, 'users'));
+        for (const d of usersSnap.docs) {
+          const uData = d.data();
+          if (d.id === auth.currentUser?.uid || uData.role === 'admin' || uData.email === 'adel.saycom@gmail.com') {
+            await updateDoc(doc(db, 'users', d.id), {
+              balance: 0,
+              applicationsCount: 0,
+              role: 'admin'
+            });
+          } else {
+            await deleteDoc(doc(db, 'users', d.id));
+          }
         }
-      }
 
-      clearData();
+        clearData();
+      }
       setResetSuccess(true);
       setIsDialogOpen(false);
       setConfirmText("");
@@ -92,7 +205,7 @@ export function AdminSettings() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
             {isEn ? "Platform Settings" : "Paramètres de la Plateforme"}
@@ -101,9 +214,27 @@ export function AdminSettings() {
             {isEn ? "Manage global configuration and system preferences." : "Gérer les configurations mondiales et les préférences du système."}
           </p>
         </div>
-        <Button className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold">
-          <Save className="w-4 h-4 mr-2" /> {isEn ? "Save Changes" : "Enregistrer"}
-        </Button>
+        <div className="flex items-center gap-3">
+          <div
+            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold ${
+              dbMode === "mysql"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                : "bg-amber-50 border-amber-200 text-amber-800"
+            }`}
+          >
+            <Server className="w-3.5 h-3.5" />
+            <span>
+              {isCheckingDb
+                ? "Vérification BDD..."
+                : dbMode === "mysql"
+                  ? "Base active : MySQL Hostinger"
+                  : "Base active : Firebase Firestore"}
+            </span>
+          </div>
+          <Button className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold">
+            <Save className="w-4 h-4 mr-2" /> {isEn ? "Save Changes" : "Enregistrer"}
+          </Button>
+        </div>
       </div>
 
       {resetSuccess && (
@@ -123,7 +254,7 @@ export function AdminSettings() {
           <TabsTrigger value="security">{isEn ? "Security" : "Sécurité"}</TabsTrigger>
           <TabsTrigger value="notifications">{isEn ? "Notifications" : "Notifications"}</TabsTrigger>
           <TabsTrigger value="danger" className="text-red-600 data-[state=active]:text-red-700">
-            {isEn ? "Database & Reset" : "Base de données & Reset"}
+            {isEn ? "Database & Migration" : "Base de données & Migration"}
           </TabsTrigger>
         </TabsList>
 
@@ -210,7 +341,91 @@ export function AdminSettings() {
           </div>
         </TabsContent>
 
-        <TabsContent value="danger" className="space-y-4 mt-4">
+        <TabsContent value="danger" className="space-y-6 mt-4">
+          {/* BLOC MIGRATION FIRESTORE -> MYSQL HOSTINGER SANS PERTE */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-[#7B1B38]/10 text-[#7B1B38] flex items-center justify-center shrink-0">
+                  <Database className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Migration sans perte : Firestore → MySQL Hostinger
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-1 max-w-2xl">
+                    Copiez l&apos;intégralité de vos données existantes (agences, soldes, dossiers visas/études, voyages, transactions, catalogue et tickets) depuis Firebase Firestore vers votre base MySQL Hostinger en un clic, sans aucune suppression ni perte client.
+                  </p>
+                </div>
+              </div>
+
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap self-start ${
+                  dbMode === "mysql"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-amber-100 text-amber-800"
+                }`}
+              >
+                {dbMode === "mysql" ? "MySQL Connecté" : "En attente config MySQL"}
+              </span>
+            </div>
+
+            {dbMode !== "mysql" && (
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs leading-relaxed">
+                <strong>Configuration requise sur Hostinger :</strong> Renseignez vos variables d&apos;environnement MySQL (<code className="font-mono font-bold">MYSQL_HOST</code>, <code className="font-mono font-bold">MYSQL_DATABASE</code>, <code className="font-mono font-bold">MYSQL_USER</code>, <code className="font-mono font-bold">MYSQL_PASSWORD</code>) dans hPanel puis redémarrez l&apos;application Node.js. Ce bouton deviendra immédiatement actif.
+              </div>
+            )}
+
+            {migrationStatus && (
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-2.5">
+                {isMigrating ? (
+                  <RefreshCw className="w-4 h-4 animate-spin text-[#7B1B38] shrink-0" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                )}
+                <span>{migrationStatus}</span>
+              </div>
+            )}
+
+            {migrationError && (
+              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
+                {migrationError}
+              </div>
+            )}
+
+            {migrationStats && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-emerald-50/70 border border-emerald-200 rounded-xl p-4 text-xs">
+                <div><span className="text-slate-500">Agences/Admin :</span> <strong className="text-slate-900">{migrationStats.users || 0}</strong></div>
+                <div><span className="text-slate-500">Pays :</span> <strong className="text-slate-900">{migrationStats.countries || 0}</strong></div>
+                <div><span className="text-slate-500">Services :</span> <strong className="text-slate-900">{migrationStats.services || 0}</strong></div>
+                <div><span className="text-slate-500">Dossiers Visas :</span> <strong className="text-slate-900">{migrationStats.applications || 0}</strong></div>
+                <div><span className="text-slate-500">Dossiers Études :</span> <strong className="text-slate-900">{migrationStats.studyApplications || 0}</strong></div>
+                <div><span className="text-slate-500">Résas Voyages :</span> <strong className="text-slate-900">{migrationStats.tripReservations || 0}</strong></div>
+                <div><span className="text-slate-500">Transactions :</span> <strong className="text-slate-900">{migrationStats.transactions || 0}</strong></div>
+                <div><span className="text-slate-500">Recharges :</span> <strong className="text-slate-900">{migrationStats.rechargeRequests || 0}</strong></div>
+              </div>
+            )}
+
+            <div className="pt-1">
+              <Button
+                onClick={handleMigrateFirestoreToMysql}
+                disabled={isMigrating || dbMode !== "mysql"}
+                className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold h-11 px-6 rounded-xl flex items-center gap-2 disabled:opacity-50"
+              >
+                {isMigrating ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ArrowRightLeft className="w-4 h-4" />
+                )}
+                <span>
+                  {isMigrating
+                    ? "Importation en cours..."
+                    : "Importer les données Firestore vers MySQL"}
+                </span>
+              </Button>
+            </div>
+          </div>
+
           <div className="bg-white p-6 rounded-2xl border border-red-200 shadow-sm space-y-6">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">

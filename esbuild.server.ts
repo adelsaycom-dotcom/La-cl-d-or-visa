@@ -7,5 +7,5 @@ esbuild.build({
   target: 'es2022',
   outfile: 'dist/server.cjs',
   format: 'cjs',
-  external: ['express', 'vite', '@prisma/client', 'firebase-admin', 'firebase-admin/*'],
+  external: ['express', 'vite', '@prisma/client', 'mysql2', 'mysql2/*', 'firebase-admin', 'firebase-admin/*'],
 }).catch(() => process.exit(1));

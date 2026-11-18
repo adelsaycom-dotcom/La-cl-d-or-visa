@@ -11,6 +11,7 @@
 
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
+import { getBackendMode } from "../services/apiClient";
 
 // Cache mémoire pour l'affichage ultra-rapide des aperçus
 const attachmentMemoryCache = new Map<string, string>();
@@ -118,8 +119,8 @@ export async function compressImageIfPossible(
 /**
  * Envoie le fichier vers le stockage universel :
  * 1. Valide le format et la taille côté client
- * 2. Enregistre dans la collection cloud Firestore 'attachments' avec agencyId
- * 3. Tente en parallèle l'API Node authentifiée /api/upload-attachment
+ * 2. En mode MySQL / Node.js : enregistrement direct sur disque privé via /api/upload-attachment (0 quota Firestore)
+ * 3. En mode secours Firestore : enregistrement dans 'attachments' si le serveur disque est indisponible
  */
 export async function uploadFileToServer(
   file: File, 
@@ -157,52 +158,11 @@ export async function uploadFileToServer(
     // Quota sessionStorage dépassé, le cache mémoire prend le relais
   }
 
-  // 3. Sauvegarde dans le cloud Firestore 'attachments'
-  try {
-    if (base64Data.length <= 700000) {
-      await setDoc(doc(db, "attachments", attId), {
-        id: attId,
-        agencyId: ownerUid,
-        name: file.name,
-        type: file.type || "application/octet-stream",
-        size: file.size,
-        category: category,
-        data: base64Data,
-        createdAt: new Date().toISOString()
-      });
-    } else {
-      // Pour les fichiers volumineux (> 700 Ko), stockage par morceaux dans la sous-collection chunks
-      const chunkSize = 450000;
-      const totalChunks = Math.ceil(base64Data.length / chunkSize);
-      await setDoc(doc(db, "attachments", attId), {
-        id: attId,
-        agencyId: ownerUid,
-        name: file.name,
-        type: file.type || "application/octet-stream",
-        size: file.size,
-        category: category,
-        isChunked: true,
-        chunkCount: totalChunks,
-        data: "",
-        createdAt: new Date().toISOString()
-      });
-
-      for (let i = 0; i < totalChunks; i++) {
-        const chunkStr = base64Data.substring(i * chunkSize, (i + 1) * chunkSize);
-        await setDoc(doc(db, "attachments", attId, "chunks", String(i)), {
-          index: i,
-          agencyId: ownerUid,
-          data: chunkStr
-        });
-      }
-    }
-  } catch (firestoreErr) {
-    console.warn("Avertissement sauvegarde Firestore attachment:", firestoreErr);
-  }
-
-  // 4. Si un serveur Node.js avec disque privé existe, tenter la sauvegarde authentifiée
+  // 3. Tenter en priorité la sauvegarde authentifiée sur le disque privé serveur Node.js
   let localServerUrl = "";
+  let backendMode: "mysql" | "firestore" = "firestore";
   try {
+    backendMode = await getBackendMode();
     const authHeaders = await getBearerAuthHeaders();
     if (authHeaders.Authorization) {
       const controller = new AbortController();
@@ -233,6 +193,50 @@ export async function uploadFileToServer(
     }
   } catch {
     // Mode sans backend Express disque
+  }
+
+  // 4. Sauvegarde Firestore 'attachments' UNIQUEMENT en mode secours (si pas de MySQL et pas déjà stocké sur le serveur)
+  if (!localServerUrl && backendMode !== "mysql") {
+    try {
+      if (base64Data.length <= 700000) {
+        await setDoc(doc(db, "attachments", attId), {
+          id: attId,
+          agencyId: ownerUid,
+          name: file.name,
+          type: file.type || "application/octet-stream",
+          size: file.size,
+          category: category,
+          data: base64Data,
+          createdAt: new Date().toISOString()
+        });
+      } else {
+        const chunkSize = 450000;
+        const totalChunks = Math.ceil(base64Data.length / chunkSize);
+        await setDoc(doc(db, "attachments", attId), {
+          id: attId,
+          agencyId: ownerUid,
+          name: file.name,
+          type: file.type || "application/octet-stream",
+          size: file.size,
+          category: category,
+          isChunked: true,
+          chunkCount: totalChunks,
+          data: "",
+          createdAt: new Date().toISOString()
+        });
+
+        for (let i = 0; i < totalChunks; i++) {
+          const chunkStr = base64Data.substring(i * chunkSize, (i + 1) * chunkSize);
+          await setDoc(doc(db, "attachments", attId, "chunks", String(i)), {
+            index: i,
+            agencyId: ownerUid,
+            data: chunkStr
+          });
+        }
+      }
+    } catch (firestoreErr) {
+      console.warn("Avertissement sauvegarde Firestore attachment:", firestoreErr);
+    }
   }
 
   const cleanUrl = localServerUrl || `/attachments/${attId}`;

@@ -25,6 +25,7 @@ import { create } from "zustand";
 import { collection, doc, setDoc, updateDoc, deleteDoc, runTransaction, writeBatch, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { catalogService } from '../services/catalogService';
+import { apiFetch, getBackendMode } from '../services/apiClient';
 
 export function sanitizeFirestoreData<T>(data: T): T {
   if (data === null || data === undefined) {
@@ -298,6 +299,9 @@ export interface AppState {
   catalogLoaded: boolean;
   refreshCatalog: (force?: boolean) => Promise<void>;
 
+  databaseMode: 'mysql' | 'firestore';
+  refreshAllFromMysql: () => Promise<void>;
+
   quotaExceeded: boolean;
   setQuotaExceeded: (exceeded: boolean) => void;
 
@@ -314,8 +318,54 @@ export const useAppStore = create<AppState>()((set, get) => ({
   authRole: null,
   catalogLoading: false,
   catalogLoaded: false,
+  databaseMode: 'firestore',
   quotaExceeded: false,
   setQuotaExceeded: (exceeded) => set({ quotaExceeded: exceeded }),
+
+  refreshAllFromMysql: async () => {
+    const mode = await getBackendMode();
+    if (mode !== 'mysql') return;
+    const boot = await apiFetch('/api/db/bootstrap');
+    const agency = boot.currentAgency || null;
+    const roleRaw = String(boot.role || agency?.role || '').trim().toLowerCase();
+    const resolvedRole: 'admin' | 'agency' | null =
+      roleRaw === 'admin' ? 'admin' : roleRaw === 'agency' ? 'agency' : null;
+
+    if (boot.restricted) {
+      set({
+        currentAgency: agency,
+        authRole: resolvedRole,
+        agencyBalance: Number(agency?.balance || 0),
+        b2cMarginPercent: typeof agency?.b2cMarginPercent === 'number' ? agency.b2cMarginPercent : 15,
+        databaseMode: 'mysql',
+        quotaExceeded: false
+      });
+      return;
+    }
+
+    set({
+      currentAgency: agency,
+      authRole: resolvedRole,
+      agencyBalance: Number(agency?.balance || 0),
+      b2cMarginPercent: typeof agency?.b2cMarginPercent === 'number' ? agency.b2cMarginPercent : 15,
+      countries: boot.countries || [],
+      services: boot.services || [],
+      organizedTrips: boot.organizedTrips || [],
+      studyPrograms: boot.studyPrograms || [],
+      applications: boot.applications || [],
+      studyApplications: boot.studyApplications || [],
+      tripReservations: boot.tripReservations || [],
+      transactions: boot.transactions || [],
+      rechargeRequests: boot.rechargeRequests || [],
+      supportTickets: boot.supportTickets || [],
+      notifications: boot.notifications || [],
+      agencies: boot.agencies || [],
+      catalogLoading: false,
+      catalogLoaded: true,
+      databaseMode: 'mysql',
+      quotaExceeded: false
+    });
+  },
 
   refreshCatalog: async (force = true) => {
     set({ catalogLoading: true });
@@ -350,11 +400,21 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   agencyBalance: 0,
   setAgencyBalance: (balance) => {
-    // In a real app, you'd update this in Firestore via a Cloud Function or Admin rule
     set({ agencyBalance: balance });
   },
 
   updateAgency: async (id, updates) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch(`/api/db/users/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      });
+      set((state) => ({
+        agencies: state.agencies.map(a => a.id === id ? { ...a, ...res.user } : a),
+        currentAgency: state.currentAgency?.id === id ? { ...state.currentAgency, ...res.user } : state.currentAgency
+      }));
+      return;
+    }
     const sanitized = sanitizeFirestoreData(updates);
     await updateDoc(doc(db, "users", id), sanitized);
     set((state) => ({
@@ -368,10 +428,30 @@ export const useAppStore = create<AppState>()((set, get) => ({
   rechargeRequests: [],
 
   addSupportTicket: async (ticket) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch('/api/db/support-tickets', {
+        method: 'POST',
+        body: JSON.stringify(ticket),
+      });
+      set(state => ({
+        supportTickets: [res.ticket, ...state.supportTickets.filter(t => t.id !== res.ticket.id)]
+      }));
+      return;
+    }
     const id = doc(collection(db, 'supportTickets')).id;
     await setDoc(doc(db, 'supportTickets', id), sanitizeFirestoreData({ ...ticket, id, createdAt: new Date().toISOString() }));
   },
   updateSupportTicket: async (id, updates) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch(`/api/db/support-tickets/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      });
+      set(state => ({
+        supportTickets: state.supportTickets.map(t => t.id === id ? res.ticket : t)
+      }));
+      return;
+    }
     await updateDoc(doc(db, 'supportTickets', id), sanitizeFirestoreData(updates));
     
     // Check if new message was added by agency
@@ -410,14 +490,50 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }
   },
   addTransaction: async (tx) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch('/api/db/transactions', {
+        method: 'POST',
+        body: JSON.stringify(tx),
+      });
+      set(state => ({
+        transactions: [res.transaction, ...state.transactions.filter(t => t.id !== res.transaction.id)]
+      }));
+      return;
+    }
     const id = doc(collection(db, 'transactions')).id;
     await setDoc(doc(db, 'transactions', id), { ...tx, id, createdAt: new Date().toISOString() });
   },
   addRechargeRequest: async (req) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch('/api/db/recharge-requests', {
+        method: 'POST',
+        body: JSON.stringify(req),
+      });
+      set(state => ({
+        rechargeRequests: [res.rechargeRequest, ...state.rechargeRequests.filter(r => r.id !== res.rechargeRequest.id)]
+      }));
+      return;
+    }
     const id = doc(collection(db, 'rechargeRequests')).id;
     await setDoc(doc(db, 'rechargeRequests', id), { ...req, id, createdAt: new Date().toISOString() });
   },
   updateRechargeRequestStatus: async (id, status) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const reqItem = get().rechargeRequests.find(r => r.id === id);
+      if (status === 'Approved') {
+        await apiFetch(`/api/db/recharge-requests/${encodeURIComponent(id)}/approve`, {
+          method: 'POST',
+          body: JSON.stringify({ amount: reqItem?.amount || 0 }),
+        });
+      } else if (status === 'Rejected') {
+        await apiFetch(`/api/db/recharge-requests/${encodeURIComponent(id)}/reject`, {
+          method: 'POST',
+          body: JSON.stringify({ reason: 'Demande refusée' }),
+        });
+      }
+      await get().refreshAllFromMysql();
+      return;
+    }
     await updateDoc(doc(db, 'rechargeRequests', id), { status });
     // Add Notification
     const req = get().rechargeRequests.find(r => r.id === id);
@@ -437,9 +553,26 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   markNotificationAsRead: async (id) => {
+    if ((await getBackendMode()) === 'mysql') {
+      await apiFetch(`/api/db/notifications/${encodeURIComponent(id)}/read`, { method: 'POST' });
+      set(state => ({
+        notifications: state.notifications.map(n => n.id === id ? { ...n, read: true } : n)
+      }));
+      return;
+    }
     await updateDoc(doc(db, 'notifications', id), { read: true });
   },
   markAllNotificationsAsRead: async (agencyId) => {
+    if ((await getBackendMode()) === 'mysql') {
+      await apiFetch('/api/db/notifications/read-all', {
+        method: 'POST',
+        body: JSON.stringify({ agencyId }),
+      });
+      set(state => ({
+        notifications: state.notifications.map(n => n.agencyId === agencyId ? { ...n, read: true } : n)
+      }));
+      return;
+    }
     // This will be done in the component by looping or batch, but we can do a simple batch here
     const q = query(collection(db, 'notifications'), where('agencyId', '==', agencyId), where('read', '==', false));
     const snap = await getDocs(q);
@@ -449,7 +582,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
   agencies: [],
   notifications: [],
-  updateAgencyStatus: async (id, status) => { 
+  updateAgencyStatus: async (id, status) => {
+    if ((await getBackendMode()) === 'mysql') {
+      await apiFetch(`/api/db/users/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      set((state) => ({
+        agencies: state.agencies.map(a => a.id === id ? { ...a, status } : a)
+      }));
+      return;
+    }
     await updateDoc(doc(db, "users", id), { status }); 
     set((state) => ({
       agencies: state.agencies.map(a => a.id === id ? { ...a, status } : a)
@@ -464,6 +607,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
   studyApplications: [],
 
   addService: async (s) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch('/api/db/services', {
+        method: 'POST',
+        body: JSON.stringify(s),
+      });
+      catalogService.invalidateCache('services');
+      set(state => ({
+        services: [res.service, ...state.services.filter(item => item.id !== res.service.id)]
+      }));
+      return;
+    }
     const sId = s.id || doc(collection(db, 'services')).id;
     const finalService = { ...s, id: sId };
     await setDoc(doc(db, 'services', sId), sanitizeFirestoreData(finalService));
@@ -473,6 +627,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }));
   },
   updateService: async (id, s) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch(`/api/db/services/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(s),
+      });
+      catalogService.invalidateCache('services');
+      set(state => ({
+        services: state.services.map(item => item.id === id ? res.service : item)
+      }));
+      return;
+    }
     await updateDoc(doc(db, 'services', id), sanitizeFirestoreData(s));
     catalogService.invalidateCache('services');
     set(state => ({
@@ -480,6 +645,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }));
   },
   deleteService: async (id) => {
+    if ((await getBackendMode()) === 'mysql') {
+      await apiFetch(`/api/db/services/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      catalogService.invalidateCache('services');
+      set(state => ({
+        services: state.services.filter(item => item.id !== id)
+      }));
+      return;
+    }
     await deleteDoc(doc(db, 'services', id));
     catalogService.invalidateCache('services');
     set(state => ({
@@ -488,6 +661,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   addOrganizedTrip: async (tripData) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch('/api/db/trips', {
+        method: 'POST',
+        body: JSON.stringify(tripData),
+      });
+      catalogService.invalidateCache('organizedTrips');
+      set(state => ({
+        organizedTrips: [res.trip, ...state.organizedTrips.filter(t => t.id !== res.trip.id)]
+      }));
+      return;
+    }
     const tripId = doc(collection(db, 'organizedTrips')).id;
     const newTrip: OrganizedTrip = {
       ...tripData,
@@ -503,6 +687,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   updateOrganizedTrip: async (id, tripData) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch(`/api/db/trips/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(tripData),
+      });
+      catalogService.invalidateCache('organizedTrips');
+      set(state => ({
+        organizedTrips: state.organizedTrips.map(t => t.id === id ? res.trip : t)
+      }));
+      return;
+    }
     await updateDoc(doc(db, 'organizedTrips', id), sanitizeFirestoreData(tripData));
     catalogService.invalidateCache('organizedTrips');
     set(state => ({
@@ -511,6 +706,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   deleteOrganizedTrip: async (id) => {
+    if ((await getBackendMode()) === 'mysql') {
+      await apiFetch(`/api/db/trips/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      catalogService.invalidateCache('organizedTrips');
+      set(state => ({
+        organizedTrips: state.organizedTrips.filter(t => t.id !== id)
+      }));
+      return;
+    }
     await deleteDoc(doc(db, 'organizedTrips', id));
     catalogService.invalidateCache('organizedTrips');
     set(state => ({
@@ -519,6 +722,20 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   addTripReservation: async (resData) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch('/api/db/trip-reservations', {
+        method: 'POST',
+        body: JSON.stringify(resData),
+      });
+      catalogService.invalidateCache('organizedTrips');
+      set((state) => ({
+        tripReservations: [res.reservation, ...state.tripReservations.filter(r => r.id !== res.reservation.id)],
+        organizedTrips: state.organizedTrips.map(t =>
+          t.id === resData.tripId ? { ...t, availableSeats: res.availableSeats } : t
+        )
+      }));
+      return res.reservation as TripReservation;
+    }
     const peopleCount = Number(resData.numberOfPeople);
     if (!Number.isInteger(peopleCount) || peopleCount < 1 || peopleCount > 50) {
       throw new Error("Le nombre de voyageurs doit être un entier compris entre 1 et 50.");
@@ -618,6 +835,16 @@ export const useAppStore = create<AppState>()((set, get) => ({
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new Error("Montant de paiement invalide.");
     }
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch(`/api/db/trip-reservations/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ addPaymentAmount: amount }),
+      });
+      set((state) => ({
+        tripReservations: state.tripReservations.map(r => r.id === id ? res.reservation : r)
+      }));
+      return;
+    }
     const resRef = doc(db, 'tripReservations', id);
     await runTransaction(db, async (transaction) => {
       const resSnap = await transaction.get(resRef);
@@ -629,6 +856,15 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   updateTripReservationStatus: async (id, status) => {
+    if ((await getBackendMode()) === 'mysql') {
+      await apiFetch(`/api/db/trip-reservations/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      catalogService.invalidateCache('organizedTrips');
+      await get().refreshAllFromMysql();
+      return;
+    }
     const resRef = doc(db, 'tripReservations', id);
     await runTransaction(db, async (transaction) => {
       const resSnap = await transaction.get(resRef);
@@ -653,6 +889,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   addCountry: async (country) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch('/api/db/countries', {
+        method: 'POST',
+        body: JSON.stringify(country),
+      });
+      catalogService.invalidateCache('countries');
+      set(state => ({
+        countries: [res.country, ...state.countries.filter(c => c.id !== res.country.id)]
+      }));
+      return;
+    }
     await setDoc(doc(db, 'countries', country.id), sanitizeFirestoreData(country));
     catalogService.invalidateCache('countries');
     set(state => ({
@@ -661,6 +908,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   addStudyProgram: async (programData) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch('/api/db/study-programs', {
+        method: 'POST',
+        body: JSON.stringify(programData),
+      });
+      catalogService.invalidateCache('studyPrograms');
+      set(state => ({
+        studyPrograms: [res.program, ...state.studyPrograms.filter(p => p.id !== res.program.id)]
+      }));
+      return;
+    }
     const progId = doc(collection(db, 'studyPrograms')).id;
     const newProg: StudyProgram = {
       ...programData,
@@ -676,6 +934,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   updateStudyProgram: async (id, programData) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch(`/api/db/study-programs/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(programData),
+      });
+      catalogService.invalidateCache('studyPrograms');
+      set(state => ({
+        studyPrograms: state.studyPrograms.map(p => p.id === id ? res.program : p)
+      }));
+      return;
+    }
     const sanitized = sanitizeFirestoreData(programData);
     await updateDoc(doc(db, 'studyPrograms', id), sanitized);
     catalogService.invalidateCache('studyPrograms');
@@ -685,6 +954,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   deleteStudyProgram: async (id) => {
+    if ((await getBackendMode()) === 'mysql') {
+      await apiFetch(`/api/db/study-programs/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      catalogService.invalidateCache('studyPrograms');
+      set(state => ({
+        studyPrograms: state.studyPrograms.filter(p => p.id !== id)
+      }));
+      return;
+    }
     await deleteDoc(doc(db, 'studyPrograms', id));
     catalogService.invalidateCache('studyPrograms');
     set(state => ({
@@ -693,6 +970,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   addStudyApplication: async (application) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch('/api/db/study-applications', {
+        method: 'POST',
+        body: JSON.stringify(application),
+      });
+      set((state) => ({
+        studyApplications: [res.studyApplication, ...state.studyApplications.filter(a => a.id !== res.studyApplication.id)]
+      }));
+      await get().refreshAllFromMysql();
+      return;
+    }
     const appId = (application as any).id || `ETUD-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
     const price = Number(application.price || 0);
     if (!Number.isFinite(price) || price < 0) {
@@ -810,6 +1098,16 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   updateStudyApplicationStatus: async (id, status) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch(`/api/db/study-applications/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      set(state => ({
+        studyApplications: state.studyApplications.map(a => a.id === id ? res.studyApplication : a)
+      }));
+      return;
+    }
     await updateDoc(doc(db, 'studyApplications', id), { status });
     set(state => ({
       studyApplications: state.studyApplications.map(a => a.id === id ? { ...a, status } : a)
@@ -831,6 +1129,16 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   updateStudyApplicationPayment: async (id, amount) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch(`/api/db/study-applications/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ addPaymentAmount: amount }),
+      });
+      set(state => ({
+        studyApplications: state.studyApplications.map(a => a.id === id ? res.studyApplication : a)
+      }));
+      return;
+    }
     const app = get().studyApplications.find(a => a.id === id);
     if (!app) return;
     const newPaidAmount = (app.paidAmount || 0) + amount;
@@ -847,11 +1155,20 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   updateStudyApplication: async (id, updates) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch(`/api/db/study-applications/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      });
+      set(state => ({
+        studyApplications: state.studyApplications.map(a => a.id === id ? res.studyApplication : a)
+      }));
+      return;
+    }
     await updateDoc(doc(db, 'studyApplications', id), updates);
   },
 
   addStudyTimelineEntry: async (id, entry) => {
-    const appRef = doc(db, 'studyApplications', id);
     const newEntry = {
       ...entry,
       id: Math.random().toString(36).substring(2, 9),
@@ -860,11 +1177,32 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const currentApp = get().studyApplications.find(a => a.id === id);
     if (currentApp) {
       const newTimeline = [...(currentApp.timeline || []), newEntry];
-      await updateDoc(appRef, { timeline: newTimeline });
+      if ((await getBackendMode()) === 'mysql') {
+        const res = await apiFetch(`/api/db/study-applications/${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ timeline: newTimeline }),
+        });
+        set(state => ({
+          studyApplications: state.studyApplications.map(a => a.id === id ? res.studyApplication : a)
+        }));
+        return;
+      }
+      await updateDoc(doc(db, 'studyApplications', id), { timeline: newTimeline });
     }
   },
 
   updateCountry: async (id, data) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch(`/api/db/countries/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+      catalogService.invalidateCache('countries');
+      set(state => ({
+        countries: state.countries.map(c => c.id === id ? res.country : c)
+      }));
+      return;
+    }
     await updateDoc(doc(db, 'countries', id), sanitizeFirestoreData(data));
     catalogService.invalidateCache('countries');
     set(state => ({
@@ -873,6 +1211,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   removeCountry: async (id) => {
+    if ((await getBackendMode()) === 'mysql') {
+      await apiFetch(`/api/db/countries/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      catalogService.invalidateCache('countries');
+      set(state => ({
+        countries: state.countries.filter(c => c.id !== id)
+      }));
+      return;
+    }
     await deleteDoc(doc(db, 'countries', id));
     catalogService.invalidateCache('countries');
     set(state => ({
@@ -884,7 +1230,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const country = get().countries.find(c => c.id === countryId);
     if (country) {
       const newVisaTypes = [...country.visaTypes, visaType];
-      await updateDoc(doc(db, 'countries', countryId), { visaTypes: sanitizeFirestoreData(newVisaTypes) });
+      if ((await getBackendMode()) === 'mysql') {
+        await apiFetch(`/api/db/countries/${encodeURIComponent(countryId)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ visaTypes: newVisaTypes }),
+        });
+      } else {
+        await updateDoc(doc(db, 'countries', countryId), { visaTypes: sanitizeFirestoreData(newVisaTypes) });
+      }
       catalogService.invalidateCache('countries');
       set(state => ({
         countries: state.countries.map(c => c.id === countryId ? { ...c, visaTypes: newVisaTypes } : c)
@@ -896,7 +1249,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const country = get().countries.find(c => c.id === countryId);
     if (country) {
       const newVisaTypes = country.visaTypes.map(v => v.id === visaId ? { ...v, ...data } : v);
-      await updateDoc(doc(db, 'countries', countryId), { visaTypes: sanitizeFirestoreData(newVisaTypes) });
+      if ((await getBackendMode()) === 'mysql') {
+        await apiFetch(`/api/db/countries/${encodeURIComponent(countryId)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ visaTypes: newVisaTypes }),
+        });
+      } else {
+        await updateDoc(doc(db, 'countries', countryId), { visaTypes: sanitizeFirestoreData(newVisaTypes) });
+      }
       catalogService.invalidateCache('countries');
       set(state => ({
         countries: state.countries.map(c => c.id === countryId ? { ...c, visaTypes: newVisaTypes } : c)
@@ -908,7 +1268,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const country = get().countries.find(c => c.id === countryId);
     if (country) {
       const newVisaTypes = country.visaTypes.filter(v => v.id !== visaId);
-      await updateDoc(doc(db, 'countries', countryId), { visaTypes: sanitizeFirestoreData(newVisaTypes) });
+      if ((await getBackendMode()) === 'mysql') {
+        await apiFetch(`/api/db/countries/${encodeURIComponent(countryId)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ visaTypes: newVisaTypes }),
+        });
+      } else {
+        await updateDoc(doc(db, 'countries', countryId), { visaTypes: sanitizeFirestoreData(newVisaTypes) });
+      }
       catalogService.invalidateCache('countries');
       set(state => ({
         countries: state.countries.map(c => c.id === countryId ? { ...c, visaTypes: newVisaTypes } : c)
@@ -917,6 +1284,18 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   addApplication: async (application) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch('/api/db/applications', {
+        method: 'POST',
+        body: JSON.stringify(application),
+      });
+      set(state => ({
+        agencyBalance: typeof res.newBalance === 'number' ? res.newBalance : state.agencyBalance,
+        applications: [res.application, ...state.applications.filter(a => a.id !== res.application.id)],
+        transactions: res.transaction ? [res.transaction, ...state.transactions] : state.transactions
+      }));
+      return;
+    }
     const appId = application.id || doc(collection(db, 'applications')).id;
     const userRef = doc(db, 'users', application.agencyId);
     const serviceId = application.customFormData?.serviceId
@@ -992,6 +1371,16 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   updateApplicationStatus: async (id, status) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch(`/api/db/applications/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      set(state => ({
+        applications: state.applications.map(a => a.id === id ? res.application : a)
+      }));
+      return;
+    }
     await updateDoc(doc(db, 'applications', id), { status });
     // Add Notification
     const app = get().applications.find(a => a.id === id);
@@ -1011,6 +1400,16 @@ export const useAppStore = create<AppState>()((set, get) => ({
   },
 
   updateApplication: async (id, updates) => {
+    if ((await getBackendMode()) === 'mysql') {
+      const res = await apiFetch(`/api/db/applications/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      });
+      set(state => ({
+        applications: state.applications.map(a => a.id === id ? res.application : a)
+      }));
+      return;
+    }
     await updateDoc(doc(db, 'applications', id), sanitizeFirestoreData(updates));
   },
   addApplicationTimelineEntry: async (id, entry) => {
@@ -1021,11 +1420,19 @@ export const useAppStore = create<AppState>()((set, get) => ({
       date: new Date().toISOString()
     };
     
-    // Using arrayUnion directly via a direct firestore import or manual local update (simplified for store)
-    // We'll update via the store's current apps to make it simple
     const currentApp = get().applications.find(a => a.id === id);
     if (currentApp) {
       const newTimeline = [...(currentApp.timeline || []), newEntry];
+      if ((await getBackendMode()) === 'mysql') {
+        const res = await apiFetch(`/api/db/applications/${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ timeline: newTimeline }),
+        });
+        set(state => ({
+          applications: state.applications.map(a => a.id === id ? res.application : a)
+        }));
+        return;
+      }
       await updateDoc(appRef, { timeline: newTimeline });
     }
   },

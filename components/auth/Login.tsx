@@ -10,6 +10,7 @@ import {
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppStore } from "../../src/store/useAppStore";
+import { getBackendMode, apiFetch } from "../../src/services/apiClient";
 import { 
   ArrowRight, 
   ArrowLeft, 
@@ -85,15 +86,41 @@ export function Login() {
 
       const userCred = await signInWithEmailAndPassword(auth, email.trim(), password);
       const uid = userCred.user.uid;
-      const userDoc = await getDoc(doc(db, "users", uid));
       const userEmail = (userCred.user.email || "").toLowerCase();
       const isAdminEmail =
         userEmail === "adel.saycom@gmail.com" ||
         userEmail === "admin@cle-dor.com" ||
         userEmail === "admin@lacle-dor.com";
 
-      if (userDoc.exists()) {
-        const userData: any = { id: userDoc.id, ...userDoc.data() };
+      const mode = await getBackendMode();
+      let userData: any = null;
+
+      if (mode === "mysql") {
+        try {
+          const res = await apiFetch<{ user: any }>("/api/db/auth/me");
+          userData = res?.user || null;
+        } catch {
+          userData = null;
+        }
+      } else {
+        const userDoc = await getDoc(doc(db, "users", uid));
+        if (userDoc.exists()) {
+          userData = { id: userDoc.id, ...userDoc.data() };
+        } else if (isAdminEmail && userCred.user.emailVerified) {
+          const adminProfile = {
+            id: uid,
+            email: userCred.user.email,
+            role: "admin",
+            status: "ACTIVE",
+            balance: 0,
+            createdAt: new Date().toISOString()
+          };
+          await setDoc(doc(db, "users", uid), adminProfile, { merge: true });
+          userData = adminProfile;
+        }
+      }
+
+      if (userData) {
         const role = String(userData.role || "").trim().toLowerCase();
         const status = String(userData.status || "ACTIVE").trim().toUpperCase();
 
@@ -102,6 +129,7 @@ export function Login() {
             authReady: true,
             authUserUid: uid,
             authRole: "admin",
+            databaseMode: mode,
             currentAgency: userData,
             agencyBalance: Number(userData.balance || 0),
             b2cMarginPercent: typeof userData.b2cMarginPercent === "number" ? userData.b2cMarginPercent : 15
@@ -146,30 +174,12 @@ export function Login() {
           authReady: true,
           authUserUid: uid,
           authRole: "agency",
+          databaseMode: mode,
           currentAgency: userData,
           agencyBalance: Number(userData.balance || 0),
           b2cMarginPercent: typeof userData.b2cMarginPercent === "number" ? userData.b2cMarginPercent : 15
         });
         navigate("/agency", { replace: true });
-      } else if (isAdminEmail && userCred.user.emailVerified) {
-        const adminProfile = {
-          id: uid,
-          email: userCred.user.email,
-          role: "admin",
-          status: "ACTIVE",
-          balance: 0,
-          createdAt: new Date().toISOString()
-        };
-        await setDoc(doc(db, "users", uid), adminProfile, { merge: true });
-        useAppStore.setState({
-          authReady: true,
-          authUserUid: uid,
-          authRole: "admin",
-          currentAgency: adminProfile as any,
-          agencyBalance: 0,
-          b2cMarginPercent: 15
-        });
-        navigate("/admin", { replace: true });
       } else {
         setErrorMessage(
           isEn

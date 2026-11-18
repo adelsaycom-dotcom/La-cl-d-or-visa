@@ -3,6 +3,7 @@ import { auth, db } from "../../src/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { Link, useNavigate } from "react-router-dom";
+import { getBackendMode, apiFetch } from "../../src/services/apiClient";
 import { 
   Building2, 
   User, 
@@ -127,8 +128,8 @@ export function Register() {
       const randomDigits = Math.floor(100 + Math.random() * 900);
       const agencyCode = `ALG-${cleanName}-${randomDigits}`;
 
-      // 3. Enregistrement Firestore sous statut PENDING pour validation admin
-      await setDoc(doc(db, "users", uid), {
+      // 3. Enregistrement du profil agence sous statut PENDING pour validation admin
+      const agencyProfilePayload = {
         id: uid,
         email: formData.email.trim(),
         role: "agency",
@@ -144,7 +145,17 @@ export function Register() {
         status: "PENDING",
         createdAt: new Date().toISOString(),
         notes: "Nouvelle inscription via portail B2B"
-      });
+      };
+
+      const mode = await getBackendMode();
+      if (mode === "mysql") {
+        await apiFetch("/api/db/auth/register", {
+          method: "POST",
+          body: JSON.stringify(agencyProfilePayload),
+        });
+      } else {
+        await setDoc(doc(db, "users", uid), agencyProfilePayload);
+      }
 
       setIsSubmittedSuccess(true);
     } catch (err: any) {

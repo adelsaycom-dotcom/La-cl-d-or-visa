@@ -19,6 +19,7 @@ import { useLanguage } from "../../src/i18n/LanguageContext";
 import { db } from "../../src/firebase";
 import { collection, doc, runTransaction } from "firebase/firestore";
 import { useToast } from "@/components/ui/toast";
+import { getBackendMode, apiFetch } from "../../src/services/apiClient";
 
 export function AgencyManagement() {
   const { language, t } = useLanguage();
@@ -181,50 +182,65 @@ export function AgencyManagement() {
     setActionNotice(null);
     try {
       let updatedBalance = 0;
+      const mode = await getBackendMode();
 
-      await runTransaction(db, async (transaction) => {
-        const agencyRef = doc(db, "users", selectedAgency.id);
-        const agencySnap = await transaction.get(agencyRef);
-        if (!agencySnap.exists()) {
-          throw new Error("Agence introuvable dans la base de données.");
-        }
-
-        const freshData = agencySnap.data();
-        const currentBal = Number(freshData.balance || 0);
-        const diff = balanceAdjustType === "credit" ? amount : -amount;
-        updatedBalance = Math.max(0, currentBal + diff);
-
-        const actualDelta = balanceAdjustType === "credit"
-          ? amount
-          : Math.min(currentBal, amount);
-
-        transaction.update(agencyRef, { balance: updatedBalance });
-
-        const txRef = doc(collection(db, "transactions"));
-        transaction.set(txRef, {
-          id: txRef.id,
-          agencyId: selectedAgency.id,
-          agencyName: freshData.agencyName || selectedAgency.agencyName || selectedAgency.name || "Agence",
-          type: balanceAdjustType,
-          amount: actualDelta,
-          date: new Date().toISOString(),
-          note: `Ajustement administratif : ${balanceAdjustReason.trim()}`.slice(0, 480),
-          description: `${balanceAdjustType === "credit" ? "Crédit Manuel Admin" : "Débit Manuel Admin"} - ${balanceAdjustReason.trim()}`.slice(0, 480),
-          status: "completed"
+      if (mode === "mysql") {
+        const res = await apiFetch<{ newBalance: number }>("/api/db/wallet/adjust", {
+          method: "POST",
+          body: JSON.stringify({
+            agencyId: selectedAgency.id,
+            type: balanceAdjustType,
+            amount,
+            reason: balanceAdjustReason.trim(),
+          }),
         });
+        updatedBalance = Number(res?.newBalance ?? 0);
+        await useAppStore.getState().refreshAllFromMysql();
+      } else {
+        await runTransaction(db, async (transaction) => {
+          const agencyRef = doc(db, "users", selectedAgency.id);
+          const agencySnap = await transaction.get(agencyRef);
+          if (!agencySnap.exists()) {
+            throw new Error("Agence introuvable dans la base de données.");
+          }
 
-        const notifRef = doc(collection(db, "notifications"));
-        transaction.set(notifRef, {
-          id: notifRef.id,
-          agencyId: selectedAgency.id,
-          title: balanceAdjustType === "credit" ? "Crédit Administratif" : "Débit Administratif",
-          message: `Votre solde a été ${balanceAdjustType === "credit" ? "crédité" : "débité"} de ${actualDelta.toLocaleString()} DZD (${balanceAdjustReason.trim()}).`.slice(0, 580),
-          type: balanceAdjustType === "credit" ? "success" : "info",
-          read: false,
-          createdAt: new Date().toISOString(),
-          link: "/agency/wallet"
+          const freshData = agencySnap.data();
+          const currentBal = Number(freshData.balance || 0);
+          const diff = balanceAdjustType === "credit" ? amount : -amount;
+          updatedBalance = Math.max(0, currentBal + diff);
+
+          const actualDelta = balanceAdjustType === "credit"
+            ? amount
+            : Math.min(currentBal, amount);
+
+          transaction.update(agencyRef, { balance: updatedBalance });
+
+          const txRef = doc(collection(db, "transactions"));
+          transaction.set(txRef, {
+            id: txRef.id,
+            agencyId: selectedAgency.id,
+            agencyName: freshData.agencyName || selectedAgency.agencyName || selectedAgency.name || "Agence",
+            type: balanceAdjustType,
+            amount: actualDelta,
+            date: new Date().toISOString(),
+            note: `Ajustement administratif : ${balanceAdjustReason.trim()}`.slice(0, 480),
+            description: `${balanceAdjustType === "credit" ? "Crédit Manuel Admin" : "Débit Manuel Admin"} - ${balanceAdjustReason.trim()}`.slice(0, 480),
+            status: "completed"
+          });
+
+          const notifRef = doc(collection(db, "notifications"));
+          transaction.set(notifRef, {
+            id: notifRef.id,
+            agencyId: selectedAgency.id,
+            title: balanceAdjustType === "credit" ? "Crédit Administratif" : "Débit Administratif",
+            message: `Votre solde a été ${balanceAdjustType === "credit" ? "crédité" : "débité"} de ${actualDelta.toLocaleString()} DZD (${balanceAdjustReason.trim()}).`.slice(0, 580),
+            type: balanceAdjustType === "credit" ? "success" : "info",
+            read: false,
+            createdAt: new Date().toISOString(),
+            link: "/agency/wallet"
+          });
         });
-      });
+      }
 
       setSelectedAgency(prev => prev ? ({ ...prev, balance: updatedBalance } as Agency) : null);
       setBalanceAdjustAmount(0);
@@ -1270,18 +1286,17 @@ export function AgencyManagement() {
                   try {
                     const { getApp, initializeApp } = await import("firebase/app");
                     const { getAuth, createUserWithEmailAndPassword } = await import("firebase/auth");
-                    const { doc, setDoc } = await import("firebase/firestore");
-                    
+
                     let secondaryApp;
                     try {
                       secondaryApp = getApp("SecondaryApp");
-                    } catch(e) {
+                    } catch {
                       const firebaseConfig = getApp().options;
                       secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
                     }
                     const secondaryAuth = getAuth(secondaryApp);
                     const userCred = await createUserWithEmailAndPassword(secondaryAuth, newAgencyEmail.trim(), newAgencyPwd);
-                    await setDoc(doc(db, "users", userCred.user.uid), {
+                    const agencyPayload = {
                       id: userCred.user.uid,
                       email: newAgencyEmail.trim(),
                       role: "agency",
@@ -1296,7 +1311,19 @@ export function AgencyManagement() {
                       balance: 0,
                       status: "ACTIVE",
                       createdAt: new Date().toISOString()
-                    });
+                    };
+
+                    const mode = await getBackendMode();
+                    if (mode === "mysql") {
+                      await apiFetch("/api/db/auth/register", {
+                        method: "POST",
+                        body: JSON.stringify(agencyPayload),
+                      });
+                      await useAppStore.getState().refreshAllFromMysql();
+                    } else {
+                      const { doc, setDoc } = await import("firebase/firestore");
+                      await setDoc(doc(db, "users", userCred.user.uid), agencyPayload);
+                    }
                     await secondaryAuth.signOut();
                     setIsAddAgencyOpen(false);
                     setNewAgencyName("");

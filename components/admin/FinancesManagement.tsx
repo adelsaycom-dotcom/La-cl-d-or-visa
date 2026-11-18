@@ -21,6 +21,7 @@ import {
   isImageBase64,
   extractErrorMessage
 } from "../../src/utils/financeHelpers";
+import { getBackendMode, apiFetch } from "../../src/services/apiClient";
 
 const PAGE_SIZE = 10;
 
@@ -119,51 +120,60 @@ export function FinancesManagement() {
 
     setIsSubmitting(true);
     try {
-      await runTransaction(db, async (transaction) => {
-        const agencyRef = doc(db, "users", selectedReq.agencyId);
-        const reqRef = doc(db, "rechargeRequests", selectedReq.id);
-        const agencyDoc = await transaction.get(agencyRef);
-
-        if (!agencyDoc.exists()) {
-          throw new Error(isEn ? "Agency not found" : "Agence introuvable");
-        }
-
-        const newBalance = (agencyDoc.data().balance || 0) + finalAmount;
-
-        transaction.update(agencyRef, { balance: newBalance });
-        transaction.update(reqRef, {
-          status: "Approved",
-          amount: finalAmount,
-          updatedAt: new Date().toISOString(),
+      const mode = await getBackendMode();
+      if (mode === "mysql") {
+        await apiFetch(`/api/db/recharge-requests/${encodeURIComponent(selectedReq.id)}/approve`, {
+          method: "POST",
+          body: JSON.stringify({ amount: finalAmount }),
         });
+        await useAppStore.getState().refreshAllFromMysql();
+      } else {
+        await runTransaction(db, async (transaction) => {
+          const agencyRef = doc(db, "users", selectedReq.agencyId);
+          const reqRef = doc(db, "rechargeRequests", selectedReq.id);
+          const agencyDoc = await transaction.get(agencyRef);
 
-        const txRef = doc(collection(db, "transactions"));
-        transaction.set(txRef, {
-          id: txRef.id,
-          agencyId: selectedReq.agencyId,
-          agencyName: selectedReq.agencyName,
-          type: "credit",
-          amount: finalAmount,
-          description: isEn
-            ? `Top-up validation ${selectedReq.note && !isImageBase64(selectedReq.note) ? "- " + selectedReq.note : ""}`
-            : `Validation de recharge ${selectedReq.note && !isImageBase64(selectedReq.note) ? "- " + selectedReq.note : ""}`,
-          date: new Date().toISOString(),
-        });
+          if (!agencyDoc.exists()) {
+            throw new Error(isEn ? "Agency not found" : "Agence introuvable");
+          }
 
-        const notifRef = doc(collection(db, "notifications"));
-        transaction.set(notifRef, {
-          id: notifRef.id,
-          agencyId: selectedReq.agencyId,
-          title: isEn ? "Top-up Approved" : "Recharge Approuvée",
-          message: isEn
-            ? `Your wallet has been credited with ${finalAmount.toLocaleString()} DZD.`
-            : `Votre compte a été crédité de ${finalAmount.toLocaleString()} DZD.`,
-          type: "success",
-          read: false,
-          createdAt: new Date().toISOString(),
-          link: "/agency/wallet",
+          const newBalance = (agencyDoc.data().balance || 0) + finalAmount;
+
+          transaction.update(agencyRef, { balance: newBalance });
+          transaction.update(reqRef, {
+            status: "Approved",
+            amount: finalAmount,
+            updatedAt: new Date().toISOString(),
+          });
+
+          const txRef = doc(collection(db, "transactions"));
+          transaction.set(txRef, {
+            id: txRef.id,
+            agencyId: selectedReq.agencyId,
+            agencyName: selectedReq.agencyName,
+            type: "credit",
+            amount: finalAmount,
+            description: isEn
+              ? `Top-up validation ${selectedReq.note && !isImageBase64(selectedReq.note) ? "- " + selectedReq.note : ""}`
+              : `Validation de recharge ${selectedReq.note && !isImageBase64(selectedReq.note) ? "- " + selectedReq.note : ""}`,
+            date: new Date().toISOString(),
+          });
+
+          const notifRef = doc(collection(db, "notifications"));
+          transaction.set(notifRef, {
+            id: notifRef.id,
+            agencyId: selectedReq.agencyId,
+            title: isEn ? "Top-up Approved" : "Recharge Approuvée",
+            message: isEn
+              ? `Your wallet has been credited with ${finalAmount.toLocaleString()} DZD.`
+              : `Votre compte a été crédité de ${finalAmount.toLocaleString()} DZD.`,
+            type: "success",
+            read: false,
+            createdAt: new Date().toISOString(),
+            link: "/agency/wallet",
+          });
         });
-      });
+      }
 
       if (!isMountedRef.current) return;
       toast.success(
@@ -191,28 +201,37 @@ export function FinancesManagement() {
 
     setIsRejecting(true);
     try {
-      await runTransaction(db, async (transaction) => {
-        const reqRef = doc(db, "rechargeRequests", rejectTarget.id);
-        transaction.update(reqRef, {
-          status: "Rejected",
-          note: isEn ? `Rejected: ${reason}` : `Rejeté: ${reason}`,
-          updatedAt: new Date().toISOString(),
+      const mode = await getBackendMode();
+      if (mode === "mysql") {
+        await apiFetch(`/api/db/recharge-requests/${encodeURIComponent(rejectTarget.id)}/reject`, {
+          method: "POST",
+          body: JSON.stringify({ reason }),
         });
+        await useAppStore.getState().refreshAllFromMysql();
+      } else {
+        await runTransaction(db, async (transaction) => {
+          const reqRef = doc(db, "rechargeRequests", rejectTarget.id);
+          transaction.update(reqRef, {
+            status: "Rejected",
+            note: isEn ? `Rejected: ${reason}` : `Rejeté: ${reason}`,
+            updatedAt: new Date().toISOString(),
+          });
 
-        const notifRef = doc(collection(db, "notifications"));
-        transaction.set(notifRef, {
-          id: notifRef.id,
-          agencyId: rejectTarget.agencyId,
-          title: isEn ? "Top-up Rejected" : "Recharge Rejetée",
-          message: isEn
-            ? `Request for ${rejectTarget.amount} DZD rejected. Reason: ${reason}`
-            : `Demande de ${rejectTarget.amount} DZD refusée. Motif : ${reason}`,
-          type: "error",
-          read: false,
-          createdAt: new Date().toISOString(),
-          link: "/agency/wallet",
+          const notifRef = doc(collection(db, "notifications"));
+          transaction.set(notifRef, {
+            id: notifRef.id,
+            agencyId: rejectTarget.agencyId,
+            title: isEn ? "Top-up Rejected" : "Recharge Rejetée",
+            message: isEn
+              ? `Request for ${rejectTarget.amount} DZD rejected. Reason: ${reason}`
+              : `Demande de ${rejectTarget.amount} DZD refusée. Motif : ${reason}`,
+            type: "error",
+            read: false,
+            createdAt: new Date().toISOString(),
+            link: "/agency/wallet",
+          });
         });
-      });
+      }
 
       if (!isMountedRef.current) return;
       toast.info(
@@ -242,45 +261,59 @@ export function FinancesManagement() {
 
     setIsSubmitting(true);
     try {
-      await runTransaction(db, async (transaction) => {
-        const agencyRef = doc(db, "users", agency.id);
-        const agencyDoc = await transaction.get(agencyRef);
-        if (!agencyDoc.exists()) {
-          throw new Error(isEn ? "Agency not found" : "Agence introuvable");
-        }
-
-        const currentBalance = agencyDoc.data().balance || 0;
-        const newBalance = manualType === "credit" ? currentBalance + amountNum : currentBalance - amountNum;
-
-        transaction.update(agencyRef, { balance: newBalance });
-
-        const txRef = doc(collection(db, "transactions"));
-        transaction.set(txRef, {
-          id: txRef.id,
-          agencyId: agency.id,
-          agencyName: agency.agencyName || agency.name || (isEn ? "Agency" : "Agence"),
-          type: manualType,
-          amount: amountNum,
-          description: isEn ? `Manual Adjustment: ${manualNote.trim()}` : `Ajustement Manuel : ${manualNote.trim()}`,
-          date: new Date().toISOString(),
+      const mode = await getBackendMode();
+      if (mode === "mysql") {
+        await apiFetch("/api/db/wallet/adjust", {
+          method: "POST",
+          body: JSON.stringify({
+            agencyId: agency.id,
+            type: manualType,
+            amount: amountNum,
+            reason: manualNote.trim(),
+          }),
         });
+        await useAppStore.getState().refreshAllFromMysql();
+      } else {
+        await runTransaction(db, async (transaction) => {
+          const agencyRef = doc(db, "users", agency.id);
+          const agencyDoc = await transaction.get(agencyRef);
+          if (!agencyDoc.exists()) {
+            throw new Error(isEn ? "Agency not found" : "Agence introuvable");
+          }
 
-        const notifRef = doc(collection(db, "notifications"));
-        transaction.set(notifRef, {
-          id: notifRef.id,
-          agencyId: agency.id,
-          title: manualType === "credit"
-            ? (isEn ? "Account Credited" : "Compte Crédité")
-            : (isEn ? "Account Debited" : "Compte Débité"),
-          message: isEn
-            ? `An adjustment of ${amountNum.toLocaleString()} DZD was applied: ${manualNote.trim()}`
-            : `Un ajustement de ${amountNum.toLocaleString()} DZD a été effectué : ${manualNote.trim()}`,
-          type: "info",
-          read: false,
-          createdAt: new Date().toISOString(),
-          link: "/agency/wallet",
+          const currentBalance = agencyDoc.data().balance || 0;
+          const newBalance = manualType === "credit" ? currentBalance + amountNum : currentBalance - amountNum;
+
+          transaction.update(agencyRef, { balance: newBalance });
+
+          const txRef = doc(collection(db, "transactions"));
+          transaction.set(txRef, {
+            id: txRef.id,
+            agencyId: agency.id,
+            agencyName: agency.agencyName || agency.name || (isEn ? "Agency" : "Agence"),
+            type: manualType,
+            amount: amountNum,
+            description: isEn ? `Manual Adjustment: ${manualNote.trim()}` : `Ajustement Manuel : ${manualNote.trim()}`,
+            date: new Date().toISOString(),
+          });
+
+          const notifRef = doc(collection(db, "notifications"));
+          transaction.set(notifRef, {
+            id: notifRef.id,
+            agencyId: agency.id,
+            title: manualType === "credit"
+              ? (isEn ? "Account Credited" : "Compte Crédité")
+              : (isEn ? "Account Debited" : "Compte Débité"),
+            message: isEn
+              ? `An adjustment of ${amountNum.toLocaleString()} DZD was applied: ${manualNote.trim()}`
+              : `Un ajustement de ${amountNum.toLocaleString()} DZD a été effectué : ${manualNote.trim()}`,
+            type: "info",
+            read: false,
+            createdAt: new Date().toISOString(),
+            link: "/agency/wallet",
+          });
         });
-      });
+      }
 
       if (!isMountedRef.current) return;
       setManualAmount("");

@@ -16,8 +16,9 @@
   RewriteEngine On
   RewriteBase /
 
-  # Ne jamais réécrire index.html ni les fichiers statiques/assets manquants vers index.html (évite les erreurs MIME text/html sur chunks JS)
+  # Ne jamais réécrire index.html, les routes /api/, ni les fichiers statiques/assets manquants vers index.html
   RewriteRule ^index\.html$ - [L]
+  RewriteRule ^api/ - [L]
   RewriteRule ^assets/ - [L]
   RewriteCond %{REQUEST_URI} \.(js|mjs|css|map|json|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|wasm)$ [NC]
   RewriteRule ^ - [L]

@@ -1,19 +1,29 @@
 /**
- * Service de gestion ultra-économe du catalogue (Pays, Services, Voyages, Études).
- * Utilise un cache mémoire avec durée de vie (TTL) de 15 minutes pour éviter
- * les écoutes permanentes onSnapshot et réduire la consommation de lectures de 90%.
+ * Service de gestion du catalogue (Pays, Services, Voyages, Études).
+ * - En mode MySQL Hostinger : 1 seule requête API /api/db/catalog (0 lecture Firestore).
+ * - En mode secours Firestore : cache mémoire + localStorage persistant (TTL 15 min)
+ *   afin d'éviter de reconsommer ~260 lectures à chaque actualisation F5.
  */
 
-import { collection, getDocs, doc, getDoc, query, limit, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Country, PrestationService, OrganizedTrip, StudyProgram } from '../store/useAppStore';
+import { getBackendMode } from './apiClient';
 
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
 }
 
+interface CatalogBundle {
+  countries: Country[];
+  services: PrestationService[];
+  organizedTrips: OrganizedTrip[];
+  studyPrograms: StudyProgram[];
+}
+
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+const STORAGE_KEY_PREFIX = 'cldor_cat_v2_';
 
 const memoryCache = {
   countries: null as CacheEntry<Country[]> | null,
@@ -22,24 +32,80 @@ const memoryCache = {
   studyPrograms: null as CacheEntry<StudyProgram[]> | null,
 };
 
+let pendingMysqlCatalogFetch: Promise<CatalogBundle> | null = null;
+
 function isCacheValid<T>(entry: CacheEntry<T> | null): boolean {
   if (!entry) return false;
   return Date.now() - entry.timestamp < CACHE_TTL_MS;
 }
 
+function readPersistentCache<T>(key: keyof typeof memoryCache): CacheEntry<T> | null {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    const raw = window.localStorage.getItem(`${STORAGE_KEY_PREFIX}${key}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CacheEntry<T>;
+    if (parsed && Array.isArray(parsed.data) && Date.now() - parsed.timestamp < CACHE_TTL_MS) {
+      return parsed;
+    }
+  } catch {
+    // Ignorer erreur localStorage
+  }
+  return null;
+}
+
+function writePersistentCache<T>(key: keyof typeof memoryCache, data: T[]) {
+  const entry = { data, timestamp: Date.now() };
+  (memoryCache as any)[key] = entry;
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(`${STORAGE_KEY_PREFIX}${key}`, JSON.stringify(entry));
+    }
+  } catch {
+    // Quota localStorage dépassé (ex: images lourdes) : le cache mémoire reste actif
+  }
+}
+
+async function fetchMysqlCatalogBundle(): Promise<CatalogBundle> {
+  if (pendingMysqlCatalogFetch) return pendingMysqlCatalogFetch;
+  pendingMysqlCatalogFetch = (async () => {
+    const res = await fetch('/api/db/catalog', { cache: 'no-store' });
+    if (!res.ok) {
+      throw new Error(`Erreur catalogue MySQL (${res.status})`);
+    }
+    const payload = (await res.json()) as CatalogBundle;
+    writePersistentCache('countries', payload.countries || []);
+    writePersistentCache('services', payload.services || []);
+    writePersistentCache('organizedTrips', payload.organizedTrips || []);
+    writePersistentCache('studyPrograms', payload.studyPrograms || []);
+    return payload;
+  })().finally(() => {
+    pendingMysqlCatalogFetch = null;
+  });
+  return pendingMysqlCatalogFetch;
+}
+
 export const catalogService = {
-  /**
-   * Récupère la liste des pays avec cache
-   */
   async getCountries(forceRefresh = false): Promise<Country[]> {
-    if (!forceRefresh && isCacheValid(memoryCache.countries)) {
-      return memoryCache.countries!.data;
+    if (!forceRefresh) {
+      if (isCacheValid(memoryCache.countries)) return memoryCache.countries!.data;
+      const persisted = readPersistentCache<Country[]>('countries');
+      if (persisted) {
+        memoryCache.countries = persisted;
+        return persisted.data;
+      }
     }
 
     try {
+      const mode = await getBackendMode();
+      if (mode === 'mysql') {
+        const bundle = await fetchMysqlCatalogBundle();
+        return bundle.countries || [];
+      }
+
       const snap = await getDocs(query(collection(db, 'countries'), limit(50)));
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Country[];
-      memoryCache.countries = { data, timestamp: Date.now() };
+      writePersistentCache('countries', data);
       return data;
     } catch (err) {
       console.warn('[CatalogService] Erreur lecture countries:', err);
@@ -47,18 +113,26 @@ export const catalogService = {
     }
   },
 
-  /**
-   * Récupère la liste des services avec cache
-   */
   async getServices(forceRefresh = false): Promise<PrestationService[]> {
-    if (!forceRefresh && isCacheValid(memoryCache.services)) {
-      return memoryCache.services!.data;
+    if (!forceRefresh) {
+      if (isCacheValid(memoryCache.services)) return memoryCache.services!.data;
+      const persisted = readPersistentCache<PrestationService[]>('services');
+      if (persisted) {
+        memoryCache.services = persisted;
+        return persisted.data;
+      }
     }
 
     try {
+      const mode = await getBackendMode();
+      if (mode === 'mysql') {
+        const bundle = await fetchMysqlCatalogBundle();
+        return bundle.services || [];
+      }
+
       const snap = await getDocs(query(collection(db, 'services'), limit(100)));
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() })) as PrestationService[];
-      memoryCache.services = { data, timestamp: Date.now() };
+      writePersistentCache('services', data);
       return data;
     } catch (err) {
       console.warn('[CatalogService] Erreur lecture services:', err);
@@ -66,18 +140,26 @@ export const catalogService = {
     }
   },
 
-  /**
-   * Récupère la liste des voyages organisés avec cache
-   */
   async getOrganizedTrips(forceRefresh = false): Promise<OrganizedTrip[]> {
-    if (!forceRefresh && isCacheValid(memoryCache.organizedTrips)) {
-      return memoryCache.organizedTrips!.data;
+    if (!forceRefresh) {
+      if (isCacheValid(memoryCache.organizedTrips)) return memoryCache.organizedTrips!.data;
+      const persisted = readPersistentCache<OrganizedTrip[]>('organizedTrips');
+      if (persisted) {
+        memoryCache.organizedTrips = persisted;
+        return persisted.data;
+      }
     }
 
     try {
+      const mode = await getBackendMode();
+      if (mode === 'mysql') {
+        const bundle = await fetchMysqlCatalogBundle();
+        return bundle.organizedTrips || [];
+      }
+
       const snap = await getDocs(query(collection(db, 'organizedTrips'), limit(50)));
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() })) as OrganizedTrip[];
-      memoryCache.organizedTrips = { data, timestamp: Date.now() };
+      writePersistentCache('organizedTrips', data);
       return data;
     } catch (err) {
       console.warn('[CatalogService] Erreur lecture organizedTrips:', err);
@@ -85,18 +167,26 @@ export const catalogService = {
     }
   },
 
-  /**
-   * Récupère la liste des programmes d'études avec cache
-   */
   async getStudyPrograms(forceRefresh = false): Promise<StudyProgram[]> {
-    if (!forceRefresh && isCacheValid(memoryCache.studyPrograms)) {
-      return memoryCache.studyPrograms!.data;
+    if (!forceRefresh) {
+      if (isCacheValid(memoryCache.studyPrograms)) return memoryCache.studyPrograms!.data;
+      const persisted = readPersistentCache<StudyProgram[]>('studyPrograms');
+      if (persisted) {
+        memoryCache.studyPrograms = persisted;
+        return persisted.data;
+      }
     }
 
     try {
+      const mode = await getBackendMode();
+      if (mode === 'mysql') {
+        const bundle = await fetchMysqlCatalogBundle();
+        return bundle.studyPrograms || [];
+      }
+
       const snap = await getDocs(query(collection(db, 'studyPrograms'), limit(60)));
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() })) as StudyProgram[];
-      memoryCache.studyPrograms = { data, timestamp: Date.now() };
+      writePersistentCache('studyPrograms', data);
       return data;
     } catch (err) {
       console.warn('[CatalogService] Erreur lecture studyPrograms:', err);
@@ -104,17 +194,20 @@ export const catalogService = {
     }
   },
 
-  /**
-   * Invalide l'ensemble du cache catalogue après une modification admin
-   */
   invalidateCache(target?: 'countries' | 'services' | 'organizedTrips' | 'studyPrograms') {
-    if (target) {
-      memoryCache[target] = null;
-    } else {
-      memoryCache.countries = null;
-      memoryCache.services = null;
-      memoryCache.organizedTrips = null;
-      memoryCache.studyPrograms = null;
+    const targets: Array<keyof typeof memoryCache> = target
+      ? [target]
+      : ['countries', 'services', 'organizedTrips', 'studyPrograms'];
+
+    for (const key of targets) {
+      memoryCache[key] = null;
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem(`${STORAGE_KEY_PREFIX}${key}`);
+        }
+      } catch {
+        // Ignorer
+      }
     }
   }
 };

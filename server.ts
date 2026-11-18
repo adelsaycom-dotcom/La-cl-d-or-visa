@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { type Request, type Response, type NextFunction } from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
@@ -10,6 +11,8 @@ import { GoogleGenAI } from "@google/genai";
 import { initializeApp as initializeAdminApp, getApps as getAdminApps } from "firebase-admin/app";
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
 import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
+import { initMysqlDatabase, isMysqlActive, getMysqlPool, getMysqlStatus } from "./server/mysqlDb";
+import { createMysqlRouter } from "./server/mysqlRoutes";
 
 interface AuthenticatedUser {
   uid: string;
@@ -120,7 +123,9 @@ function sanitizeDownloadFilename(rawName: string): string {
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-  const isProd = process.env.NODE_ENV === "production";
+  const distIndexPath = path.join(process.cwd(), "dist", "index.html");
+  const isBuiltBundle = Boolean(process.argv[1] && process.argv[1].endsWith(".cjs"));
+  const isProd = process.env.NODE_ENV === "production" || (isBuiltBundle && fs.existsSync(distIndexPath));
 
   const fbConfig = loadFirebaseConfig();
   const projectId = process.env.FIREBASE_PROJECT_ID || fbConfig.projectId;
@@ -140,6 +145,9 @@ async function startServer() {
   } catch {
     adminDb = null;
   }
+
+  // Initialisation MySQL Hostinger (crée automatiquement les 12 tables si configuré)
+  await initMysqlDatabase();
 
   // Activation de trust proxy pour Cloud Run / reverse proxies
   app.set("trust proxy", 1);
@@ -222,7 +230,7 @@ async function startServer() {
       if (isSameHost || configuredOrigins.has(origin)) {
         const opts: CorsOptions = {
           origin: true,
-          methods: ["GET", "POST", "OPTIONS"],
+          methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
           allowedHeaders: ["Content-Type", "Authorization"],
           maxAge: 600,
         };
@@ -236,7 +244,7 @@ async function startServer() {
   // 3. Anti-DDoS & Anti-Brute Force
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 150,
+    max: 1000,
     message: {
       error: "Trop de requêtes détectées depuis cette adresse IP, veuillez réessayer dans 15 minutes.",
     },
@@ -269,10 +277,24 @@ async function startServer() {
 
       let isAdmin = emailVerified && ADMIN_EMAILS.has(email);
 
+      if (!isAdmin && isMysqlActive()) {
+        try {
+          const [rows] = await getMysqlPool().query<any[]>(
+            "SELECT role FROM users WHERE id = ? LIMIT 1",
+            [decoded.uid]
+          );
+          if (Array.isArray(rows) && rows.length > 0 && String(rows[0].role || "").toLowerCase() === "admin") {
+            isAdmin = true;
+          }
+        } catch {
+          // Ignorer si table indisponible
+        }
+      }
+
       if (!isAdmin && adminDb) {
         try {
           const userSnap = await adminDb.collection("users").doc(decoded.uid).get();
-          if (userSnap.exists && userSnap.data()?.role === "admin") {
+          if (userSnap.exists && String(userSnap.data()?.role || "").toLowerCase() === "admin") {
             isAdmin = true;
           }
         } catch {
@@ -295,8 +317,16 @@ async function startServer() {
 
   // Routes API
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok" });
+    const mysqlStatus = getMysqlStatus();
+    res.json({
+      status: "ok",
+      database: mysqlStatus.active ? "mysql" : "firestore",
+      mysql: mysqlStatus,
+    });
   });
+
+  // API Base de Données MySQL Hostinger
+  app.use("/api/db", createMysqlRouter(requireAuth));
 
   // Analyse intelligente de passeport (OCR / MRZ avec Gemini) — Authentifié
   app.post("/api/scan-passport", requireAuth, async (req: AuthenticatedRequest, res) => {
@@ -529,6 +559,11 @@ Si un champ est absent ou illisible, renvoie une chaîne vide "". Réponds UNIQU
       console.error("Erreur API download:", err);
       return res.status(500).json({ error: "Erreur de téléchargement." });
     }
+  });
+
+  // Fallback JSON propre pour les routes API inconnues
+  app.all("/api/*", (_req, res) => {
+    return res.status(404).json({ error: "Endpoint API introuvable." });
   });
 
   // Vite middleware pour le développement ou service des assets compilés en production

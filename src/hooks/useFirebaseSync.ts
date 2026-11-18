@@ -3,6 +3,7 @@ import { collection, onSnapshot, query, where, doc, getDoc, limit } from 'fireba
 import { db, auth } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { catalogService } from '../services/catalogService';
+import { getBackendMode, apiFetch } from '../services/apiClient';
 
 const VERIFIED_ADMIN_EMAILS = new Set<string>([
   'adel.saycom@gmail.com',
@@ -41,13 +42,17 @@ export function useFirebaseSync() {
     };
 
     const unsubAuth = auth.onAuthStateChanged(async user => {
-      // Nettoyer les écouteurs précédents de manière synchrone
+      // Nettoyer les écouteurs / timers précédents de manière synchrone
       unsubsRef.current.forEach(fn => {
         try { fn(); } catch (_) {}
       });
       unsubsRef.current = [];
       currentUidRef.current = user ? user.uid : null;
       const expectedUid = currentUidRef.current;
+
+      const mode = await getBackendMode(true);
+      if (currentUidRef.current !== expectedUid) return;
+      setStore({ databaseMode: mode });
 
       const handleSnapshotError = (collectionName: string, err: any) => {
         if (err?.code === 'resource-exhausted' || err?.message?.includes('Quota exceeded')) {
@@ -63,7 +68,6 @@ export function useFirebaseSync() {
       };
 
       if (user) {
-        // Éviter toute redirection prématurée de ProtectedRoute pendant la résolution du profil
         const currentState = useAppStore.getState();
         const isAlreadyResolved =
           currentState.authReady &&
@@ -74,12 +78,111 @@ export function useFirebaseSync() {
           setStore({ authReady: false });
         }
 
+        // =====================================================================
+        // MODE 1 : MYSQL HOSTINGER ACTIF (0 LECTURE FIRESTORE)
+        // =====================================================================
+        if (mode === 'mysql') {
+          try {
+            let boot: any = null;
+            try {
+              boot = await apiFetch('/api/db/bootstrap');
+            } catch (firstErr: any) {
+              // Court retry en cas d'inscription toute récente
+              await new Promise(resolve => setTimeout(resolve, 350));
+              if (currentUidRef.current !== expectedUid) return;
+              try {
+                boot = await apiFetch('/api/db/bootstrap');
+              } catch {
+                throw firstErr;
+              }
+            }
+
+            if (currentUidRef.current !== expectedUid) return;
+
+            const agency = boot.currentAgency || null;
+            const roleRaw = String(boot.role || agency?.role || '').trim().toLowerCase();
+            const resolvedRole: 'admin' | 'agency' | null =
+              roleRaw === 'admin' ? 'admin' : roleRaw === 'agency' ? 'agency' : null;
+
+            if (boot.restricted) {
+              setStore({
+                authReady: true,
+                authUserUid: user.uid,
+                authRole: resolvedRole,
+                currentAgency: agency,
+                agencyBalance: Number(agency?.balance || 0),
+                b2cMarginPercent: typeof agency?.b2cMarginPercent === 'number' ? agency.b2cMarginPercent : 15,
+                quotaExceeded: false,
+                databaseMode: 'mysql',
+              });
+              return;
+            }
+
+            setStore({
+              authReady: true,
+              authUserUid: user.uid,
+              authRole: resolvedRole,
+              currentAgency: agency,
+              agencyBalance: Number(agency?.balance || 0),
+              b2cMarginPercent: typeof agency?.b2cMarginPercent === 'number' ? agency.b2cMarginPercent : 15,
+              countries: boot.countries || [],
+              services: boot.services || [],
+              organizedTrips: boot.organizedTrips || [],
+              studyPrograms: boot.studyPrograms || [],
+              applications: boot.applications || [],
+              studyApplications: boot.studyApplications || [],
+              tripReservations: boot.tripReservations || [],
+              transactions: boot.transactions || [],
+              rechargeRequests: boot.rechargeRequests || [],
+              supportTickets: boot.supportTickets || [],
+              notifications: boot.notifications || [],
+              agencies: boot.agencies || [],
+              catalogLoading: false,
+              catalogLoaded: true,
+              quotaExceeded: false,
+              databaseMode: 'mysql',
+            });
+
+            // Rafraîchissement léger toutes les 30s (uniquement si onglet visible)
+            const pollTimer = window.setInterval(() => {
+              if (
+                document.visibilityState === 'visible' &&
+                currentUidRef.current === expectedUid
+              ) {
+                useAppStore.getState().refreshAllFromMysql().catch(() => {});
+              }
+            }, 30000);
+
+            unsubsRef.current.push(() => window.clearInterval(pollTimer));
+            return;
+          } catch (mysqlErr) {
+            console.warn('[MySQL Sync] Erreur bootstrap MySQL:', mysqlErr);
+            if (isAlreadyResolved) {
+              setStore({ authReady: true, databaseMode: 'mysql' });
+            } else {
+              const fallbackAdmin =
+                user.emailVerified && user.email && VERIFIED_ADMIN_EMAILS.has(user.email.toLowerCase())
+                  ? ('admin' as const)
+                  : null;
+              setStore({
+                authReady: true,
+                authUserUid: user.uid,
+                authRole: fallbackAdmin,
+                databaseMode: 'mysql',
+              });
+            }
+            return;
+          }
+        }
+
+        // =====================================================================
+        // MODE 2 : FIRESTORE (SECOURS QUAND MYSQL N'EST PAS CONFIGURÉ)
+        // =====================================================================
         let resolvedRole: 'admin' | 'agency' | null = null;
         let initialAgencyData: any = null;
 
         try {
           let userDoc = await getDoc(doc(db, 'users', user.uid));
-          // Court retry en cas d'inscription toute récente (création Auth juste avant setDoc)
           if (!userDoc.exists()) {
             await new Promise(resolve => setTimeout(resolve, 350));
             if (currentUidRef.current !== expectedUid) return;
@@ -109,7 +212,6 @@ export function useFirebaseSync() {
 
         if (currentUidRef.current !== expectedUid) return;
 
-        // Si Login.tsx a déjà pré-peuplé un profil valide pour ce même UID et que getDoc a échoué temporairement, préserver les données valides
         if (!resolvedRole && isAlreadyResolved) {
           resolvedRole = currentState.authRole;
           initialAgencyData = currentState.currentAgency;
@@ -126,12 +228,10 @@ export function useFirebaseSync() {
 
         const normalizedStatus = String(initialAgencyData?.status || 'ACTIVE').trim().toUpperCase();
 
-        // Si le rôle n'est pas valide ou que le compte est en attente, ne pas ouvrir d'écouteurs protégés
         if (!resolvedRole || (resolvedRole === 'agency' && normalizedStatus === 'PENDING')) {
           return;
         }
 
-        // Chargement du catalogue uniquement pour les utilisateurs authentifiés et autorisés
         loadCachedCatalog();
 
         const getQuery = (collName: string, maxItems = 40) => {
@@ -139,7 +239,6 @@ export function useFirebaseSync() {
           return query(collection(db, collName), where('agencyId', '==', user.uid), limit(maxItems));
         };
 
-        // Écouteur temps réel 1 : Solde et profil de l'utilisateur actif
         try {
           unsubsRef.current.push(
             onSnapshot(
@@ -165,7 +264,6 @@ export function useFirebaseSync() {
           handleSnapshotError('currentUser', e);
         }
 
-        // Écouteur temps réel 2 : Notifications (limité à 25)
         const notifQuery = resolvedRole === 'admin'
           ? query(collection(db, 'notifications'), where('agencyId', '==', 'admin'), limit(25))
           : getQuery('notifications', 25);
@@ -185,7 +283,6 @@ export function useFirebaseSync() {
           handleSnapshotError('notifications', e);
         }
 
-        // Écouteur temps réel 3 : Dossiers de visas récents (limité à 40)
         try {
           unsubsRef.current.push(
             onSnapshot(
@@ -201,7 +298,6 @@ export function useFirebaseSync() {
           handleSnapshotError('applications', e);
         }
 
-        // Écouteur temps réel 4 : Transactions financières
         try {
           unsubsRef.current.push(
             onSnapshot(
@@ -217,7 +313,6 @@ export function useFirebaseSync() {
           handleSnapshotError('transactions', e);
         }
 
-        // Écouteur temps réel 5 : Tickets de support
         try {
           unsubsRef.current.push(
             onSnapshot(
@@ -233,7 +328,6 @@ export function useFirebaseSync() {
           handleSnapshotError('supportTickets', e);
         }
 
-        // Écouteurs conditionnels pour l'administration vs agence
         if (resolvedRole === 'admin') {
           try {
             unsubsRef.current.push(
@@ -281,7 +375,6 @@ export function useFirebaseSync() {
           }
         }
 
-        // Candidatures d'études récentes
         try {
           unsubsRef.current.push(
             onSnapshot(
@@ -297,7 +390,6 @@ export function useFirebaseSync() {
           handleSnapshotError('studyApplications', e);
         }
 
-        // Réservations de voyages récentes
         try {
           unsubsRef.current.push(
             onSnapshot(
