@@ -34,15 +34,127 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+const PLACEHOLDER_AGENCY_NAMES = new Set([
+  "mon agence b2b",
+  "mon agence",
+  "mon agence partenaire",
+  "agence b2b",
+  "agence partenaire",
+  "agence sans nom",
+  "agence",
+  "une agence",
+  "my agency",
+  "agency",
+  "unknown",
+  "inconnue",
+  "non spécifiée",
+  "non specifiee",
+  "n/a",
+  "none",
+  "null",
+  "undefined",
+]);
+
+function isPlaceholderAgencyName(value: any): boolean {
+  if (!value || typeof value !== "string") return true;
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, " ");
+  if (!normalized) return true;
+  return PLACEHOLDER_AGENCY_NAMES.has(normalized);
+}
+
+function isEmailLike(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function cleanAgencyCandidate(value: any): string {
+  if (!value || typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed || isPlaceholderAgencyName(trimmed)) return "";
+  return trimmed;
+}
+
+function resolveAgencyNameFromRow(userRow: any, candidateName?: any, fallbackEmail?: string): string {
+  const raw = userRow && typeof userRow.rawData === "string"
+    ? parseJsonSafe<Record<string, any>>(userRow.rawData, {})
+    : (userRow || {});
+
+  const rowCandidates = [
+    userRow?.agencyName,
+    raw?.agencyName,
+    userRow?.companyName,
+    raw?.companyName,
+    userRow?.name,
+    raw?.name,
+    userRow?.managerName,
+    raw?.managerName,
+  ];
+
+  for (const c of rowCandidates) {
+    const clean = cleanAgencyCandidate(c);
+    if (clean && !isEmailLike(clean)) {
+      return clean;
+    }
+  }
+
+  const cleanCandidate = cleanAgencyCandidate(candidateName);
+  if (cleanCandidate && !isEmailLike(cleanCandidate)) {
+    return cleanCandidate;
+  }
+
+  const emailCandidate =
+    cleanAgencyCandidate(userRow?.email) ||
+    cleanAgencyCandidate(raw?.email) ||
+    cleanAgencyCandidate(fallbackEmail) ||
+    cleanCandidate;
+
+  return emailCandidate || "Agence Partenaire";
+}
+
+async function fetchAuthoritativeAgencyName(
+  connOrPool: any,
+  agencyId: string,
+  candidateName?: any,
+  fallbackEmail?: string
+): Promise<string> {
+  try {
+    if (agencyId) {
+      const [rows] = await connOrPool.query(
+        "SELECT id, email, name, agencyName, companyName, managerName, rawData FROM users WHERE id = ? LIMIT 1",
+        [agencyId]
+      );
+      if (Array.isArray(rows) && rows.length > 0) {
+        return resolveAgencyNameFromRow(rows[0], candidateName, fallbackEmail);
+      }
+    }
+    const emailLookup = cleanAgencyCandidate(fallbackEmail) || (typeof candidateName === "string" && isEmailLike(candidateName) ? candidateName.trim() : "");
+    if (emailLookup) {
+      const [rows] = await connOrPool.query(
+        "SELECT id, email, name, agencyName, companyName, managerName, rawData FROM users WHERE LOWER(email) = ? LIMIT 1",
+        [emailLookup.toLowerCase()]
+      );
+      if (Array.isArray(rows) && rows.length > 0) {
+        return resolveAgencyNameFromRow(rows[0], candidateName, fallbackEmail);
+      }
+    }
+  } catch {
+    // Repli silencieux sur les candidats disponibles
+  }
+  return resolveAgencyNameFromRow(null, candidateName, fallbackEmail);
+}
+
 function mapUserRow(row: any) {
   if (!row) return null;
   const raw = parseJsonSafe<Record<string, any>>(row.rawData, {});
+  const rawAgencyName = cleanAgencyCandidate(row.agencyName) || cleanAgencyCandidate(raw.agencyName);
+  const rawCompanyName = cleanAgencyCandidate(row.companyName) || cleanAgencyCandidate(raw.companyName);
+  const rawName = cleanAgencyCandidate(row.name) || cleanAgencyCandidate(raw.name);
+  const resolvedAgencyName = rawAgencyName || rawCompanyName || rawName || "";
   return {
     ...raw,
     id: row.id,
     email: row.email,
     name: row.name || raw.name || "",
-    agencyName: row.agencyName || raw.agencyName || "",
+    agencyName: resolvedAgencyName,
     companyName: row.companyName || raw.companyName || "",
     phone: row.phone || raw.phone || "",
     rc: row.rc || raw.rc || "",
@@ -662,6 +774,38 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
         getSyncVersions(pool, uid, effectiveAdmin),
       ]);
 
+      const mappedAgencies = effectiveAdmin ? agencyRows.map(mapUserRow).filter(Boolean) as any[] : [];
+      const agencyLookupById = new Map<string, any>();
+      const agencyLookupByEmail = new Map<string, any>();
+      if (currentUser) {
+        if (currentUser.id) agencyLookupById.set(currentUser.id, currentUser);
+        if (currentUser.email) agencyLookupByEmail.set(String(currentUser.email).trim().toLowerCase(), currentUser);
+      }
+      for (const ag of mappedAgencies) {
+        if (ag?.id) agencyLookupById.set(ag.id, ag);
+        if (ag?.email) agencyLookupByEmail.set(String(ag.email).trim().toLowerCase(), ag);
+      }
+
+      const enrichWithAgencyName = <T extends { agencyId?: string; agencyName?: string }>(item: T): T => {
+        const stored = typeof item.agencyName === "string" ? item.agencyName.trim() : "";
+        const matched =
+          (item.agencyId ? agencyLookupById.get(item.agencyId) : undefined) ||
+          (stored && isEmailLike(stored) ? agencyLookupByEmail.get(stored.toLowerCase()) : undefined);
+        if (matched) {
+          return {
+            ...item,
+            agencyName: resolveAgencyNameFromRow(matched, stored, matched.email),
+          };
+        }
+        if (isPlaceholderAgencyName(stored)) {
+          return {
+            ...item,
+            agencyName: item.agencyId ? `Agence #${String(item.agencyId).substring(0, 6)}` : "Agence Partenaire",
+          };
+        }
+        return item;
+      };
+
       return res.json({
         currentAgency: currentUser,
         role: effectiveAdmin ? "admin" : "agency",
@@ -676,14 +820,14 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
               studyPrograms: studyRows.map(mapStudyProgramRow),
             }
           : {}),
-        applications: appRows.map(mapApplicationRow),
-        studyApplications: studyAppRows.map(mapStudyApplicationRow),
-        tripReservations: tripResRows.map(mapTripReservationRow),
-        transactions: txRows.map(mapTransactionRow),
-        rechargeRequests: rechargeRows.map(mapRechargeRow),
-        supportTickets: ticketRows.map(mapTicketRow),
+        applications: appRows.map(mapApplicationRow).map(enrichWithAgencyName),
+        studyApplications: studyAppRows.map(mapStudyApplicationRow).map(enrichWithAgencyName),
+        tripReservations: tripResRows.map(mapTripReservationRow).map(enrichWithAgencyName),
+        transactions: txRows.map(mapTransactionRow).map(enrichWithAgencyName),
+        rechargeRequests: rechargeRows.map(mapRechargeRow).map(enrichWithAgencyName),
+        supportTickets: ticketRows.map(mapTicketRow).map(enrichWithAgencyName),
         notifications: notifRows.map(mapNotificationRow),
-        agencies: effectiveAdmin ? agencyRows.map(mapUserRow) : [],
+        agencies: mappedAgencies,
       });
     } catch (err) {
       console.error("[MySQL /bootstrap]", err);
@@ -1105,11 +1249,12 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
           [newBalance, newAppsCount, now, targetAgencyId]
         );
 
+        const resolvedAgencyName = resolveAgencyNameFromRow(userRow, app.agencyName, req.user?.email);
         const finalApp = {
           ...app,
           id: appId,
           agencyId: targetAgencyId,
-          agencyName: app.agencyName || userRow.agencyName || userRow.name || "Agence",
+          agencyName: resolvedAgencyName,
           price: authoritativePrice,
           status: "Pending",
           submissionDate,
@@ -1270,7 +1415,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       const now = nowIso();
       const price = Number(application.price || 0);
 
-      const newStudyApp = {
+      const newStudyApp: any = {
         ...application,
         id: appId,
         agencyId: targetAgencyId,
@@ -1293,6 +1438,14 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       };
 
       await withMysqlTransaction(async (conn) => {
+        const authoritativeAgencyName = await fetchAuthoritativeAgencyName(
+          conn,
+          targetAgencyId,
+          application.agencyName,
+          req.user?.email
+        );
+        newStudyApp.agencyName = authoritativeAgencyName;
+
         await conn.query(
           `INSERT INTO study_applications (
             id, programId, programTitle, country, countryFlag, university, city,
@@ -1309,7 +1462,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
             String(newStudyApp.university || ""),
             String(newStudyApp.city || ""),
             targetAgencyId,
-            String(newStudyApp.agencyName || "Mon Agence"),
+            authoritativeAgencyName,
             String(newStudyApp.studentName || ""),
             String(newStudyApp.passportNumber || ""),
             String(newStudyApp.email || ""),
@@ -1334,7 +1487,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
           [
             appId,
             targetAgencyId,
-            String(newStudyApp.agencyName || "Mon Agence"),
+            authoritativeAgencyName,
             "Etude",
             String(newStudyApp.country || "Destination Universitaire"),
             `Visa Études - ${newStudyApp.programTitle || "Admission Universitaire"}`,
@@ -1366,7 +1519,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
             genId("notif"),
             "admin",
             "Nouveau dossier Visa Études",
-            `${newStudyApp.agencyName} a soumis un dossier d'études pour ${newStudyApp.studentName} (${newStudyApp.university || ""} - ${newStudyApp.country || ""}).`,
+            `${authoritativeAgencyName} a soumis un dossier d'études pour ${newStudyApp.studentName} (${newStudyApp.university || ""} - ${newStudyApp.country || ""}).`,
             "info",
             0,
             "/admin/study",
@@ -1507,10 +1660,18 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
           trip.id,
         ]);
 
+        const authoritativeAgencyName = await fetchAuthoritativeAgencyName(
+          conn,
+          targetAgencyId,
+          body.agencyName,
+          req.user?.email
+        );
+
         const reservation = {
           ...body,
           id: resId,
           agencyId: targetAgencyId,
+          agencyName: authoritativeAgencyName,
           numberOfPeople: peopleCount,
           status: "pending",
           totalPrice,
@@ -1527,7 +1688,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
             resId,
             trip.id,
             targetAgencyId,
-            String(reservation.agencyName || ""),
+            authoritativeAgencyName,
             String(reservation.clientName || ""),
             String(reservation.clientEmail || ""),
             String(reservation.clientPhone || ""),
@@ -1550,7 +1711,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
             genId("notif"),
             "admin",
             "Nouvelle réservation Voyage Organisé",
-            `${reservation.agencyName || "Une agence"} a réservé ${peopleCount} place(s) pour « ${trip.title} » (Client: ${reservation.clientName || "N/A"}).`.slice(0, 580),
+            `${authoritativeAgencyName} a réservé ${peopleCount} place(s) pour « ${trip.title} » (Client: ${reservation.clientName || "N/A"}).`.slice(0, 580),
             "info",
             0,
             "/admin/trips",
@@ -1646,10 +1807,18 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
         return res.status(400).json({ error: "Montant de recharge invalide." });
       }
 
+      const pool = getMysqlPool();
+      const authoritativeAgencyName = await fetchAuthoritativeAgencyName(
+        pool,
+        targetAgencyId,
+        body.agencyName,
+        req.user?.email
+      );
+
       const item = {
         id,
         agencyId: targetAgencyId,
-        agencyName: String(body.agencyName || ""),
+        agencyName: authoritativeAgencyName,
         amount,
         note: String(body.note || ""),
         status: "Pending",
@@ -1657,7 +1826,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
         createdAt: now,
       };
 
-      await getMysqlPool().query(
+      await pool.query(
         `INSERT INTO recharge_requests (id, agencyId, agencyName, amount, note, status, date, createdAt, updatedAt)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [item.id, item.agencyId, item.agencyName, item.amount, item.note, item.status, item.date, item.createdAt, now]
@@ -1717,7 +1886,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
         const tx = {
           id: genId("tx"),
           agencyId: reqRow.agencyId,
-          agencyName: reqRow.agencyName,
+          agencyName: resolveAgencyNameFromRow(uRows[0], reqRow.agencyName),
           type: "credit",
           amount: amountNum,
           description: `Validation de recharge${noteText}`,
@@ -1830,7 +1999,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
         const tx = {
           id: genId("tx"),
           agencyId: u.id,
-          agencyName: u.agencyName || u.name || "Agence",
+          agencyName: resolveAgencyNameFromRow(u),
           type,
           amount: actualDelta,
           date: now,
@@ -1875,13 +2044,16 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       const id = String(tx.id || genId("tx"));
       const now = nowIso();
       const createdAt = String(tx.createdAt || now);
-      await getMysqlPool().query(
+      const pool = getMysqlPool();
+      const txAgencyId = String(tx.agencyId || "");
+      const resolvedAgencyName = await fetchAuthoritativeAgencyName(pool, txAgencyId, tx.agencyName);
+      await pool.query(
         `INSERT INTO transactions (id, agencyId, agencyName, type, amount, date, ref, note, description, status, createdAt)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
-          String(tx.agencyId || ""),
-          String(tx.agencyName || ""),
+          txAgencyId,
+          resolvedAgencyName,
           String(tx.type || "debit"),
           Number(tx.amount || 0),
           String(tx.date || now),
@@ -1892,7 +2064,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
           createdAt,
         ]
       );
-      return res.json({ success: true, transaction: { ...tx, id, createdAt } });
+      return res.json({ success: true, transaction: { ...tx, id, agencyName: resolvedAgencyName, createdAt } });
     } catch (err) {
       console.error("[MySQL POST /transactions]", err);
       return res.status(500).json({ error: "Erreur création transaction." });
@@ -1909,15 +2081,23 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       const targetAgencyId = req.user!.isAdmin && body.agencyId ? String(body.agencyId) : uid;
       const id = String(body.id || genId("tkt"));
       const now = nowIso();
+      const pool = getMysqlPool();
+      const authoritativeAgencyName = await fetchAuthoritativeAgencyName(
+        pool,
+        targetAgencyId,
+        body.agencyName,
+        req.user?.email
+      );
 
       const ticket = {
         ...body,
         id,
         agencyId: targetAgencyId,
+        agencyName: authoritativeAgencyName,
         createdAt: String(body.createdAt || now),
       };
 
-      await getMysqlPool().query(
+      await pool.query(
         `INSERT INTO support_tickets (
           id, agencyId, agencyName, subject, description, category, priority, status,
           isUrgent, applicationId, applicationRef, applicationSummary, attachments, messages, createdAt, updatedAt
@@ -1925,7 +2105,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
         [
           id,
           targetAgencyId,
-          String(ticket.agencyName || ""),
+          authoritativeAgencyName,
           String(ticket.subject || ""),
           String(ticket.description || ""),
           String(ticket.category || "Général"),
@@ -1980,6 +2160,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       if (Array.isArray(updates.messages) && updates.messages.length > 0) {
         const lastMsg = updates.messages[updates.messages.length - 1];
         if (lastMsg?.sender === "agency") {
+          const senderAgencyName = await fetchAuthoritativeAgencyName(pool, current.agencyId, current.agencyName);
           await pool.query(
             `INSERT INTO notifications (id, agencyId, title, message, type, isRead, link, createdAt)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -1987,7 +2168,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
               genId("notif"),
               "admin",
               "Nouveau message Support",
-              `${current.agencyName || "Agence"} a répondu au ticket: "${current.subject}"`,
+              `${senderAgencyName} a répondu au ticket: "${current.subject}"`,
               "info",
               0,
               "/admin/support",

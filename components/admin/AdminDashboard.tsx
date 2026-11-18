@@ -1,13 +1,16 @@
 import { Users, FileText, CheckCircle2, Clock, Map, TrendingUp, Wallet, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useMemo } from "react";
 import { useAppStore } from "../../src/store/useAppStore";
 import { useLanguage } from "../../src/i18n/LanguageContext";
+import { buildAgenciesLookup, resolveRecordAgencyName } from "../../src/utils/agencyName";
 
 export function AdminDashboard() {
   const { language, t } = useLanguage();
   const isEn = language === "en";
 
   const { applications, agencies, transactions, rechargeRequests } = useAppStore();
+  const agenciesLookup = useMemo(() => buildAgenciesLookup(agencies || []), [agencies]);
   
   const today = new Date().toISOString().split("T")[0];
   const safeApps = applications || [];
@@ -135,7 +138,9 @@ export function AdminDashboard() {
                       <FileText className="w-5 h-5" />
                     </div>
                   <div>
-                    <div className="font-bold text-slate-900 text-sm">{(app.agencyName || "Agence").split('@')[0]}</div>
+                    <div className="font-bold text-slate-900 text-sm">
+                      {resolveRecordAgencyName(app, agenciesLookup, "Agence Partenaire")}
+                    </div>
                     <div className="text-xs font-medium text-slate-500 mt-0.5">
                       {isEn ? `Application ${app.serviceType} - ${app.travelerName}` : `Demande ${app.serviceType} - ${app.travelerName}`}
                     </div>

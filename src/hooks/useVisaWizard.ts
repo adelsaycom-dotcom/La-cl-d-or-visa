@@ -20,6 +20,7 @@ import {
 } from "../utils/fileUpload";
 import { scanPassportSmart } from "../utils/passportScanner";
 import { convertPdfPageToImage } from "../utils/pdfToImage";
+import { getAgencyDisplayName } from "../utils/agencyName";
 
 export interface AttachmentItem {
   id: string;
@@ -447,8 +448,8 @@ export function useVisaWizard() {
 
       const newApp: Application = {
         id: newAppId,
-        agencyId: auth.currentUser?.uid || "unknown",
-        agencyName: currentAgency?.agencyName || currentAgency?.name || auth.currentUser?.email || "Mon Agence B2B",
+        agencyId: currentAgency?.id || auth.currentUser?.uid || "unknown",
+        agencyName: getAgencyDisplayName(currentAgency, auth.currentUser?.email, "Agence Partenaire"),
         serviceType: resolveApplicationServiceType(selectedOption.type),
         country: selectedOption.destination,
         visaType: selectedOption.title,

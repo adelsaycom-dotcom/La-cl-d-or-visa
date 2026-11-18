@@ -22,6 +22,7 @@ import { parseConditionsList } from '../../src/utils/conditions';
 import { TablePagination } from '../common/TablePagination';
 import { escapeHtml } from '../../src/utils/sanitizeHtml';
 import { CountryFlag } from '../common/CountryFlag';
+import { getAgencyDisplayName } from '../../src/utils/agencyName';
 
 export default function StudyPrograms() {
   const { language } = useLanguage();
@@ -33,7 +34,8 @@ export default function StudyPrograms() {
   const catalogLoaded = useAppStore(state => state.catalogLoaded);
   const studyApplications = useAppStore(state => state.studyApplications);
   const addStudyApplication = useAppStore(state => state.addStudyApplication);
-  const currentAgencyId = auth.currentUser?.uid || 'unknown';
+  const currentAgency = useAppStore(state => state.currentAgency);
+  const currentAgencyId = currentAgency?.id || auth.currentUser?.uid || 'unknown';
 
   const [activeTab, setActiveTab] = useState<'programs' | 'my-applications'>('programs');
 
@@ -403,8 +405,8 @@ export default function StudyPrograms() {
         country: selectedProgram.country,
         university: selectedProgram.university,
         city: selectedProgram.city || '',
-        agencyId: auth.currentUser.uid,
-        agencyName: auth.currentUser.email || "Mon Agence Partenaire",
+        agencyId: currentAgency?.id || auth.currentUser.uid,
+        agencyName: getAgencyDisplayName(currentAgency, auth.currentUser.email, "Agence Partenaire"),
         studentName: formData.studentName.trim(),
         passportNumber: formData.passportNumber.toUpperCase().trim(),
         email: formData.email.trim(),
@@ -457,7 +459,7 @@ export default function StudyPrograms() {
     const safeCountry = escapeHtml(selectedProgram.country);
     const safeProgTitle = escapeHtml(selectedProgram.title);
     const safeProgType = escapeHtml(selectedProgram.type);
-    const safeAgency = escapeHtml(auth.currentUser?.email || "Mon Agence Partenaire");
+    const safeAgency = escapeHtml(getAgencyDisplayName(currentAgency, auth.currentUser?.email, "Agence Partenaire"));
     const safeDate = escapeHtml(new Date().toLocaleString());
     const safePrice = escapeHtml((selectedProgram.price || 0).toLocaleString());
     const docKeys = Object.keys(documents);

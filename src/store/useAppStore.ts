@@ -25,6 +25,7 @@ import { create } from "zustand";
 import { getFirestoreDb } from '../firebase';
 import { catalogService } from '../services/catalogService';
 import { apiFetch, getBackendMode } from '../services/apiClient';
+import { getAgencyDisplayName } from '../utils/agencyName';
 
 async function fs() {
   const [firestore, db] = await Promise.all([
@@ -1095,11 +1096,20 @@ export const useAppStore = create<AppState>()((set, get) => ({
       ]
     };
 
-    const sanitized = sanitizeFirestoreData(newStudyApp);
+    const resolvedStudyAgencyName = getAgencyDisplayName(
+      get().currentAgency,
+      application.agencyName,
+      "Agence Partenaire"
+    );
+
+    const sanitized = sanitizeFirestoreData({
+      ...newStudyApp,
+      agencyName: resolvedStudyAgencyName
+    });
     const mainAppData = sanitizeFirestoreData({
       id: appId,
       agencyId: application.agencyId,
-      agencyName: application.agencyName || 'Mon Agence',
+      agencyName: resolvedStudyAgencyName,
       serviceType: 'Etude',
       country: application.country || 'Destination Universitaire',
       visaType: `Visa Études - ${application.programTitle || 'Admission Universitaire'}`,
@@ -1134,7 +1144,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       id: notifAdminRef.id,
       agencyId: 'admin',
       title: 'Nouveau dossier Visa Études',
-      message: `${application.agencyName || 'Une agence'} a soumis un dossier d'études pour ${application.studentName} (${application.university || ''} - ${application.country || ''}).`,
+      message: `${resolvedStudyAgencyName} a soumis un dossier d'études pour ${application.studentName} (${application.university || ''} - ${application.country || ''}).`,
       type: 'info',
       read: false,
       createdAt: new Date().toISOString(),
@@ -1404,12 +1414,15 @@ export const useAppStore = create<AppState>()((set, get) => ({
         throw new Error("Solde insuffisant pour cette opération.");
       }
 
+      const resolvedAppAgencyName = getAgencyDisplayName(userData as Agency, application.agencyName, "Agence Partenaire");
+
       transaction.update(userRef, { balance: currentBalance - authoritativePrice });
       transaction.set(
         doc(db, 'applications', appId),
         sanitizeFirestoreData({
           ...application,
           id: appId,
+          agencyName: resolvedAppAgencyName,
           price: authoritativePrice
         })
       );
@@ -1419,7 +1432,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       transaction.set(txRef, {
         id: txRef.id,
         agencyId: application.agencyId,
-        agencyName: application.agencyName || userData.agencyName || '',
+        agencyName: resolvedAppAgencyName,
         amount: authoritativePrice,
         type: 'debit',
         status: 'completed',
@@ -1433,7 +1446,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         id: notifRef.id,
         agencyId: 'admin',
         title: 'Nouvelle demande de Visa',
-        message: `${application.agencyName || userData.agencyName || 'Une agence'} a soumis une demande pour ${application.travelerName || 'un client'}.`.slice(0, 580),
+        message: `${resolvedAppAgencyName} a soumis une demande pour ${application.travelerName || 'un client'}.`.slice(0, 580),
         type: 'info',
         read: false,
         createdAt: new Date().toISOString(),

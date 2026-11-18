@@ -203,6 +203,15 @@ async function startServer() {
           ],
           workerSrc: ["'self'", "blob:"],
           objectSrc: ["'self'", "blob:"],
+          frameSrc: [
+            "'self'",
+            "blob:",
+            "data:",
+            "https://maps.google.com",
+            "https://www.google.com",
+            "https://*.google.com",
+            "https://www.openstreetmap.org",
+          ],
           frameAncestors: [
             "'self'",
             "https://aistudio.google.com",

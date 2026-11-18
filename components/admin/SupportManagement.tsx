@@ -25,6 +25,7 @@ import {
   isTicketResolved,
   useSupportAttachmentUploader
 } from "../../src/hooks/useSupportChat";
+import { buildAgenciesLookup, resolveRecordAgencyName } from "../../src/utils/agencyName";
 
 const TICKETS_PAGE_SIZE = 12;
 
@@ -34,9 +35,20 @@ export function SupportManagement() {
   const toast = useToast();
 
   // Sélecteurs Zustand atomiques
-  const tickets = useAppStore((s) => s.supportTickets);
+  const rawTickets = useAppStore((s) => s.supportTickets);
+  const agencies = useAppStore((s) => s.agencies);
   const updateSupportTicket = useAppStore((s) => s.updateSupportTicket);
   const applications = useAppStore((s) => s.applications);
+
+  const agenciesLookup = useMemo(() => buildAgenciesLookup(agencies || []), [agencies]);
+  const tickets = useMemo(
+    () =>
+      rawTickets.map((t) => ({
+        ...t,
+        agencyName: resolveRecordAgencyName(t, agenciesLookup, "Agence Partenaire"),
+      })),
+    [rawTickets, agenciesLookup]
+  );
 
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
@@ -674,7 +686,9 @@ export function SupportManagement() {
                 <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
                   <div>
                     <span className="text-[10px] text-slate-400 font-bold block">Agence émettrice</span>
-                    <span className="font-bold text-slate-900">{viewDossierModal.agencyName || "Non spécifiée"}</span>
+                    <span className="font-bold text-slate-900">
+                      {resolveRecordAgencyName(viewDossierModal, agenciesLookup, "Agence Partenaire")}
+                    </span>
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-400 font-bold block">Passeport</span>

@@ -27,6 +27,7 @@ import {
   isTicketResolved,
   useSupportAttachmentUploader
 } from "../../src/hooks/useSupportChat";
+import { getAgencyDisplayName } from "../../src/utils/agencyName";
 
 const TICKETS_PAGE_SIZE = 12;
 
@@ -188,8 +189,8 @@ export function AgencySupport() {
     const linkedApp = selectedAppId !== "none" ? applicationsById.get(selectedAppId) : undefined;
 
     const ticketData: Omit<SupportTicket, "id" | "createdAt"> = {
-      agencyId: auth.currentUser?.uid || currentAgency?.id || "agency-default",
-      agencyName: currentAgency?.agencyName || currentAgency?.name || auth.currentUser?.email || "Mon Agence",
+      agencyId: currentAgency?.id || auth.currentUser?.uid || "agency-default",
+      agencyName: getAgencyDisplayName(currentAgency, auth.currentUser?.email, "Agence Partenaire"),
       subject: subject.trim(),
       description: description.trim(),
       status: "OPEN",

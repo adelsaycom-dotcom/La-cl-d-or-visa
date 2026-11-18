@@ -19,6 +19,7 @@ import { useLanguage } from "../../src/i18n/LanguageContext";
 import { getFirestoreDb } from "../../src/firebase";
 import { useToast } from "@/components/ui/toast";
 import { getBackendMode, apiFetch } from "../../src/services/apiClient";
+import { getAgencyDisplayName } from "../../src/utils/agencyName";
 
 export function AgencyManagement() {
   const { language, t } = useLanguage();
@@ -89,7 +90,7 @@ export function AgencyManagement() {
   const filteredAgencies = useMemo(() => {
     return agencies.filter(agency => {
       const q = searchTerm.toLowerCase().trim();
-      const name = (agency.agencyName || agency.name || "").toLowerCase();
+      const name = getAgencyDisplayName(agency, "", "").toLowerCase();
       const email = (agency.email || "").toLowerCase();
       const phone = (agency.phone || "").toLowerCase();
       const rc = (agency.rc || agency.rcNumber || "").toLowerCase();
@@ -327,7 +328,7 @@ export function AgencyManagement() {
 
       setActionNotice({
         type: "success",
-        text: `La suspension de l'agence « ${target.agencyName || target.name || 'Agence'} » a été levée avec succès. Le compte est maintenant actif.`
+        text: `La suspension de l'agence « ${getAgencyDisplayName(target, "", "Agence")} » a été levée avec succès. Le compte est maintenant actif.`
       });
       setTimeout(() => setActionNotice(null), 5000);
     } catch (err: any) {
@@ -512,7 +513,7 @@ export function AgencyManagement() {
                   <TableRow key={agency.id} className="hover:bg-slate-50/70 transition-colors">
                     <TableCell className="py-3.5 px-4">
                       <div className="font-bold text-slate-900 text-sm">
-                        {agency.agencyName || agency.name || "Agence Sans Nom"}
+                        {getAgencyDisplayName(agency, "", agency.email || "Agence Partenaire")}
                       </div>
                       <div className="text-[10px] text-slate-400 font-mono mt-0.5">
                         ID: #{agency.id.substring(0, 10)}
@@ -658,7 +659,7 @@ export function AgencyManagement() {
                     {getStatusBadge(selectedAgency)}
                   </div>
                   <h3 className="text-2xl font-black tracking-tight">
-                    {selectedAgency.agencyName || selectedAgency.name || "Agence Partenaire"}
+                    {getAgencyDisplayName(selectedAgency, "", selectedAgency.email || "Agence Partenaire")}
                   </h3>
                   <p className="text-xs text-white/80 mt-0.5">
                     Gérant : {selectedAgency.managerName || "Non spécifié"} • {selectedAgency.email} • {selectedAgency.phone || "N/A"}

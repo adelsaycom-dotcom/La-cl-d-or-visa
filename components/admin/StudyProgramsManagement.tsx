@@ -24,6 +24,7 @@ import { getCountryFlag } from '../../src/utils/flags';
 import { useToast } from '../ui/toast';
 import { TablePagination } from '../common/TablePagination';
 import { CountryFlag } from '../common/CountryFlag';
+import { buildAgenciesLookup, resolveRecordAgencyName } from '../../src/utils/agencyName';
 
 // Documents types fréquemment demandés par les universités
 const STANDARD_DOCUMENTS = [
@@ -46,6 +47,7 @@ export default function StudyProgramsManagement() {
   const { 
     studyPrograms, 
     studyApplications, 
+    agencies,
     addStudyProgram, 
     updateStudyProgram, 
     deleteStudyProgram, 
@@ -53,6 +55,8 @@ export default function StudyProgramsManagement() {
     updateStudyApplicationPayment,
     updateStudyApplication
   } = useAppStore();
+
+  const agenciesLookup = useMemo(() => buildAgenciesLookup(agencies || []), [agencies]);
 
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<'programs' | 'applications'>('programs');
@@ -196,17 +200,19 @@ export default function StudyProgramsManagement() {
     const search = (appSearchTerm || '').toLowerCase();
     return (studyApplications || []).filter(app => {
       if (!app) return false;
+      const resolvedAgency = resolveRecordAgencyName(app, agenciesLookup, 'Agence Partenaire');
       const matchCountry = appCountryFilter === 'all' || (app.country && app.country.toLowerCase() === appCountryFilter.toLowerCase());
       const matchUniv = appUnivFilter === 'all' || app.university === appUnivFilter;
       const matchStatus = appStatusFilter === 'all' || app.status === appStatusFilter;
       const matchSearch = 
         (app.studentName || '').toLowerCase().includes(search) ||
         (app.passportNumber || '').toLowerCase().includes(search) ||
+        resolvedAgency.toLowerCase().includes(search) ||
         (app.agencyName || '').toLowerCase().includes(search) ||
         (app.id || '').toLowerCase().includes(search);
       return matchCountry && matchUniv && matchStatus && matchSearch;
     });
-  }, [studyApplications, appCountryFilter, appUnivFilter, appStatusFilter, appSearchTerm]);
+  }, [studyApplications, agenciesLookup, appCountryFilter, appUnivFilter, appStatusFilter, appSearchTerm]);
 
   const appPageSize = 8;
   const appTotalPages = Math.max(1, Math.ceil(filteredApplications.length / appPageSize));
@@ -924,7 +930,7 @@ export default function StudyProgramsManagement() {
 
                         <td className="py-4 px-5">
                           <span className="font-bold text-slate-800 block">
-                            {app.agencyName || 'Agence B2B'}
+                            {resolveRecordAgencyName(app, agenciesLookup, 'Agence Partenaire')}
                           </span>
                           <span className="text-[11px] text-slate-400 block">
                             {app.email}
@@ -1453,7 +1459,7 @@ export default function StudyProgramsManagement() {
                   <p className="text-xs text-white/80 mt-1 flex flex-wrap items-center gap-2">
                     <span><strong>Université :</strong> {selectedApp.university || selectedApp.programTitle}</span>
                     <span>•</span>
-                    <span><strong>Agence partenaire :</strong> {selectedApp.agencyName}</span>
+                    <span><strong>Agence partenaire :</strong> {resolveRecordAgencyName(selectedApp, agenciesLookup, 'Agence Partenaire')}</span>
                   </p>
                 </div>
                 <button

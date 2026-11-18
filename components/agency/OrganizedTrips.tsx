@@ -16,6 +16,7 @@ import { useLanguage } from "../../src/i18n/LanguageContext";
 import { TablePagination } from "../common/TablePagination";
 import { escapeHtml } from "../../src/utils/sanitizeHtml";
 import { CountryFlag } from "../common/CountryFlag";
+import { getAgencyDisplayName } from "../../src/utils/agencyName";
 
 const formatSafeDate = (raw?: string, locale: string = 'fr-FR') => {
   if (!raw) return '—';
@@ -33,7 +34,8 @@ export default function OrganizedTrips() {
   const tripReservations = useAppStore(state => state.tripReservations);
   const addTripReservation = useAppStore(state => state.addTripReservation);
   const agencyBalance = useAppStore(state => state.agencyBalance);
-  const currentAgencyId = auth.currentUser?.uid || 'agency_1';
+  const currentAgency = useAppStore(state => state.currentAgency);
+  const currentAgencyId = currentAgency?.id || auth.currentUser?.uid || 'agency_1';
 
   const [activeTab, setActiveTab] = useState<'catalog' | 'my-reservations'>('catalog');
   const [searchTerm, setSearchTerm] = useState('');
@@ -142,7 +144,7 @@ export default function OrganizedTrips() {
       const created = await addTripReservation({
         tripId: selectedTrip.id,
         agencyId: currentAgencyId,
-        agencyName: auth.currentUser?.email || 'Mon Agence B2B',
+        agencyName: getAgencyDisplayName(currentAgency, auth.currentUser?.email, "Agence Partenaire"),
         clientName,
         clientEmail,
         clientPhone,

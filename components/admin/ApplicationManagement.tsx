@@ -15,6 +15,7 @@ import { DocumentPreviewModal, PreviewDocData } from "../common/DocumentPreviewM
 import { useApplicationFilters } from "../../src/hooks/useApplicationFilters";
 import { TablePagination } from "../common/TablePagination";
 import { useToast } from "@/components/ui/toast";
+import { buildAgenciesLookup, resolveRecordAgencyName } from "../../src/utils/agencyName";
 
 export function ApplicationManagement() {
   const { language, t } = useLanguage();
@@ -22,8 +23,19 @@ export function ApplicationManagement() {
   const toast = useToast();
 
   const applications = useAppStore(state => state.applications);
+  const agencies = useAppStore(state => state.agencies);
   const updateApplication = useAppStore(state => state.updateApplication);
   const addApplicationTimelineEntry = useAppStore(state => state.addApplicationTimelineEntry);
+
+  const agenciesLookup = useMemo(() => buildAgenciesLookup(agencies), [agencies]);
+  const resolvedApplications = useMemo(
+    () =>
+      applications.map((app) => ({
+        ...app,
+        agencyName: resolveRecordAgencyName(app, agenciesLookup, "Agence Partenaire"),
+      })),
+    [applications, agenciesLookup]
+  );
 
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   
@@ -41,7 +53,7 @@ export function ApplicationManagement() {
     filteredApplications,
     statusCounts
   } = useApplicationFilters({
-    applications,
+    applications: resolvedApplications,
     pageSize: 8
   });
 
@@ -52,8 +64,8 @@ export function ApplicationManagement() {
 
   // Recherche optimisée du dossier sélectionné
   const selectedApp = useMemo(() => {
-    return applications.find((a) => a.id === selectedAppId);
-  }, [applications, selectedAppId]);
+    return resolvedApplications.find((a) => a.id === selectedAppId);
+  }, [resolvedApplications, selectedAppId]);
 
   const getStatusBadge = useCallback((status: string) => {
     switch (status) {

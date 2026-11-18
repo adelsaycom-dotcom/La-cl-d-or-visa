@@ -79,9 +79,10 @@ export function LocationSection() {
               {/* Google Maps Embed iframe */}
               <iframe
                 title="Localisation La Clé d'Or Visa"
-                src="https://maps.google.com/maps?q=36.7465302,3.1901569&hl=fr&z=16&output=embed"
+                src="https://www.google.com/maps?q=36.7465302,3.1901569&hl=fr&z=16&output=embed"
                 className="w-full h-full border-0 filter saturate-105"
                 loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
                 allowFullScreen
               />
 

@@ -11,6 +11,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { TablePagination } from '../common/TablePagination';
 import { CountryFlag } from '../common/CountryFlag';
+import { buildAgenciesLookup, resolveRecordAgencyName } from '../../src/utils/agencyName';
 
 export default function OrganizedTripsManagement() {
   const { language, t } = useLanguage();
@@ -18,6 +19,8 @@ export default function OrganizedTripsManagement() {
 
   const organizedTrips = useAppStore(state => state.organizedTrips);
   const tripReservations = useAppStore(state => state.tripReservations);
+  const agencies = useAppStore(state => state.agencies);
+  const agenciesLookup = useMemo(() => buildAgenciesLookup(agencies || []), [agencies]);
   const addOrganizedTrip = useAppStore(state => state.addOrganizedTrip);
   const updateOrganizedTrip = useAppStore(state => state.updateOrganizedTrip);
   const deleteOrganizedTrip = useAppStore(state => state.deleteOrganizedTrip);
@@ -497,7 +500,9 @@ export default function OrganizedTripsManagement() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="font-bold text-slate-800 text-lg">{res.clientName}</span>
-                        <span className="text-sm font-medium text-slate-500">({res.agencyName || 'Agence'})</span>
+                        <span className="text-sm font-bold text-[#7B1B38] bg-[#7B1B38]/10 px-2.5 py-0.5 rounded-full">
+                          {resolveRecordAgencyName(res, agenciesLookup, 'Agence Partenaire')}
+                        </span>
                         <Badge className={
                           res.status === 'confirmed' ? 'bg-green-500' : 
                           res.status === 'cancelled' ? 'bg-red-500' : 'bg-amber-500'

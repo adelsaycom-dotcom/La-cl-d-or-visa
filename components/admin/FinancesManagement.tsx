@@ -22,6 +22,7 @@ import {
   extractErrorMessage
 } from "../../src/utils/financeHelpers";
 import { getBackendMode, apiFetch } from "../../src/services/apiClient";
+import { buildAgenciesLookup, getAgencyDisplayName, resolveRecordAgencyName } from "../../src/utils/agencyName";
 
 const PAGE_SIZE = 10;
 
@@ -34,6 +35,7 @@ export function FinancesManagement() {
   const rechargeRequests = useAppStore((s) => s.rechargeRequests);
   const transactions = useAppStore((s) => s.transactions);
   const agencies = useAppStore((s) => s.agencies);
+  const agenciesLookup = useMemo(() => buildAgenciesLookup(agencies || []), [agencies]);
 
   const [activeTab, setActiveTab] = useState<"pending" | "history" | "manual">("pending");
   const [selectedReq, setSelectedReq] = useState<RechargeRequest | null>(null);
@@ -462,7 +464,9 @@ export function FinancesManagement() {
                           <TableCell className="text-sm font-medium text-slate-600 whitespace-nowrap">
                             {new Date(req.date || req.createdAt).toLocaleDateString()}
                           </TableCell>
-                          <TableCell className="font-bold text-slate-900">{req.agencyName}</TableCell>
+                          <TableCell className="font-bold text-slate-900">
+                            {resolveRecordAgencyName(req, agenciesLookup, "Agence Partenaire")}
+                          </TableCell>
                           <TableCell className="font-mono font-bold text-emerald-600 whitespace-nowrap">
                             {req.amount.toLocaleString()} DZD
                           </TableCell>
@@ -471,7 +475,7 @@ export function FinancesManagement() {
                               <button
                                 type="button"
                                 className="inline-flex items-center gap-1.5 text-xs text-blue-600 font-bold hover:underline cursor-pointer bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100"
-                                onClick={() => handleOpenReceipt(req.note, req.agencyName)}
+                                onClick={() => handleOpenReceipt(req.note, resolveRecordAgencyName(req, agenciesLookup, "Agence Partenaire"))}
                               >
                                 <FileText className="w-3.5 h-3.5" /> {isEn ? "View Receipt" : "Voir Justificatif"}
                               </button>
@@ -539,7 +543,7 @@ export function FinancesManagement() {
                     <SelectContent>
                       {agencies.map((a) => (
                         <SelectItem key={a.id} value={a.id}>
-                          {a.agencyName || a.name || a.email} (Solde : {(a.balance || 0).toLocaleString()} DZD)
+                          {getAgencyDisplayName(a)} (Solde : {(a.balance || 0).toLocaleString()} DZD)
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -621,7 +625,9 @@ export function FinancesManagement() {
                           <TableCell className="text-sm font-medium text-slate-600 whitespace-nowrap">
                             {new Date(tx.date).toLocaleDateString()} {new Date(tx.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </TableCell>
-                          <TableCell className="font-bold text-slate-900">{tx.agencyName || (isEn ? "Unknown" : "Inconnue")}</TableCell>
+                          <TableCell className="font-bold text-slate-900">
+                            {resolveRecordAgencyName(tx, agenciesLookup, isEn ? "Unknown" : "Agence Partenaire")}
+                          </TableCell>
                           <TableCell>
                             {tx.type === "credit" ? (
                               <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">{isEn ? "Credit (+)" : "Crédit (+)"}</Badge>
@@ -664,7 +670,9 @@ export function FinancesManagement() {
                   <Check className="w-6 h-6 text-white" />
                 </div>
                 <h3 className="text-2xl font-black">{isEn ? "Validate Top-up" : "Valider la Recharge"}</h3>
-                <p className="text-emerald-100 font-medium">{selectedReq.agencyName}</p>
+                <p className="text-emerald-100 font-medium">
+                  {resolveRecordAgencyName(selectedReq, agenciesLookup, "Agence Partenaire")}
+                </p>
               </div>
 
               <div className="p-6 space-y-6">
@@ -675,7 +683,7 @@ export function FinancesManagement() {
                       <ProtectedImage
                         src={selectedReq.note}
                         className="max-h-32 object-contain mx-auto rounded-lg border border-slate-200 cursor-pointer hover:opacity-80 transition"
-                        onClick={() => handleOpenReceipt(selectedReq.note, selectedReq.agencyName)}
+                        onClick={() => handleOpenReceipt(selectedReq.note, resolveRecordAgencyName(selectedReq, agenciesLookup, "Agence Partenaire"))}
                         alt="Reçu"
                       />
                     </div>
@@ -727,7 +735,7 @@ export function FinancesManagement() {
               <div className="bg-red-600 p-5 text-white">
                 <h3 className="text-xl font-black">{isEn ? "Reject Top-up Request" : "Rejeter la demande de recharge"}</h3>
                 <p className="text-red-100 text-sm mt-1">
-                  {rejectTarget.agencyName} — {rejectTarget.amount.toLocaleString()} DZD
+                  {resolveRecordAgencyName(rejectTarget, agenciesLookup, "Agence Partenaire")} — {rejectTarget.amount.toLocaleString()} DZD
                 </p>
               </div>
               <div className="p-6 space-y-4">

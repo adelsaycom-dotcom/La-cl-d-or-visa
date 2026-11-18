@@ -23,6 +23,7 @@ import {
   sortTransactionsDesc,
   extractErrorMessage
 } from "../../src/utils/financeHelpers";
+import { getAgencyDisplayName } from "../../src/utils/agencyName";
 
 const PAGE_SIZE = 10;
 const MAX_RECEIPT_SIZE_BYTES = 5 * 1024 * 1024;
@@ -175,8 +176,8 @@ export function AgencyWallet() {
       }
 
       const payload = {
-        agencyId: auth.currentUser?.uid || "mock-id",
-        agencyName: currentAgency?.agencyName || currentAgency?.name || auth.currentUser?.email || "Agence",
+        agencyId: currentAgency?.id || auth.currentUser?.uid || "mock-id",
+        agencyName: getAgencyDisplayName(currentAgency, auth.currentUser?.email, "Agence Partenaire"),
         amount: parsedAmount,
         note: noteValue,
         status: "Pending",
