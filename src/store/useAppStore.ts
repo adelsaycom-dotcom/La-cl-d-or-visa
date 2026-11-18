@@ -322,6 +322,8 @@ export interface AppState {
   clearData: () => void;
 }
 
+let pendingMysqlRefreshPromise: Promise<void> | null = null;
+
 export const useAppStore = create<AppState>()((set, get) => ({
   authReady: false,
   authUserUid: null,
@@ -335,76 +337,126 @@ export const useAppStore = create<AppState>()((set, get) => ({
   setQuotaExceeded: (exceeded) => set({ quotaExceeded: exceeded }),
 
   refreshAllFromMysql: async (force = false) => {
-    const mode = await getBackendMode();
-    if (mode !== 'mysql') return;
+    if (pendingMysqlRefreshPromise) {
+      return pendingMysqlRefreshPromise;
+    }
 
-    const currentState = get();
-    let latestCatalogVersion: string | null = null;
+    pendingMysqlRefreshPromise = (async () => {
+      const mode = await getBackendMode();
+      if (mode !== 'mysql') return;
 
-    if (!force && currentState.lastMysqlSyncVersion) {
-      try {
-        const ver = await apiFetch('/api/db/sync-version');
-        if (ver?.syncVersion && ver.syncVersion === currentState.lastMysqlSyncVersion) {
-          return;
+      const currentState = get();
+      let latestCatalogVersion: string | null = null;
+
+      if (!force && currentState.lastMysqlSyncVersion) {
+        try {
+          const ver = await apiFetch('/api/db/sync-version');
+          if (ver?.syncVersion && ver.syncVersion === currentState.lastMysqlSyncVersion) {
+            return;
+          }
+          latestCatalogVersion = ver?.catalogVersion || null;
+        } catch {
+          // En cas d'erreur transitoire, poursuivre avec le bootstrap complet
         }
-        latestCatalogVersion = ver?.catalogVersion || null;
-      } catch {
-        // En cas d'erreur transitoire, poursuivre avec le bootstrap complet
       }
-    }
 
-    const includeCatalog =
-      force ||
-      !currentState.catalogLoaded ||
-      !currentState.lastMysqlCatalogVersion ||
-      (latestCatalogVersion !== null && latestCatalogVersion !== currentState.lastMysqlCatalogVersion);
+      const cachedCatalogSnapshot = catalogService.getCachedCatalogSnapshot();
+      const knownCatalogVersion =
+        currentState.lastMysqlCatalogVersion ||
+        cachedCatalogSnapshot?.catalogVersion ||
+        null;
 
-    const boot = await apiFetch(`/api/db/bootstrap?includeCatalog=${includeCatalog ? '1' : '0'}`);
-    const agency = boot.currentAgency || null;
-    const roleRaw = String(boot.role || agency?.role || '').trim().toLowerCase();
-    const resolvedRole: 'admin' | 'agency' | null =
-      roleRaw === 'admin' ? 'admin' : roleRaw === 'agency' ? 'agency' : null;
+      const mustIncludeCatalog =
+        force ||
+        (!currentState.catalogLoaded && !cachedCatalogSnapshot) ||
+        !knownCatalogVersion ||
+        (latestCatalogVersion !== null && latestCatalogVersion !== knownCatalogVersion);
 
-    if (boot.restricted) {
-      set({
-        currentAgency: agency,
-        authRole: resolvedRole,
-        agencyBalance: Number(agency?.balance || 0),
-        b2cMarginPercent: typeof agency?.b2cMarginPercent === 'number' ? agency.b2cMarginPercent : 15,
-        databaseMode: 'mysql',
-        quotaExceeded: false
-      });
-      return;
-    }
+      const params = new URLSearchParams();
+      if (!mustIncludeCatalog) {
+        params.set('includeCatalog', '0');
+      } else if (!force && knownCatalogVersion) {
+        params.set('catalogVersion', knownCatalogVersion);
+      }
 
-    set((state) => ({
-      currentAgency: agency,
-      authRole: resolvedRole,
-      agencyBalance: Number(agency?.balance || 0),
-      b2cMarginPercent: typeof agency?.b2cMarginPercent === 'number' ? agency.b2cMarginPercent : 15,
-      ...(boot.catalogOmitted
-        ? {}
-        : {
+      const qs = params.toString();
+      const boot = await apiFetch(`/api/db/bootstrap${qs ? `?${qs}` : ''}`);
+      const agency = boot.currentAgency || null;
+      const roleRaw = String(boot.role || agency?.role || '').trim().toLowerCase();
+      const resolvedRole: 'admin' | 'agency' | null =
+        roleRaw === 'admin' ? 'admin' : roleRaw === 'agency' ? 'agency' : null;
+
+      if (boot.restricted) {
+        set({
+          currentAgency: agency,
+          authRole: resolvedRole,
+          agencyBalance: Number(agency?.balance || 0),
+          b2cMarginPercent: typeof agency?.b2cMarginPercent === 'number' ? agency.b2cMarginPercent : 15,
+          databaseMode: 'mysql',
+          quotaExceeded: false
+        });
+        return;
+      }
+
+      if (!boot.catalogOmitted) {
+        catalogService.seedFromBootstrap(
+          {
             countries: boot.countries || [],
             services: boot.services || [],
             organizedTrips: boot.organizedTrips || [],
             studyPrograms: boot.studyPrograms || [],
-          }),
-      applications: boot.applications || [],
-      studyApplications: boot.studyApplications || [],
-      tripReservations: boot.tripReservations || [],
-      transactions: boot.transactions || [],
-      rechargeRequests: boot.rechargeRequests || [],
-      supportTickets: boot.supportTickets || [],
-      notifications: boot.notifications || [],
-      agencies: boot.agencies || [],
-      catalogLoading: false,
-      catalogLoaded: true,
-      databaseMode: 'mysql',
-      lastMysqlSyncVersion: boot.syncVersion || state.lastMysqlSyncVersion,
-      lastMysqlCatalogVersion: boot.catalogVersion || state.lastMysqlCatalogVersion,
-      quotaExceeded: false
-    }));
+          },
+          boot.catalogVersion || null
+        );
+      }
+
+      set((state) => {
+        const shouldFillFromCache =
+          boot.catalogOmitted &&
+          (!state.catalogLoaded || state.countries.length === 0) &&
+          cachedCatalogSnapshot !== null;
+
+        return {
+          currentAgency: agency,
+          authRole: resolvedRole,
+          agencyBalance: Number(agency?.balance || 0),
+          b2cMarginPercent: typeof agency?.b2cMarginPercent === 'number' ? agency.b2cMarginPercent : 15,
+          ...(boot.catalogOmitted
+            ? shouldFillFromCache
+              ? {
+                  countries: (cachedCatalogSnapshot!.countries || []) as any,
+                  services: (cachedCatalogSnapshot!.services || []) as any,
+                  organizedTrips: (cachedCatalogSnapshot!.organizedTrips || []) as any,
+                  studyPrograms: (cachedCatalogSnapshot!.studyPrograms || []) as any,
+                }
+              : {}
+            : {
+                countries: boot.countries || [],
+                services: boot.services || [],
+                organizedTrips: boot.organizedTrips || [],
+                studyPrograms: boot.studyPrograms || [],
+              }),
+          applications: boot.applications || [],
+          studyApplications: boot.studyApplications || [],
+          tripReservations: boot.tripReservations || [],
+          transactions: boot.transactions || [],
+          rechargeRequests: boot.rechargeRequests || [],
+          supportTickets: boot.supportTickets || [],
+          notifications: boot.notifications || [],
+          agencies: boot.agencies || [],
+          catalogLoading: false,
+          catalogLoaded: true,
+          databaseMode: 'mysql',
+          lastMysqlSyncVersion: boot.syncVersion || state.lastMysqlSyncVersion,
+          lastMysqlCatalogVersion: boot.catalogVersion || state.lastMysqlCatalogVersion || knownCatalogVersion,
+          quotaExceeded: false
+        };
+      });
+    })().finally(() => {
+      pendingMysqlRefreshPromise = null;
+    });
+
+    return pendingMysqlRefreshPromise;
   },
 
   refreshCatalog: async (force = true) => {
@@ -1525,7 +1577,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }
   },
   clearData: () => {
-    catalogService.invalidateCache();
     set({
       authReady: true,
       authUserUid: null,

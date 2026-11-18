@@ -129,7 +129,7 @@ async function fetchAuthoritativeAgencyName(
     const emailLookup = cleanAgencyCandidate(fallbackEmail) || (typeof candidateName === "string" && isEmailLike(candidateName) ? candidateName.trim() : "");
     if (emailLookup) {
       const [rows] = await connOrPool.query(
-        "SELECT id, email, name, agencyName, companyName, managerName, rawData FROM users WHERE LOWER(email) = ? LIMIT 1",
+        "SELECT id, email, name, agencyName, companyName, managerName, rawData FROM users WHERE email = ? LIMIT 1",
         [emailLookup.toLowerCase()]
       );
       if (Array.isArray(rows) && rows.length > 0) {
@@ -465,21 +465,33 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
 
   router.use(ensureMysql);
 
-  const getSyncVersions = async (pool: ReturnType<typeof getMysqlPool>, uid: string, effectiveAdmin: boolean) => {
+  const getCatalogVersionOnly = async (pool: ReturnType<typeof getMysqlPool>) => {
+    const [catAgg] = await pool.query<any[]>(`
+      SELECT
+        CONCAT_WS('|',
+          (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM countries),
+          (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM services),
+          (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM organized_trips),
+          (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM study_programs)
+        ) AS ver
+    `);
+    return String(catAgg?.[0]?.ver || "");
+  };
+
+  const getSyncVersions = async (
+    pool: ReturnType<typeof getMysqlPool>,
+    uid: string,
+    effectiveAdmin: boolean,
+    precomputedCatalogVersion?: string
+  ) => {
     const [
-      [catAgg],
+      catalogVersion,
       [userAgg],
       [opsAgg],
     ] = await Promise.all([
-      pool.query<any[]>(`
-        SELECT
-          CONCAT_WS('|',
-            (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM countries),
-            (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM services),
-            (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM organized_trips),
-            (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM study_programs)
-          ) AS ver
-      `),
+      precomputedCatalogVersion !== undefined
+        ? Promise.resolve(precomputedCatalogVersion)
+        : getCatalogVersionOnly(pool),
       effectiveAdmin
         ? pool.query<any[]>("SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), ''), ':', COALESCE(SUM(balance), 0)) AS ver FROM users")
         : pool.query<any[]>("SELECT CONCAT(COALESCE(updatedAt, ''), ':', COALESCE(balance, 0), ':', COALESCE(status, '')) AS ver FROM users WHERE id = ? LIMIT 1", [uid]),
@@ -508,7 +520,6 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
           `, [uid, uid, uid, uid, uid, uid, uid]),
     ]);
 
-    const catalogVersion = String(catAgg?.[0]?.ver || "");
     const userVer = String(userAgg?.[0]?.ver || "");
     const opsVer = String(opsAgg?.[0]?.ver || "");
     return {
@@ -528,15 +539,18 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
         [serviceRows],
         [tripRows],
         [studyRows],
+        catalogVersion,
       ] = await Promise.all([
         pool.query<any[]>("SELECT * FROM countries ORDER BY name ASC"),
         pool.query<any[]>("SELECT * FROM services ORDER BY updatedAt DESC"),
         pool.query<any[]>("SELECT * FROM organized_trips ORDER BY createdAt DESC"),
         pool.query<any[]>("SELECT * FROM study_programs ORDER BY createdAt DESC"),
+        getCatalogVersionOnly(pool),
       ]);
 
       res.setHeader("Cache-Control", "no-cache");
       return res.json({
+        catalogVersion,
         countries: countryRows.map(mapCountryRow),
         services: serviceRows.map(mapServiceRow),
         organizedTrips: tripRows.map(mapTripRow),
@@ -558,7 +572,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       const pool = getMysqlPool();
       let [rows] = await pool.query<any[]>("SELECT * FROM users WHERE id = ? LIMIT 1", [uid]);
       if (rows.length === 0 && email) {
-        [rows] = await pool.query<any[]>("SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1", [email]);
+        [rows] = await pool.query<any[]>("SELECT * FROM users WHERE email = ? LIMIT 1", [email]);
       }
       if (rows.length > 0) {
         const userObj = mapUserRow(rows[0])!;
@@ -646,7 +660,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       if (!effectiveAdmin) {
         let [uRows] = await pool.query<any[]>("SELECT role FROM users WHERE id = ? LIMIT 1", [uid]);
         if (uRows.length === 0 && email) {
-          [uRows] = await pool.query<any[]>("SELECT role FROM users WHERE LOWER(email) = ? LIMIT 1", [email]);
+          [uRows] = await pool.query<any[]>("SELECT role FROM users WHERE email = ? LIMIT 1", [email]);
         }
         if (uRows.length > 0 && String(uRows[0].role || "").toLowerCase() === "admin") {
           effectiveAdmin = true;
@@ -666,12 +680,18 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       const uid = req.user!.uid;
       const email = (req.user!.email || "").toLowerCase();
       const isAdmin = Boolean(req.user!.isAdmin);
-      const includeCatalog = req.query.includeCatalog !== "0";
+      const explicitSkipCatalog = req.query.includeCatalog === "0";
+      const clientCatalogVersion = typeof req.query.catalogVersion === "string" ? req.query.catalogVersion : "";
       const pool = getMysqlPool();
 
-      let [userRows] = await pool.query<any[]>("SELECT * FROM users WHERE id = ? LIMIT 1", [uid]);
+      const [[userRowsById], precomputedCatalogVersion] = await Promise.all([
+        pool.query<any[]>("SELECT * FROM users WHERE id = ? LIMIT 1", [uid]),
+        !explicitSkipCatalog && clientCatalogVersion ? getCatalogVersionOnly(pool) : Promise.resolve(undefined),
+      ]);
+
+      let userRows = userRowsById;
       if (userRows.length === 0 && email) {
-        [userRows] = await pool.query<any[]>("SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1", [email]);
+        [userRows] = await pool.query<any[]>("SELECT * FROM users WHERE email = ? LIMIT 1", [email]);
       }
       let currentUser: Record<string, any> | null =
         userRows.length > 0 ? mapUserRow(userRows[0]) : null;
@@ -697,13 +717,17 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       const effectiveAdmin = isAdmin || String(currentUser.role || "").toLowerCase() === "admin";
       const normalizedStatus = String(currentUser.status || "ACTIVE").toUpperCase();
 
-      if (!effectiveAdmin && normalizedStatus === "PENDING") {
+      if (!effectiveAdmin && (normalizedStatus === "PENDING" || normalizedStatus === "REJECTED")) {
         return res.json({
           currentAgency: currentUser,
           role: "agency",
           restricted: true,
         });
       }
+
+      const includeCatalog =
+        !explicitSkipCatalog &&
+        !(clientCatalogVersion && precomputedCatalogVersion !== undefined && clientCatalogVersion === precomputedCatalogVersion);
 
       const [
         [countryRows],
@@ -771,7 +795,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
         effectiveAdmin
           ? pool.query<any[]>("SELECT * FROM users ORDER BY createdAt DESC")
           : Promise.resolve([[] as any[]]),
-        getSyncVersions(pool, uid, effectiveAdmin),
+        getSyncVersions(pool, uid, effectiveAdmin, precomputedCatalogVersion),
       ]);
 
       const mappedAgencies = effectiveAdmin ? agencyRows.map(mapUserRow).filter(Boolean) as any[] : [];

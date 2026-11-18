@@ -393,7 +393,7 @@ export async function initMysqlDatabase(): Promise<boolean> {
       pool = mysql.createPool({
         uri: cfg.uri,
         waitForConnections: true,
-        connectionLimit: 5,
+        connectionLimit: 12,
         queueLimit: 0,
         connectTimeout: 10000,
         enableKeepAlive: true,
@@ -408,7 +408,7 @@ export async function initMysqlDatabase(): Promise<boolean> {
         password: cfg.password,
         database: cfg.database,
         waitForConnections: true,
-        connectionLimit: 5,
+        connectionLimit: 12,
         queueLimit: 0,
         connectTimeout: 10000,
         enableKeepAlive: true,

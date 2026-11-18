@@ -15,6 +15,7 @@ interface CacheEntry<T> {
 }
 
 interface CatalogBundle {
+  catalogVersion?: string;
   countries: Country[];
   services: PrestationService[];
   organizedTrips: OrganizedTrip[];
@@ -23,6 +24,7 @@ interface CatalogBundle {
 
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const STORAGE_KEY_PREFIX = 'cldor_cat_v2_';
+const VERSION_STORAGE_KEY = `${STORAGE_KEY_PREFIX}version`;
 
 const memoryCache = {
   countries: null as CacheEntry<Country[]> | null,
@@ -31,6 +33,7 @@ const memoryCache = {
   studyPrograms: null as CacheEntry<StudyProgram[]> | null,
 };
 
+let memoryCatalogVersion: CacheEntry<string> | null = null;
 let pendingMysqlCatalogFetch: Promise<CatalogBundle> | null = null;
 
 function isCacheValid<T>(entry: CacheEntry<T> | null): boolean {
@@ -65,6 +68,37 @@ function writePersistentCache<T>(key: keyof typeof memoryCache, data: T[]) {
   }
 }
 
+function writeCatalogVersion(version?: string | null) {
+  if (!version) return;
+  memoryCatalogVersion = { data: version, timestamp: Date.now() };
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(VERSION_STORAGE_KEY, JSON.stringify(memoryCatalogVersion));
+    }
+  } catch {
+    // Ignorer
+  }
+}
+
+function readCatalogVersion(): string | null {
+  if (isCacheValid(memoryCatalogVersion)) return memoryCatalogVersion!.data;
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = window.localStorage.getItem(VERSION_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as CacheEntry<string>;
+        if (parsed && typeof parsed.data === 'string' && Date.now() - parsed.timestamp < CACHE_TTL_MS) {
+          memoryCatalogVersion = parsed;
+          return parsed.data;
+        }
+      }
+    }
+  } catch {
+    // Ignorer
+  }
+  return null;
+}
+
 async function fetchMysqlCatalogBundle(): Promise<CatalogBundle> {
   if (pendingMysqlCatalogFetch) return pendingMysqlCatalogFetch;
   pendingMysqlCatalogFetch = (async () => {
@@ -77,6 +111,7 @@ async function fetchMysqlCatalogBundle(): Promise<CatalogBundle> {
     writePersistentCache('services', payload.services || []);
     writePersistentCache('organizedTrips', payload.organizedTrips || []);
     writePersistentCache('studyPrograms', payload.studyPrograms || []);
+    writeCatalogVersion(payload.catalogVersion);
     return payload;
   })().finally(() => {
     pendingMysqlCatalogFetch = null;
@@ -198,10 +233,60 @@ export const catalogService = {
     }
   },
 
+  getCachedCatalogSnapshot(): Partial<CatalogBundle> | null {
+    const countries = isCacheValid(memoryCache.countries)
+      ? memoryCache.countries!.data
+      : readPersistentCache<Country[]>('countries')?.data;
+    const services = isCacheValid(memoryCache.services)
+      ? memoryCache.services!.data
+      : readPersistentCache<PrestationService[]>('services')?.data;
+    const organizedTrips = isCacheValid(memoryCache.organizedTrips)
+      ? memoryCache.organizedTrips!.data
+      : readPersistentCache<OrganizedTrip[]>('organizedTrips')?.data;
+    const studyPrograms = isCacheValid(memoryCache.studyPrograms)
+      ? memoryCache.studyPrograms!.data
+      : readPersistentCache<StudyProgram[]>('studyPrograms')?.data;
+
+    if (!countries && !services && !organizedTrips && !studyPrograms) {
+      return null;
+    }
+
+    return {
+      catalogVersion: readCatalogVersion() || undefined,
+      countries: countries || [],
+      services: services || [],
+      organizedTrips: organizedTrips || [],
+      studyPrograms: studyPrograms || [],
+    };
+  },
+
+  getCachedCatalogVersion(): string | null {
+    const snapshot = this.getCachedCatalogSnapshot();
+    if (!snapshot) return null;
+    return readCatalogVersion();
+  },
+
+  seedFromBootstrap(bundle: Partial<CatalogBundle>, catalogVersion?: string | null) {
+    if (Array.isArray(bundle.countries)) writePersistentCache('countries', bundle.countries);
+    if (Array.isArray(bundle.services)) writePersistentCache('services', bundle.services);
+    if (Array.isArray(bundle.organizedTrips)) writePersistentCache('organizedTrips', bundle.organizedTrips);
+    if (Array.isArray(bundle.studyPrograms)) writePersistentCache('studyPrograms', bundle.studyPrograms);
+    writeCatalogVersion(catalogVersion || bundle.catalogVersion);
+  },
+
   invalidateCache(target?: 'countries' | 'services' | 'organizedTrips' | 'studyPrograms') {
     const targets: Array<keyof typeof memoryCache> = target
       ? [target]
       : ['countries', 'services', 'organizedTrips', 'studyPrograms'];
+
+    memoryCatalogVersion = null;
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(VERSION_STORAGE_KEY);
+      }
+    } catch {
+      // Ignorer
+    }
 
     for (const key of targets) {
       memoryCache[key] = null;

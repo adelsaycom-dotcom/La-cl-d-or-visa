@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { auth, getFirestoreDb } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { catalogService } from '../services/catalogService';
-import { getBackendMode, apiFetch } from '../services/apiClient';
+import { getBackendMode, fetchMysqlAuthMe } from '../services/apiClient';
 
 const VERIFIED_ADMIN_EMAILS = new Set<string>([
   'adel.saycom@gmail.com',
@@ -50,7 +50,7 @@ export function useFirebaseSync() {
       currentUidRef.current = user ? user.uid : null;
       const expectedUid = currentUidRef.current;
 
-      const mode = await getBackendMode(true);
+      const mode = await getBackendMode(false);
       if (currentUidRef.current !== expectedUid) return;
       setStore({ databaseMode: mode });
 
@@ -74,75 +74,78 @@ export function useFirebaseSync() {
           currentState.authUserUid === user.uid &&
           currentState.authRole !== null;
 
-        if (!isAlreadyResolved) {
-          setStore({ authReady: false });
-        }
-
         // =====================================================================
         // MODE 1 : MYSQL HOSTINGER ACTIF (0 LECTURE FIRESTORE)
         // =====================================================================
         if (mode === 'mysql') {
           try {
-            let boot: any = null;
-            try {
-              boot = await apiFetch('/api/db/bootstrap');
-            } catch (firstErr: any) {
-              // Court retry en cas d'inscription toute récente
-              await new Promise(resolve => setTimeout(resolve, 350));
-              if (currentUidRef.current !== expectedUid) return;
-              try {
-                boot = await apiFetch('/api/db/bootstrap');
-              } catch {
-                throw firstErr;
+            // Hydrater immédiatement le catalogue depuis localStorage si disponible (0ms)
+            if (!currentState.catalogLoaded) {
+              const snapshot = catalogService.getCachedCatalogSnapshot();
+              if (snapshot) {
+                setStore({
+                  countries: (snapshot.countries || []) as any,
+                  services: (snapshot.services || []) as any,
+                  organizedTrips: (snapshot.organizedTrips || []) as any,
+                  studyPrograms: (snapshot.studyPrograms || []) as any,
+                  catalogLoaded: true,
+                  catalogLoading: false,
+                });
               }
             }
 
-            if (currentUidRef.current !== expectedUid) return;
+            // Vérifier rapidement l'identité via /auth/me (dédupliqué avec Login.tsx)
+            // pour débloquer l'interface en ~10ms sans attendre tout le /bootstrap
+            let userData = isAlreadyResolved ? currentState.currentAgency : null;
+            let resolvedRole = isAlreadyResolved ? currentState.authRole : null;
 
-            const agency = boot.currentAgency || null;
-            const roleRaw = String(boot.role || agency?.role || '').trim().toLowerCase();
-            const resolvedRole: 'admin' | 'agency' | null =
-              roleRaw === 'admin' ? 'admin' : roleRaw === 'agency' ? 'agency' : null;
+            if (!isAlreadyResolved) {
+              try {
+                userData = await fetchMysqlAuthMe(user.uid);
+              } catch {
+                // Retry léger si création de compte toute récente
+                await new Promise(resolve => setTimeout(resolve, 350));
+                if (currentUidRef.current !== expectedUid) return;
+                userData = await fetchMysqlAuthMe(user.uid);
+              }
 
-            if (boot.restricted) {
+              if (currentUidRef.current !== expectedUid) return;
+
+              const roleRaw = String(userData?.role || '').trim().toLowerCase();
+              resolvedRole =
+                roleRaw === 'admin'
+                  ? 'admin'
+                  : roleRaw === 'agency'
+                  ? 'agency'
+                  : user.email && VERIFIED_ADMIN_EMAILS.has(user.email.toLowerCase())
+                  ? 'admin'
+                  : null;
+
               setStore({
                 authReady: true,
                 authUserUid: user.uid,
                 authRole: resolvedRole,
-                currentAgency: agency,
-                agencyBalance: Number(agency?.balance || 0),
-                b2cMarginPercent: typeof agency?.b2cMarginPercent === 'number' ? agency.b2cMarginPercent : 15,
-                quotaExceeded: false,
+                currentAgency: userData,
+                agencyBalance: Number(userData?.balance || 0),
+                b2cMarginPercent: typeof userData?.b2cMarginPercent === 'number' ? userData.b2cMarginPercent : 15,
                 databaseMode: 'mysql',
               });
+            }
+
+            const normalizedStatus = String(userData?.status || 'ACTIVE').trim().toUpperCase();
+            if (
+              !resolvedRole ||
+              (resolvedRole === 'agency' &&
+                (normalizedStatus === 'PENDING' ||
+                  normalizedStatus === 'REJECTED' ||
+                  (normalizedStatus === 'SUSPENDED' && typeof window !== 'undefined' && window.location.pathname === '/login')))
+            ) {
               return;
             }
 
-            setStore({
-              authReady: true,
-              authUserUid: user.uid,
-              authRole: resolvedRole,
-              currentAgency: agency,
-              agencyBalance: Number(agency?.balance || 0),
-              b2cMarginPercent: typeof agency?.b2cMarginPercent === 'number' ? agency.b2cMarginPercent : 15,
-              countries: boot.countries || [],
-              services: boot.services || [],
-              organizedTrips: boot.organizedTrips || [],
-              studyPrograms: boot.studyPrograms || [],
-              applications: boot.applications || [],
-              studyApplications: boot.studyApplications || [],
-              tripReservations: boot.tripReservations || [],
-              transactions: boot.transactions || [],
-              rechargeRequests: boot.rechargeRequests || [],
-              supportTickets: boot.supportTickets || [],
-              notifications: boot.notifications || [],
-              agencies: boot.agencies || [],
-              catalogLoading: false,
-              catalogLoaded: true,
-              lastMysqlSyncVersion: boot.syncVersion || null,
-              lastMysqlCatalogVersion: boot.catalogVersion || null,
-              quotaExceeded: false,
-              databaseMode: 'mysql',
+            // Lancer ou rejoindre le bootstrap complet en arrière-plan (dédupliqué via useAppStore)
+            useAppStore.getState().refreshAllFromMysql(false).catch(err => {
+              console.warn('[MySQL Sync] Erreur bootstrap MySQL:', err);
             });
 
             // Rafraîchissement léger toutes les 30s (uniquement si onglet visible)
@@ -158,7 +161,7 @@ export function useFirebaseSync() {
             unsubsRef.current.push(() => window.clearInterval(pollTimer));
             return;
           } catch (mysqlErr) {
-            console.warn('[MySQL Sync] Erreur bootstrap MySQL:', mysqlErr);
+            console.warn('[MySQL Sync] Erreur auth/sync MySQL:', mysqlErr);
             if (isAlreadyResolved) {
               setStore({ authReady: true, databaseMode: 'mysql' });
             } else {
@@ -175,6 +178,10 @@ export function useFirebaseSync() {
             }
             return;
           }
+        }
+
+        if (!isAlreadyResolved) {
+          setStore({ authReady: false });
         }
 
         // =====================================================================

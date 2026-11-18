@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { auth, getFirestoreDb } from "../../src/firebase";
 import {
   signInWithEmailAndPassword,
@@ -9,7 +9,8 @@ import {
 } from "firebase/auth";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppStore } from "../../src/store/useAppStore";
-import { getBackendMode, apiFetch } from "../../src/services/apiClient";
+import { getBackendMode, fetchMysqlAuthMe } from "../../src/services/apiClient";
+import { catalogService } from "../../src/services/catalogService";
 import { 
   ArrowRight, 
   ArrowLeft, 
@@ -72,18 +73,42 @@ export function Login() {
   // Hover state for interactive map hub tooltip
   const [activeHub, setActiveHub] = useState<string | null>(null);
 
+  // Préchauffage silencieux dès l'affichage de la page de connexion (mode backend, chunks JS et cache catalogue)
+  useEffect(() => {
+    let cancelled = false;
+    const warmTimer = window.setTimeout(() => {
+      if (cancelled) return;
+      void getBackendMode(false);
+      if (!catalogService.getCachedCatalogSnapshot()) {
+        void catalogService.getCountries(false);
+      }
+      void import("@/components/agency/AgencyLayout");
+      void import("@/components/agency/Dashboard");
+      void import("@/components/admin/AdminDashboard");
+    }, 100);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(warmTimer);
+    };
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
     setIsLoading(true);
 
     try {
-      await setPersistence(
-        auth,
-        rememberMe ? browserLocalPersistence : browserSessionPersistence
-      );
+      // browserLocalPersistence est déjà la persistance par défaut du SDK Firebase
+      if (!rememberMe) {
+        await setPersistence(auth, browserSessionPersistence);
+      } else {
+        void setPersistence(auth, browserLocalPersistence).catch(() => {});
+      }
 
-      const userCred = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const [userCred, mode] = await Promise.all([
+        signInWithEmailAndPassword(auth, email.trim(), password),
+        getBackendMode(false),
+      ]);
       const uid = userCred.user.uid;
       const userEmail = (userCred.user.email || "").toLowerCase();
       const isAdminEmail =
@@ -92,20 +117,10 @@ export function Login() {
         userEmail === "admin@lacle-dor.com" ||
         userEmail === "admin@cle-dor-visa.com";
 
-      const mode = await getBackendMode(true);
       let userData: any = null;
 
       if (mode === "mysql") {
-        try {
-          const res = await apiFetch<{ user: any }>("/api/db/auth/me");
-          userData = res?.user || null;
-        } catch (err: any) {
-          const msg = String(err?.message || "");
-          if (!msg.toLowerCase().includes("introuvable")) {
-            throw err;
-          }
-          userData = null;
-        }
+        userData = await fetchMysqlAuthMe(uid);
       } else {
         const [{ doc, getDoc, setDoc }, db] = await Promise.all([
           import("firebase/firestore"),
@@ -133,6 +148,7 @@ export function Login() {
         const status = String(userData.status || "ACTIVE").trim().toUpperCase();
 
         if (role === "admin" || isAdminEmail) {
+          const cachedSnapshot = catalogService.getCachedCatalogSnapshot();
           useAppStore.setState({
             authReady: true,
             authUserUid: uid,
@@ -140,8 +156,21 @@ export function Login() {
             databaseMode: mode,
             currentAgency: userData,
             agencyBalance: Number(userData.balance || 0),
-            b2cMarginPercent: typeof userData.b2cMarginPercent === "number" ? userData.b2cMarginPercent : 15
+            b2cMarginPercent: typeof userData.b2cMarginPercent === "number" ? userData.b2cMarginPercent : 15,
+            ...(cachedSnapshot && !useAppStore.getState().catalogLoaded
+              ? {
+                  countries: (cachedSnapshot.countries || []) as any,
+                  services: (cachedSnapshot.services || []) as any,
+                  organizedTrips: (cachedSnapshot.organizedTrips || []) as any,
+                  studyPrograms: (cachedSnapshot.studyPrograms || []) as any,
+                  catalogLoaded: true,
+                  catalogLoading: false,
+                }
+              : {}),
           });
+          if (mode === "mysql") {
+            void useAppStore.getState().refreshAllFromMysql(false);
+          }
           navigate("/admin", { replace: true });
           return;
         }
@@ -177,7 +206,8 @@ export function Login() {
           return;
         }
 
-        // Compte Agence actif : synchroniser Zustand AVANT la navigation
+        // Compte Agence actif : synchroniser Zustand AVANT la navigation et lancer le bootstrap en arrière-plan
+        const cachedSnapshot = catalogService.getCachedCatalogSnapshot();
         useAppStore.setState({
           authReady: true,
           authUserUid: uid,
@@ -185,8 +215,21 @@ export function Login() {
           databaseMode: mode,
           currentAgency: userData,
           agencyBalance: Number(userData.balance || 0),
-          b2cMarginPercent: typeof userData.b2cMarginPercent === "number" ? userData.b2cMarginPercent : 15
+          b2cMarginPercent: typeof userData.b2cMarginPercent === "number" ? userData.b2cMarginPercent : 15,
+          ...(cachedSnapshot && !useAppStore.getState().catalogLoaded
+            ? {
+                countries: (cachedSnapshot.countries || []) as any,
+                services: (cachedSnapshot.services || []) as any,
+                organizedTrips: (cachedSnapshot.organizedTrips || []) as any,
+                studyPrograms: (cachedSnapshot.studyPrograms || []) as any,
+                catalogLoaded: true,
+                catalogLoading: false,
+              }
+            : {}),
         });
+        if (mode === "mysql") {
+          void useAppStore.getState().refreshAllFromMysql(false);
+        }
         navigate("/agency", { replace: true });
       } else {
         setErrorMessage(

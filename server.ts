@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express, { type Request, type Response, type NextFunction } from "express";
+import compression from "compression";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cors, { type CorsOptions } from "cors";
@@ -160,6 +161,9 @@ async function startServer() {
   // Initialisation MySQL Hostinger (crée automatiquement les 12 tables si configuré)
   await initMysqlDatabase();
 
+  // Compression HTTP (gzip) pour réduire drastiquement la taille des réponses JSON et assets
+  app.use(compression({ threshold: 1024 }));
+
   // Activation de trust proxy pour Cloud Run / reverse proxies
   app.set("trust proxy", 1);
 
@@ -278,6 +282,10 @@ async function startServer() {
 
   app.use("/api/", apiLimiter);
 
+  // Cache mémoire ultra-court (15s) pour éviter de revérifier RSA + SQL sur les rafales d'appels à la connexion
+  const AUTH_CACHE_TTL_MS = 15_000;
+  const verifiedTokenCache = new Map<string, { user: AuthenticatedUser; expiresAt: number }>();
+
   // 4. Middleware d'authentification Firebase ID Token
   async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
@@ -291,6 +299,14 @@ async function startServer() {
         return res.status(401).json({ error: "Jeton d'authentification invalide." });
       }
 
+      const tokenHash = crypto.createHash("sha256").update(idToken).digest("hex");
+      const now = Date.now();
+      const cached = verifiedTokenCache.get(tokenHash);
+      if (cached && cached.expiresAt > now) {
+        req.user = cached.user;
+        return next();
+      }
+
       const decoded = await adminAuth.verifyIdToken(idToken);
       const email = (decoded.email || "").toLowerCase();
       const emailVerified = Boolean(decoded.email_verified);
@@ -299,10 +315,17 @@ async function startServer() {
 
       if (!isAdmin && isMysqlActive()) {
         try {
-          const [rows] = await getMysqlPool().query<any[]>(
-            "SELECT role FROM users WHERE id = ? OR LOWER(email) = ? LIMIT 1",
-            [decoded.uid, email]
+          const pool = getMysqlPool();
+          let [rows] = await pool.query<any[]>(
+            "SELECT role FROM users WHERE id = ? LIMIT 1",
+            [decoded.uid]
           );
+          if (rows.length === 0 && email) {
+            [rows] = await pool.query<any[]>(
+              "SELECT role FROM users WHERE email = ? LIMIT 1",
+              [email]
+            );
+          }
           if (Array.isArray(rows) && rows.length > 0 && String(rows[0].role || "").toLowerCase() === "admin") {
             isAdmin = true;
           }
@@ -325,13 +348,23 @@ async function startServer() {
         }
       }
 
-      req.user = {
+      const authenticatedUser: AuthenticatedUser = {
         uid: decoded.uid,
         email,
         emailVerified,
         isAdmin,
       };
 
+      const tokenExpMs = typeof decoded.exp === "number" ? decoded.exp * 1000 : now + AUTH_CACHE_TTL_MS;
+      const expiresAt = Math.min(now + AUTH_CACHE_TTL_MS, tokenExpMs);
+      if (expiresAt > now) {
+        if (verifiedTokenCache.size > 500) {
+          verifiedTokenCache.clear();
+        }
+        verifiedTokenCache.set(tokenHash, { user: authenticatedUser, expiresAt });
+      }
+
+      req.user = authenticatedUser;
       return next();
     } catch (err: any) {
       console.warn("[Auth] Échec vérification jeton Firebase:", err?.message || err);

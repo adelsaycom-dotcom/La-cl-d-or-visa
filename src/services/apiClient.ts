@@ -45,7 +45,7 @@ export async function getBackendMode(forceRefresh = false): Promise<BackendDatab
   if (!forceRefresh && cachedMode && Date.now() - cachedAt < MODE_CACHE_TTL_MS) {
     return cachedMode;
   }
-  if (!forceRefresh && pendingProbe) {
+  if (pendingProbe) {
     return pendingProbe;
   }
 
@@ -126,4 +126,34 @@ export async function apiFetch<T = any>(
   }
 
   return payload as T;
+}
+
+const pendingAuthMeByUid = new Map<string, Promise<any>>();
+
+/**
+ * Récupère /api/db/auth/me en dédupliquant les appels simultanés (Login.tsx + onAuthStateChanged).
+ */
+export async function fetchMysqlAuthMe(uid: string): Promise<any | null> {
+  const existing = pendingAuthMeByUid.get(uid);
+  if (existing) {
+    return existing;
+  }
+
+  const reqPromise = (async () => {
+    try {
+      const res = await apiFetch<{ user: any }>("/api/db/auth/me");
+      return res?.user || null;
+    } catch (err: any) {
+      const msg = String(err?.message || "");
+      if (msg.toLowerCase().includes("introuvable")) {
+        return null;
+      }
+      throw err;
+    }
+  })().finally(() => {
+    pendingAuthMeByUid.delete(uid);
+  });
+
+  pendingAuthMeByUid.set(uid, reqPromise);
+  return reqPromise;
 }
