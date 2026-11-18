@@ -737,6 +737,8 @@ Si un champ est absent ou illisible, renvoie une chaîne vide "". Réponds UNIQU
             res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
             res.setHeader("Pragma", "no-cache");
             res.setHeader("Expires", "0");
+          } else if (/\.(webp|png|jpg|jpeg|svg|ico|woff2)$/i.test(filePath)) {
+            res.setHeader("Cache-Control", "public, max-age=604800, stale-while-revalidate=86400");
           }
         }
       })

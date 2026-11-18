@@ -105,7 +105,7 @@ export function AgencyLayout() {
       <div 
         className="fixed inset-0 pointer-events-none -z-10 bg-cover bg-no-repeat opacity-50 transition-opacity duration-300"
         style={{ 
-          backgroundImage: `url('/assets/dashboard-wing-bg.jpg')`,
+          backgroundImage: `url('/assets/dashboard-wing-bg.webp')`,
           backgroundPosition: 'right 15% center',
           backgroundAttachment: 'fixed',
           backgroundSize: 'cover'

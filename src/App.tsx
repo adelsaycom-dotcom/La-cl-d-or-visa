@@ -50,8 +50,9 @@ function lazyWithRetry<T extends ComponentType<any>>(
   });
 }
 
-// Code Splitting & Lazy Loading avec reprise automatique sur Hostinger
-const LandingPage = lazyWithRetry(() => import("@/components/LandingPage").then(m => ({ default: m.LandingPage })));
+import { LandingPage } from "@/components/LandingPage";
+
+// Code Splitting & Lazy Loading avec reprise automatique sur Hostinger pour les autres routes
 const Login = lazyWithRetry(() => import("@/components/auth/Login").then(m => ({ default: m.Login })));
 const Register = lazyWithRetry(() => import("@/components/auth/Register").then(m => ({ default: m.Register })));
 

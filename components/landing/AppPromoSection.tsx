@@ -7,10 +7,16 @@ export function AppPromoSection() {
   const isEn = language === "en";
 
   // Sélection dynamique selon la langue active
+  const desktopWebp = isEn
+    ? "/assets/banners/desk-en.webp"
+    : "/assets/banners/desk-fr.webp";
   const desktopSrc = isEn
     ? "/assets/banners/desk-en.png"
     : "/assets/banners/desk-fr.png";
 
+  const mobileWebp = isEn
+    ? "/assets/banners/mob-en.webp"
+    : "/assets/banners/mob-fr.webp";
   const mobileSrc = isEn
     ? "/assets/banners/mob-en.png"
     : "/assets/banners/mob-fr.png";
@@ -33,16 +39,26 @@ export function AppPromoSection() {
           className="relative overflow-hidden rounded-3xl shadow-2xl border border-slate-200/80 bg-white transition-shadow duration-500 hover:shadow-[0_30px_60px_-15px_rgba(123,27,56,0.22)]"
         >
           <picture className="w-full h-auto block">
-            {/* Version Bureau / Tablette large (>= 768px) */}
+            {/* Version Bureau / Tablette large (>= 768px) WebP puis PNG */}
+            <source
+              media="(min-width: 768px)"
+              srcSet={desktopWebp}
+              type="image/webp"
+            />
             <source
               media="(min-width: 768px)"
               srcSet={desktopSrc}
             />
-            {/* Version Mobile (< 768px) par défaut */}
+            {/* Version Mobile (< 768px) WebP puis PNG */}
+            <source
+              srcSet={mobileWebp}
+              type="image/webp"
+            />
             <img
               src={mobileSrc}
               alt={altText}
               loading="lazy"
+              decoding="async"
               className="w-full h-auto object-cover block mx-auto transition-transform duration-700 hover:scale-[1.015]"
             />
           </picture>
