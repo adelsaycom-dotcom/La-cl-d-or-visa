@@ -4,7 +4,6 @@
  * Utilise la reconnaissance optique locale, le prétraitement Canvas avancé et le décodage officiel ICAO 9303 (MRZ).
  */
 
-import { createWorker } from "tesseract.js";
 import { convertPdfPageToImage } from "./pdfToImage";
 import { auth } from "../firebase";
 
@@ -459,6 +458,7 @@ export async function scanPassportSmart(
     // Tentative OCR avec gestion robuste et timeout de sécurité (max 9s)
     try {
       const ocrTask = async () => {
+        const { createWorker } = await import("tesseract.js");
         const worker = await createWorker("eng", 1, {
           logger: (m) => {
             if (m.status === "recognizing text" && m.progress) {

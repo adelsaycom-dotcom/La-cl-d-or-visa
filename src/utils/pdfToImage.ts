@@ -2,18 +2,6 @@
  * Convertisseur universel de PDF en Image Haute Définition côté client.
  * Permet l'affichage des aperçus et l'analyse OCR biométrique directe même à partir de scans PDF.
  */
-import * as pdfjsLib from "pdfjs-dist";
-
-// Configuration du worker PDF.js avec fallback automatique
-if (typeof window !== "undefined") {
-  try {
-    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-    }
-  } catch (e) {
-    console.warn("Worker PDF.js non initialisé:", e);
-  }
-}
 
 export async function convertPdfPageToImage(
   pdfSource: File | ArrayBuffer | string,
@@ -21,6 +9,18 @@ export async function convertPdfPageToImage(
   scale = 2.0
 ): Promise<{ dataUrl: string; width: number; height: number } | null> {
   try {
+    const pdfjsLib = await import("pdfjs-dist");
+
+    if (typeof window !== "undefined") {
+      try {
+        if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+        }
+      } catch (e) {
+        console.warn("Worker PDF.js non initialisé:", e);
+      }
+    }
+
     let data: ArrayBuffer | Uint8Array;
 
     if (pdfSource instanceof File) {

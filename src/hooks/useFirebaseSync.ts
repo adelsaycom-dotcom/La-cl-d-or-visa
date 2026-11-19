@@ -143,9 +143,15 @@ export function useFirebaseSync() {
               return;
             }
 
-            // Lancer ou rejoindre le bootstrap complet en arrière-plan (dédupliqué via useAppStore)
+            // Lancer ou rejoindre le bootstrap complet en 2 étapes prioritaires (dédupliqué via useAppStore)
             useAppStore.getState().refreshAllFromMysql(false).catch(err => {
               console.warn('[MySQL Sync] Erreur bootstrap MySQL:', err);
+              const retryTimer = window.setTimeout(() => {
+                if (currentUidRef.current === expectedUid) {
+                  useAppStore.getState().refreshAllFromMysql(false).catch(() => {});
+                }
+              }, 1500);
+              unsubsRef.current.push(() => window.clearTimeout(retryTimer));
             });
 
             // Rafraîchissement léger toutes les 30s (uniquement si onglet visible)
@@ -436,7 +442,11 @@ export function useFirebaseSync() {
           studyApplications: [],
           notifications: [],
           catalogLoading: false,
-          catalogLoaded: false
+          catalogLoaded: false,
+          mysqlCoreLoading: false,
+          mysqlCoreLoaded: false,
+          mysqlSecondaryLoading: false,
+          mysqlSecondaryLoaded: false
         });
       }
     });

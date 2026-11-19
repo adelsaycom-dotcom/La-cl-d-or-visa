@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useAppStore, Application } from "../../src/store/useAppStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,9 @@ export function AgencyApplications() {
   const toast = useToast();
 
   const applications = useAppStore(state => state.applications);
+  const mysqlCoreLoading = useAppStore(state => state.mysqlCoreLoading);
+  const mysqlCoreLoaded = useAppStore(state => state.mysqlCoreLoaded);
+  const hydrateApplicationDetails = useAppStore(state => state.hydrateApplicationDetails);
   const updateApplication = useAppStore(state => state.updateApplication);
   const addApplicationTimelineEntry = useAppStore(state => state.addApplicationTimelineEntry);
 
@@ -55,6 +58,12 @@ export function AgencyApplications() {
   const selectedApp = useMemo(() => {
     return applications.find(a => a.id === selectedAppId);
   }, [applications, selectedAppId]);
+
+  useEffect(() => {
+    if (selectedApp?.id && selectedApp.hasDeferredAssets) {
+      void hydrateApplicationDetails(selectedApp.id);
+    }
+  }, [selectedApp?.id, selectedApp?.hasDeferredAssets, hydrateApplicationDetails]);
 
   const getStatusBadge = useCallback((status: string) => {
     switch (status) {
@@ -95,8 +104,9 @@ export function AgencyApplications() {
 
   const handleOpenPreview = async (att: any) => {
     const data = await resolveAttachmentData(att);
+    const fallbackSrc = (att.dataUrl && !String(att.dataUrl).startsWith("deferred:") ? att.dataUrl : "") || att.url || "";
     setPreviewDoc({ 
-      src: data || att.dataUrl || att.url, 
+      src: data || fallbackSrc, 
       title: att.category || att.name,
       type: att.type || (att.name?.toLowerCase().endsWith(".pdf") ? "application/pdf" : undefined)
     });
@@ -129,23 +139,36 @@ export function AgencyApplications() {
 
     if (selectedApp.customFormData?.attachments && Array.isArray(selectedApp.customFormData.attachments)) {
       selectedApp.customFormData.attachments.forEach((att: any) => {
-        if (att && att.dataUrl && !list.some(x => x.dataUrl === att.dataUrl)) {
-          list.push(att);
+        if (att && (att.dataUrl || att.url) && !list.some(x => (att.dataUrl && x.dataUrl === att.dataUrl) || (att.url && x.url === att.url))) {
+          list.push({
+            id: att.id || "",
+            name: att.name || "Document",
+            category: att.category || "Justificatif",
+            type: att.type || "application/octet-stream",
+            size: att.size,
+            dataUrl: att.dataUrl || "",
+            url: att.url,
+            storageId: att.storageId || att.id
+          });
         }
       });
     }
 
     if (selectedApp.customFormData) {
       Object.entries(selectedApp.customFormData).forEach(([key, val]) => {
-        if (key !== "attachments" && key !== "applicantDetails" && key !== "textFields" && typeof val === "string" && (isImageBase64(val) || isPdfBase64(val))) {
-          if (!list.some(x => x.dataUrl === val)) {
-            list.push({
-              id: key,
-              name: `${key}.${isPdfBase64(val) ? 'pdf' : 'jpg'}`,
-              category: key,
-              type: isPdfBase64(val) ? 'application/pdf' : 'image/jpeg',
-              dataUrl: val
-            });
+        if (key !== "attachments" && key !== "applicantDetails" && key !== "textFields" && typeof val === "string") {
+          const isDeferred = val.startsWith("deferred:");
+          if (isImageBase64(val) || isPdfBase64(val) || isDeferred) {
+            if (!list.some(x => (isDeferred ? x.url === val : x.dataUrl === val))) {
+              list.push({
+                id: key,
+                name: `${key}.${isPdfBase64(val) ? 'pdf' : 'jpg'}`,
+                category: key,
+                type: isPdfBase64(val) ? 'application/pdf' : (isDeferred ? 'application/octet-stream' : 'image/jpeg'),
+                dataUrl: isDeferred ? "" : val,
+                ...(isDeferred ? { url: val } : {})
+              });
+            }
           }
         }
       });
@@ -585,11 +608,19 @@ export function AgencyApplications() {
       </div>
 
       {paginatedApplications.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center text-slate-500">
-          <FileText className="w-12 h-12 mx-auto mb-4 text-slate-300" />
-          <h3 className="text-lg font-black text-slate-800">{isEn ? "No applications found" : "Aucun dossier trouvé"}</h3>
-          <p className="text-xs text-slate-500 mt-1">{isEn ? "No applications match your current search criteria." : "Aucune demande ne correspond à vos critères de recherche actuels."}</p>
-        </div>
+        mysqlCoreLoading && !mysqlCoreLoaded && applications.length === 0 ? (
+          <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center text-slate-500">
+            <Loader2 className="w-10 h-10 mx-auto mb-3 text-[#7B1B38] animate-spin" />
+            <h3 className="text-base font-black text-slate-800">{isEn ? "Loading your applications..." : "Chargement de vos dossiers en cours..."}</h3>
+            <p className="text-xs text-slate-500 mt-1">{isEn ? "Synchronizing records from the server." : "Synchronisation des dossiers depuis le serveur."}</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center text-slate-500">
+            <FileText className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+            <h3 className="text-lg font-black text-slate-800">{isEn ? "No applications found" : "Aucun dossier trouvé"}</h3>
+            <p className="text-xs text-slate-500 mt-1">{isEn ? "No applications match your current search criteria." : "Aucune demande ne correspond à vos critères de recherche actuels."}</p>
+          </div>
+        )
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

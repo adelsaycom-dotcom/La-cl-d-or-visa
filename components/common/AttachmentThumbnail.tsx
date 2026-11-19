@@ -97,7 +97,7 @@ export function AttachmentThumbnail({
   if (isPdf) {
     const handlePdfClick = async () => {
       if (!onOpenPreview) return;
-      if (attachment.dataUrl) {
+      if (attachment.dataUrl && !attachment.dataUrl.startsWith("deferred:")) {
         onOpenPreview(attachment.dataUrl, attachment.category || attachment.name, "application/pdf");
       } else {
         const resolved = await resolveAttachmentData(attachment);

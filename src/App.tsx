@@ -13,6 +13,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "./firebase";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ErrorBoundary, isChunkLoadError } from "@/components/common/ErrorBoundary";
+import { prefetchRouteChunk, prefetchAdminPortalChunks } from "./utils/routePrefetch";
 
 const CHUNK_RELOAD_KEY = "cldor_chunk_reload_ts";
 
@@ -110,6 +111,11 @@ function AdminLayout() {
     setSidebarOpen(false);
   }, [location.pathname]);
 
+  // Préchargement silencieux des chunks de la console admin en arrière-plan
+  useEffect(() => {
+    prefetchAdminPortalChunks();
+  }, []);
+
   // Mémoïsation des éléments de navigation selon la langue
   const navItems = useMemo(() => [
     { name: t("nav.dashboard"), path: "/admin", icon: LayoutDashboard },
@@ -181,7 +187,9 @@ function AdminLayout() {
               <Link 
                 key={item.path} 
                 to={item.path}
-                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 group ${
+                onMouseEnter={() => prefetchRouteChunk(item.path)}
+                onFocus={() => prefetchRouteChunk(item.path)}
+                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-150 group ${
                   isActive 
                     ? 'bg-[#7B1B38] text-white shadow-sm shadow-[#7B1B38]/25 font-bold' 
                     : item.highlight
@@ -284,19 +292,11 @@ function AdminLayout() {
         {/* Page Content */}
         <div className="flex-1 overflow-auto p-4 lg:p-8">
           <div className="mx-auto max-w-[1600px]">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                <ErrorBoundary scoped key={location.pathname}>
-                  <Outlet />
-                </ErrorBoundary>
-              </motion.div>
-            </AnimatePresence>
+            <ErrorBoundary scoped key={location.pathname}>
+              <Suspense fallback={<SuspenseFallback />}>
+                <Outlet />
+              </Suspense>
+            </ErrorBoundary>
           </div>
         </div>
       </main>

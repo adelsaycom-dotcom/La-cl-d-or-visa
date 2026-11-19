@@ -9,7 +9,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Wallet, UploadCloud, CheckCircle2, XCircle, Clock,
-  History, CreditCard, ArrowUpRight, ArrowDownRight, Image as ImageIcon
+  History, CreditCard, ArrowUpRight, ArrowDownRight, Image as ImageIcon, Loader2
 } from "lucide-react";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { useToast } from "@/components/ui/toast";
@@ -37,6 +37,8 @@ export function AgencyWallet() {
   const agencyBalance = useAppStore((s) => s.agencyBalance);
   const transactions = useAppStore((s) => s.transactions);
   const rechargeRequests = useAppStore((s) => s.rechargeRequests);
+  const mysqlSecondaryLoading = useAppStore((s) => s.mysqlSecondaryLoading);
+  const mysqlSecondaryLoaded = useAppStore((s) => s.mysqlSecondaryLoaded);
   const addRechargeRequest = useAppStore((s) => s.addRechargeRequest);
   const agencies = useAppStore((s) => s.agencies);
 
@@ -390,17 +392,24 @@ export function AgencyWallet() {
         {/* RECHARGES TAB */}
         {activeTab === "recharges" && (
           myRecharges.length === 0 ? (
-            <div className="p-16 text-center">
-              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
-                <CreditCard className="w-8 h-8 text-slate-300" />
+            mysqlSecondaryLoading && !mysqlSecondaryLoaded && rechargeRequests.length === 0 ? (
+              <div className="p-16 text-center text-slate-500">
+                <Loader2 className="w-8 h-8 mx-auto mb-3 text-[#7B1B38] animate-spin" />
+                <p className="text-sm font-bold text-slate-700">{isEn ? "Loading top-up history..." : "Chargement des recharges en cours..."}</p>
               </div>
-              <h3 className="font-bold text-lg text-slate-900 mb-1">
-                {isEn ? "No top-up requests" : "Aucune recharge"}
-              </h3>
-              <p className="text-slate-500 text-sm">
-                {isEn ? "Your wallet balance top-up requests will appear here." : "Vos demandes de rechargement de solde apparaîtront ici."}
-              </p>
-            </div>
+            ) : (
+              <div className="p-16 text-center">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
+                  <CreditCard className="w-8 h-8 text-slate-300" />
+                </div>
+                <h3 className="font-bold text-lg text-slate-900 mb-1">
+                  {isEn ? "No top-up requests" : "Aucune recharge"}
+                </h3>
+                <p className="text-slate-500 text-sm">
+                  {isEn ? "Your wallet balance top-up requests will appear here." : "Vos demandes de rechargement de solde apparaîtront ici."}
+                </p>
+              </div>
+            )
           ) : (
             <div>
               <div className="overflow-x-auto">
@@ -467,17 +476,24 @@ export function AgencyWallet() {
         {/* TRANSACTIONS TAB */}
         {activeTab === "transactions" && (
           myTransactions.length === 0 ? (
-            <div className="p-16 text-center">
-              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
-                <History className="w-8 h-8 text-slate-300" />
+            mysqlSecondaryLoading && !mysqlSecondaryLoaded && transactions.length === 0 ? (
+              <div className="p-16 text-center text-slate-500">
+                <Loader2 className="w-8 h-8 mx-auto mb-3 text-[#7B1B38] animate-spin" />
+                <p className="text-sm font-bold text-slate-700">{isEn ? "Loading transactions..." : "Chargement des transactions en cours..."}</p>
               </div>
-              <h3 className="font-bold text-lg text-slate-900 mb-1">
-                {isEn ? "No transactions" : "Aucune transaction"}
-              </h3>
-              <p className="text-slate-500 text-sm">
-                {isEn ? "Your payments and debit history will appear here." : "Votre historique de paiements et prélèvements apparaîtra ici."}
-              </p>
-            </div>
+            ) : (
+              <div className="p-16 text-center">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
+                  <History className="w-8 h-8 text-slate-300" />
+                </div>
+                <h3 className="font-bold text-lg text-slate-900 mb-1">
+                  {isEn ? "No transactions" : "Aucune transaction"}
+                </h3>
+                <p className="text-slate-500 text-sm">
+                  {isEn ? "Your payments and debit history will appear here." : "Votre historique de paiements et prélèvements apparaîtra ici."}
+                </p>
+              </div>
+            )
           ) : (
             <div>
               <div className="overflow-x-auto">

@@ -84,7 +84,9 @@ export function Login() {
       }
       void import("@/components/agency/AgencyLayout");
       void import("@/components/agency/Dashboard");
+      void import("@/components/agency/AgencyApplications");
       void import("@/components/admin/AdminDashboard");
+      void import("@/components/admin/ApplicationManagement");
     }, 100);
     return () => {
       cancelled = true;

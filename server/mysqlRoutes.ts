@@ -246,6 +246,147 @@ function mapStudyProgramRow(row: any) {
   };
 }
 
+const INLINE_BLOB_THRESHOLD = 2048;
+
+function isLargeInlineDataUrl(val: unknown): val is string {
+  return typeof val === "string" && val.startsWith("data:") && val.length > INLINE_BLOB_THRESHOLD;
+}
+
+function isDeferredMarker(val: unknown): boolean {
+  return typeof val === "string" && val.startsWith("deferred:");
+}
+
+function stripInlineBase64FromTree(
+  value: any,
+  markerPrefix: string
+): { value: any; stripped: boolean } {
+  if (value === null || value === undefined) return { value, stripped: false };
+  if (typeof value === "string") {
+    if (isLargeInlineDataUrl(value)) {
+      return { value: markerPrefix, stripped: true };
+    }
+    return { value, stripped: false };
+  }
+  if (Array.isArray(value)) {
+    let anyStripped = false;
+    const next = value.map((item, idx) => {
+      const res = stripInlineBase64FromTree(item, `${markerPrefix}:${idx}`);
+      if (res.stripped) anyStripped = true;
+      return res.value;
+    });
+    return { value: next, stripped: anyStripped };
+  }
+  if (typeof value === "object") {
+    let anyStripped = false;
+    const next: Record<string, any> = {};
+    for (const [k, v] of Object.entries(value)) {
+      const res = stripInlineBase64FromTree(v, `${markerPrefix}:${encodeURIComponent(k)}`);
+      if (res.stripped) anyStripped = true;
+      next[k] = res.value;
+    }
+    return { value: next, stripped: anyStripped };
+  }
+  return { value, stripped: false };
+}
+
+function stripAttachmentsForList(
+  attachments: any[],
+  markerPrefix: string
+): { attachments: any[]; stripped: boolean } {
+  if (!Array.isArray(attachments) || attachments.length === 0) {
+    return { attachments: [], stripped: false };
+  }
+  let anyStripped = false;
+  const next = attachments.map((att, idx) => {
+    if (!att || typeof att !== "object") return att;
+    const hasHeavyDataUrl = isLargeInlineDataUrl(att.dataUrl);
+    const hasHeavyUrl = isLargeInlineDataUrl(att.url);
+    if (!hasHeavyDataUrl && !hasHeavyUrl) return att;
+    anyStripped = true;
+    const marker = `${markerPrefix}:att:${encodeURIComponent(String(att.id || idx))}`;
+    return {
+      ...att,
+      dataUrl: "",
+      url: hasHeavyUrl ? marker : (att.url || marker),
+      deferred: true,
+    };
+  });
+  return { attachments: next, stripped: anyStripped };
+}
+
+function restoreDeferredTree(incoming: any, existing: any): any {
+  if (isDeferredMarker(incoming)) {
+    return existing !== undefined ? existing : incoming;
+  }
+  if (Array.isArray(incoming) && Array.isArray(existing)) {
+    return incoming.map((item, idx) => restoreDeferredTree(item, existing[idx]));
+  }
+  if (
+    incoming &&
+    typeof incoming === "object" &&
+    !Array.isArray(incoming) &&
+    existing &&
+    typeof existing === "object" &&
+    !Array.isArray(existing)
+  ) {
+    const out: Record<string, any> = { ...incoming };
+    for (const [k, v] of Object.entries(incoming)) {
+      out[k] = restoreDeferredTree(v, existing[k]);
+    }
+    return out;
+  }
+  return incoming;
+}
+
+function restoreDeferredAttachments(incoming: any[], existing: any[]): any[] {
+  if (!Array.isArray(incoming)) return existing || [];
+  const existingArr = Array.isArray(existing) ? existing : [];
+  return incoming.map((att) => {
+    if (!att || typeof att !== "object") return att;
+    const needsRestore = Boolean(att.deferred) || isDeferredMarker(att.url) || (!att.dataUrl && !att.url);
+    if (!needsRestore) return att;
+    const match = existingArr.find(
+      (ex) =>
+        ex &&
+        ((att.id && ex.id === att.id) ||
+          (att.storageId && ex.storageId === att.storageId) ||
+          (att.name && ex.name === att.name))
+    );
+    if (!match) return att;
+    const cleaned = { ...att };
+    delete cleaned.deferred;
+    return {
+      ...cleaned,
+      dataUrl: cleaned.dataUrl || match.dataUrl || "",
+      url: isDeferredMarker(cleaned.url) ? (match.url || "") : (cleaned.url || match.url),
+    };
+  });
+}
+
+function buildAgencyInClause(agencyIds: string[]): { clause: string; params: string[] } {
+  const unique = Array.from(new Set(agencyIds.map((v) => String(v || "").trim()).filter(Boolean)));
+  if (unique.length <= 1) {
+    return { clause: "agencyId = ?", params: [unique[0] || ""] };
+  }
+  return {
+    clause: `agencyId IN (${unique.map(() => "?").join(", ")})`,
+    params: unique,
+  };
+}
+
+function mapUserListRow(row: any) {
+  const mapped = mapUserRow(row);
+  if (!mapped) return null;
+  // Éviter de renvoyer d'éventuelles pièces jointes base64 embarquées dans rawData lors du listing admin
+  const clean: Record<string, any> = {};
+  for (const [k, v] of Object.entries(mapped)) {
+    if (!isLargeInlineDataUrl(v)) {
+      clean[k] = v;
+    }
+  }
+  return clean;
+}
+
 function mapApplicationRow(row: any) {
   return {
     id: row.id,
@@ -267,6 +408,31 @@ function mapApplicationRow(row: any) {
     customFormData: parseJsonSafe<Record<string, any> | undefined>(row.customFormData, undefined),
     attachments: parseJsonSafe<any[]>(row.attachments, []),
     timeline: parseJsonSafe<any[]>(row.timeline, []),
+  };
+}
+
+function mapApplicationListRow(row: any) {
+  const base = mapApplicationRow(row);
+  let hasDeferredAssets = false;
+  let finalDocument = base.finalDocument;
+  if (isLargeInlineDataUrl(finalDocument)) {
+    finalDocument = `deferred:app:${base.id}:finalDocument`;
+    hasDeferredAssets = true;
+  }
+  const attRes = stripAttachmentsForList(base.attachments || [], `deferred:app:${base.id}`);
+  if (attRes.stripped) hasDeferredAssets = true;
+
+  const customRes = base.customFormData
+    ? stripInlineBase64FromTree(base.customFormData, `deferred:app:${base.id}:customFormData`)
+    : { value: undefined, stripped: false };
+  if (customRes.stripped) hasDeferredAssets = true;
+
+  return {
+    ...base,
+    finalDocument,
+    attachments: attRes.attachments,
+    customFormData: customRes.value,
+    ...(hasDeferredAssets ? { hasDeferredAssets: true } : {}),
   };
 }
 
@@ -317,6 +483,29 @@ function mapStudyApplicationRow(row: any) {
     documents: parseJsonSafe<Record<string, string>>(row.documents, {}),
     attachments: parseJsonSafe<any[]>(row.attachments, []),
     timeline: parseJsonSafe<any[]>(row.timeline, []),
+  };
+}
+
+function mapStudyApplicationListRow(row: any) {
+  const base = mapStudyApplicationRow(row);
+  let hasDeferredAssets = false;
+  let finalDocument = base.finalDocument;
+  if (isLargeInlineDataUrl(finalDocument)) {
+    finalDocument = `deferred:study:${base.id}:finalDocument`;
+    hasDeferredAssets = true;
+  }
+  const attRes = stripAttachmentsForList(base.attachments || [], `deferred:study:${base.id}`);
+  if (attRes.stripped) hasDeferredAssets = true;
+
+  const docsRes = stripInlineBase64FromTree(base.documents || {}, `deferred:study:${base.id}:documents`);
+  if (docsRes.stripped) hasDeferredAssets = true;
+
+  return {
+    ...base,
+    finalDocument,
+    attachments: attRes.attachments,
+    documents: docsRes.value,
+    ...(hasDeferredAssets ? { hasDeferredAssets: true } : {}),
   };
 }
 
@@ -379,6 +568,32 @@ function mapTicketRow(row: any) {
     attachments: parseJsonSafe<any[]>(row.attachments, []),
     messages: parseJsonSafe<any[]>(row.messages, []),
     createdAt: row.createdAt,
+  };
+}
+
+function mapTicketListRow(row: any) {
+  const base = mapTicketRow(row);
+  let hasDeferredAssets = false;
+  const attRes = stripAttachmentsForList(base.attachments || [], `deferred:ticket:${base.id}`);
+  if (attRes.stripped) hasDeferredAssets = true;
+
+  const msgs = Array.isArray(base.messages)
+    ? base.messages.map((msg, msgIdx) => {
+        if (!msg || !Array.isArray(msg.attachments)) return msg;
+        const msgAttRes = stripAttachmentsForList(
+          msg.attachments,
+          `deferred:ticket:${base.id}:msg:${msgIdx}`
+        );
+        if (msgAttRes.stripped) hasDeferredAssets = true;
+        return { ...msg, attachments: msgAttRes.attachments };
+      })
+    : [];
+
+  return {
+    ...base,
+    attachments: attRes.attachments,
+    messages: msgs,
+    ...(hasDeferredAssets ? { hasDeferredAssets: true } : {}),
   };
 }
 
@@ -480,48 +695,84 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
 
   const getSyncVersions = async (
     pool: ReturnType<typeof getMysqlPool>,
-    uid: string,
+    agencyIds: string[],
     effectiveAdmin: boolean,
     precomputedCatalogVersion?: string
   ) => {
-    const [
-      catalogVersion,
-      [userAgg],
-      [opsAgg],
-    ] = await Promise.all([
+    const inFilter = buildAgencyInClause(agencyIds);
+    const catalogSql =
       precomputedCatalogVersion !== undefined
-        ? Promise.resolve(precomputedCatalogVersion)
-        : getCatalogVersionOnly(pool),
-      effectiveAdmin
-        ? pool.query<any[]>("SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), ''), ':', COALESCE(SUM(balance), 0)) AS ver FROM users")
-        : pool.query<any[]>("SELECT CONCAT(COALESCE(updatedAt, ''), ':', COALESCE(balance, 0), ':', COALESCE(status, '')) AS ver FROM users WHERE id = ? LIMIT 1", [uid]),
-      effectiveAdmin
-        ? pool.query<any[]>(`
-            SELECT CONCAT_WS('|',
-              (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM applications),
-              (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM study_applications),
-              (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM trip_reservations),
-              (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(createdAt), '')) FROM transactions),
-              (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM recharge_requests),
-              (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM support_tickets),
-              (SELECT CONCAT(COUNT(*), ':', COALESCE(SUM(isRead), 0), ':', COALESCE(MAX(createdAt), '')) FROM notifications WHERE agencyId = 'admin')
-            ) AS ver
-          `)
-        : pool.query<any[]>(`
-            SELECT CONCAT_WS('|',
-              (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM applications WHERE agencyId = ?),
-              (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM study_applications WHERE agencyId = ?),
-              (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM trip_reservations WHERE agencyId = ?),
-              (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(createdAt), '')) FROM transactions WHERE agencyId = ?),
-              (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM recharge_requests WHERE agencyId = ?),
-              (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM support_tickets WHERE agencyId = ?),
-              (SELECT CONCAT(COUNT(*), ':', COALESCE(SUM(isRead), 0), ':', COALESCE(MAX(createdAt), '')) FROM notifications WHERE agencyId = ?)
-            ) AS ver
-          `, [uid, uid, uid, uid, uid, uid, uid]),
-    ]);
+        ? ""
+        : `CONCAT_WS('|',
+            (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM countries),
+            (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM services),
+            (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM organized_trips),
+            (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM study_programs)
+          ) AS catalogVersion,`;
 
-    const userVer = String(userAgg?.[0]?.ver || "");
-    const opsVer = String(opsAgg?.[0]?.ver || "");
+    if (effectiveAdmin) {
+      const [rows] = await pool.query<any[]>(`
+        SELECT
+          ${catalogSql}
+          (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), ''), ':', COALESCE(SUM(balance), 0)) FROM users) AS userVer,
+          CONCAT_WS('|',
+            (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM applications),
+            (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM study_applications),
+            (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM trip_reservations),
+            (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(createdAt), '')) FROM transactions),
+            (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM recharge_requests),
+            (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM support_tickets),
+            (SELECT CONCAT(COUNT(*), ':', COALESCE(SUM(isRead), 0), ':', COALESCE(MAX(createdAt), '')) FROM notifications WHERE agencyId = 'admin')
+          ) AS opsVer
+      `);
+      const catalogVersion = precomputedCatalogVersion !== undefined
+        ? precomputedCatalogVersion
+        : String(rows?.[0]?.catalogVersion || "");
+      const userVer = String(rows?.[0]?.userVer || "");
+      const opsVer = String(rows?.[0]?.opsVer || "");
+      return {
+        catalogVersion,
+        syncVersion: `${catalogVersion}||${userVer}||${opsVer}`,
+      };
+    }
+
+    const userIdFilter =
+      inFilter.params.length <= 1
+        ? { clause: "id = ?", params: [inFilter.params[0] || ""] }
+        : { clause: `id IN (${inFilter.params.map(() => "?").join(", ")})`, params: inFilter.params };
+
+    const [rows] = await pool.query<any[]>(
+      `
+      SELECT
+        ${catalogSql}
+        (SELECT CONCAT(COALESCE(MAX(updatedAt), ''), ':', COALESCE(SUM(balance), 0), ':', COALESCE(MAX(status), '')) FROM users WHERE ${userIdFilter.clause}) AS userVer,
+        CONCAT_WS('|',
+          (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM applications WHERE ${inFilter.clause}),
+          (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM study_applications WHERE ${inFilter.clause}),
+          (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM trip_reservations WHERE ${inFilter.clause}),
+          (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(createdAt), '')) FROM transactions WHERE ${inFilter.clause}),
+          (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM recharge_requests WHERE ${inFilter.clause}),
+          (SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), '')) FROM support_tickets WHERE ${inFilter.clause}),
+          (SELECT CONCAT(COUNT(*), ':', COALESCE(SUM(isRead), 0), ':', COALESCE(MAX(createdAt), '')) FROM notifications WHERE ${inFilter.clause})
+        ) AS opsVer
+    `,
+      [
+        ...userIdFilter.params,
+        ...inFilter.params,
+        ...inFilter.params,
+        ...inFilter.params,
+        ...inFilter.params,
+        ...inFilter.params,
+        ...inFilter.params,
+        ...inFilter.params,
+      ]
+    );
+
+    const catalogVersion = precomputedCatalogVersion !== undefined
+      ? precomputedCatalogVersion
+      : String(rows?.[0]?.catalogVersion || "");
+    const userVer = String(rows?.[0]?.userVer || "");
+    const opsVer = String(rows?.[0]?.opsVer || "");
     return {
       catalogVersion,
       syncVersion: `${catalogVersion}||${userVer}||${opsVer}`,
@@ -657,17 +908,21 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       const pool = getMysqlPool();
 
       let effectiveAdmin = isAdmin;
-      if (!effectiveAdmin) {
-        let [uRows] = await pool.query<any[]>("SELECT role FROM users WHERE id = ? LIMIT 1", [uid]);
-        if (uRows.length === 0 && email) {
-          [uRows] = await pool.query<any[]>("SELECT role FROM users WHERE email = ? LIMIT 1", [email]);
+      let agencyIds = [uid];
+      let [uRows] = await pool.query<any[]>("SELECT id, role FROM users WHERE id = ? LIMIT 1", [uid]);
+      if (uRows.length === 0 && email) {
+        [uRows] = await pool.query<any[]>("SELECT id, role FROM users WHERE email = ? LIMIT 1", [email]);
+      }
+      if (uRows.length > 0) {
+        if (uRows[0].id && uRows[0].id !== uid) {
+          agencyIds.push(String(uRows[0].id));
         }
-        if (uRows.length > 0 && String(uRows[0].role || "").toLowerCase() === "admin") {
+        if (String(uRows[0].role || "").toLowerCase() === "admin") {
           effectiveAdmin = true;
         }
       }
 
-      const versions = await getSyncVersions(pool, uid, effectiveAdmin);
+      const versions = await getSyncVersions(pool, agencyIds, effectiveAdmin);
       return res.json(versions);
     } catch (err) {
       console.error("[MySQL /sync-version]", err);
@@ -682,11 +937,16 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       const isAdmin = Boolean(req.user!.isAdmin);
       const explicitSkipCatalog = req.query.includeCatalog === "0";
       const clientCatalogVersion = typeof req.query.catalogVersion === "string" ? req.query.catalogVersion : "";
+      const scopeRaw = typeof req.query.scope === "string" ? req.query.scope.trim().toLowerCase() : "all";
+      const scope: "core" | "secondary" | "all" =
+        scopeRaw === "core" ? "core" : scopeRaw === "secondary" ? "secondary" : "all";
       const pool = getMysqlPool();
 
       const [[userRowsById], precomputedCatalogVersion] = await Promise.all([
         pool.query<any[]>("SELECT * FROM users WHERE id = ? LIMIT 1", [uid]),
-        !explicitSkipCatalog && clientCatalogVersion ? getCatalogVersionOnly(pool) : Promise.resolve(undefined),
+        !explicitSkipCatalog && clientCatalogVersion && scope !== "secondary"
+          ? getCatalogVersionOnly(pool)
+          : Promise.resolve(undefined),
       ]);
 
       let userRows = userRowsById;
@@ -725,112 +985,196 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
         });
       }
 
+      const matchedAgencyIds = Array.from(new Set([uid, String(currentUser.id || "")].filter(Boolean)));
+      const agencyFilter = buildAgencyInClause(matchedAgencyIds);
+
       const includeCatalog =
         !explicitSkipCatalog &&
         !(clientCatalogVersion && precomputedCatalogVersion !== undefined && clientCatalogVersion === precomputedCatalogVersion);
 
+      const agencyLookupById = new Map<string, any>();
+      const agencyLookupByEmail = new Map<string, any>();
+      if (currentUser.id) agencyLookupById.set(currentUser.id, currentUser);
+      if (currentUser.email) agencyLookupByEmail.set(String(currentUser.email).trim().toLowerCase(), currentUser);
+
+      const buildEnricher = (agenciesList: any[]) => {
+        for (const ag of agenciesList) {
+          if (ag?.id) agencyLookupById.set(ag.id, ag);
+          if (ag?.email) agencyLookupByEmail.set(String(ag.email).trim().toLowerCase(), ag);
+        }
+        return <T extends { agencyId?: string; agencyName?: string }>(item: T): T => {
+          const stored = typeof item.agencyName === "string" ? item.agencyName.trim() : "";
+          const matched =
+            (item.agencyId ? agencyLookupById.get(item.agencyId) : undefined) ||
+            (stored && isEmailLike(stored) ? agencyLookupByEmail.get(stored.toLowerCase()) : undefined);
+          if (matched) {
+            return {
+              ...item,
+              agencyName: resolveAgencyNameFromRow(matched, stored, matched.email),
+            };
+          }
+          if (isPlaceholderAgencyName(stored)) {
+            return {
+              ...item,
+              agencyName: item.agencyId ? `Agence #${String(item.agencyId).substring(0, 6)}` : "Agence Partenaire",
+            };
+          }
+          return item;
+        };
+      };
+
+      // =====================================================================
+      // MODE RAPIDE "CORE" : Débloque immédiatement Dashboard & Mes Dossiers (<100ms)
+      // =====================================================================
+      if (scope === "core") {
+        const [
+          [appRows],
+          [notifRows],
+          [countryRows],
+          [serviceRows],
+          [agencyRows],
+        ] = await Promise.all([
+          effectiveAdmin
+            ? pool.query<any[]>("SELECT * FROM applications ORDER BY submissionDate DESC LIMIT 300")
+            : pool.query<any[]>(
+                `SELECT * FROM applications WHERE ${agencyFilter.clause} ORDER BY submissionDate DESC LIMIT 200`,
+                agencyFilter.params
+              ),
+          effectiveAdmin
+            ? pool.query<any[]>("SELECT * FROM notifications WHERE agencyId = 'admin' ORDER BY createdAt DESC LIMIT 50")
+            : pool.query<any[]>(
+                `SELECT * FROM notifications WHERE ${agencyFilter.clause} ORDER BY createdAt DESC LIMIT 50`,
+                agencyFilter.params
+              ),
+          includeCatalog ? pool.query<any[]>("SELECT * FROM countries ORDER BY name ASC") : Promise.resolve([[] as any[]]),
+          includeCatalog ? pool.query<any[]>("SELECT * FROM services ORDER BY updatedAt DESC") : Promise.resolve([[] as any[]]),
+          effectiveAdmin
+            ? pool.query<any[]>(
+                `SELECT id, email, name, agencyName, companyName, phone, rc, nif, managerName, address, wilaya, role, status, balance, applicationsCount, b2cMarginPercent, bannedUntil, banReason, createdAt
+                 FROM users ORDER BY createdAt DESC`
+              )
+            : Promise.resolve([[] as any[]]),
+        ]);
+
+        const mappedAgencies = effectiveAdmin ? agencyRows.map(mapUserListRow).filter(Boolean) as any[] : [];
+        const enrichWithAgencyName = buildEnricher(mappedAgencies);
+
+        return res.json({
+          scope: "core",
+          currentAgency: currentUser,
+          role: effectiveAdmin ? "admin" : "agency",
+          catalogOmitted: !includeCatalog,
+          ...(includeCatalog
+            ? {
+                countries: countryRows.map(mapCountryRow),
+                services: serviceRows.map(mapServiceRow),
+              }
+            : {}),
+          applications: appRows.map(mapApplicationListRow).map(enrichWithAgencyName),
+          notifications: notifRows.map(mapNotificationRow),
+          ...(effectiveAdmin ? { agencies: mappedAgencies } : {}),
+        });
+      }
+
+      // =====================================================================
+      // MODE SECONDAIRE OU COMPLET (exécuté en 2 lots pour ne jamais saturer le pool MySQL)
+      // =====================================================================
+      let mappedAgencies: any[] = [];
+      let appRows: any[] = [];
+      let notifRows: any[] = [];
+      let countryRows: any[] = [];
+      let serviceRows: any[] = [];
+
+      if (scope === "all") {
+        const [
+          [appsRes],
+          [notifsRes],
+          [countriesRes],
+          [servicesRes],
+          [usersRes],
+        ] = await Promise.all([
+          effectiveAdmin
+            ? pool.query<any[]>("SELECT * FROM applications ORDER BY submissionDate DESC LIMIT 300")
+            : pool.query<any[]>(
+                `SELECT * FROM applications WHERE ${agencyFilter.clause} ORDER BY submissionDate DESC LIMIT 200`,
+                agencyFilter.params
+              ),
+          effectiveAdmin
+            ? pool.query<any[]>("SELECT * FROM notifications WHERE agencyId = 'admin' ORDER BY createdAt DESC LIMIT 50")
+            : pool.query<any[]>(
+                `SELECT * FROM notifications WHERE ${agencyFilter.clause} ORDER BY createdAt DESC LIMIT 50`,
+                agencyFilter.params
+              ),
+          includeCatalog ? pool.query<any[]>("SELECT * FROM countries ORDER BY name ASC") : Promise.resolve([[] as any[]]),
+          includeCatalog ? pool.query<any[]>("SELECT * FROM services ORDER BY updatedAt DESC") : Promise.resolve([[] as any[]]),
+          effectiveAdmin
+            ? pool.query<any[]>(
+                `SELECT id, email, name, agencyName, companyName, phone, rc, nif, managerName, address, wilaya, role, status, balance, applicationsCount, b2cMarginPercent, bannedUntil, banReason, createdAt
+                 FROM users ORDER BY createdAt DESC`
+              )
+            : Promise.resolve([[] as any[]]),
+        ]);
+        appRows = appsRes;
+        notifRows = notifsRes;
+        countryRows = countriesRes;
+        serviceRows = servicesRes;
+        mappedAgencies = effectiveAdmin ? usersRes.map(mapUserListRow).filter(Boolean) as any[] : [];
+      } else if (effectiveAdmin) {
+        const [usersLookupRes] = await pool.query<any[]>(
+          "SELECT id, email, name, agencyName, companyName, managerName FROM users"
+        );
+        mappedAgencies = usersLookupRes.map(mapUserListRow).filter(Boolean) as any[];
+      }
+
       const [
-        [countryRows],
-        [serviceRows],
         [tripRows],
         [studyRows],
-        [appRows],
         [studyAppRows],
         [tripResRows],
         [txRows],
         [rechargeRows],
         [ticketRows],
-        [notifRows],
-        [agencyRows],
         versions,
       ] = await Promise.all([
-        includeCatalog ? pool.query<any[]>("SELECT * FROM countries ORDER BY name ASC") : Promise.resolve([[] as any[]]),
-        includeCatalog ? pool.query<any[]>("SELECT * FROM services ORDER BY updatedAt DESC") : Promise.resolve([[] as any[]]),
         includeCatalog ? pool.query<any[]>("SELECT * FROM organized_trips ORDER BY createdAt DESC") : Promise.resolve([[] as any[]]),
         includeCatalog ? pool.query<any[]>("SELECT * FROM study_programs ORDER BY createdAt DESC") : Promise.resolve([[] as any[]]),
         effectiveAdmin
-          ? pool.query<any[]>("SELECT * FROM applications ORDER BY submissionDate DESC LIMIT 300")
-          : pool.query<any[]>(
-              "SELECT * FROM applications WHERE agencyId = ? ORDER BY submissionDate DESC LIMIT 200",
-              [uid]
-            ),
-        effectiveAdmin
           ? pool.query<any[]>("SELECT * FROM study_applications ORDER BY submissionDate DESC LIMIT 300")
           : pool.query<any[]>(
-              "SELECT * FROM study_applications WHERE agencyId = ? ORDER BY submissionDate DESC LIMIT 200",
-              [uid]
+              `SELECT * FROM study_applications WHERE ${agencyFilter.clause} ORDER BY submissionDate DESC LIMIT 200`,
+              agencyFilter.params
             ),
         effectiveAdmin
           ? pool.query<any[]>("SELECT * FROM trip_reservations ORDER BY createdAt DESC LIMIT 300")
           : pool.query<any[]>(
-              "SELECT * FROM trip_reservations WHERE agencyId = ? ORDER BY createdAt DESC LIMIT 200",
-              [uid]
+              `SELECT * FROM trip_reservations WHERE ${agencyFilter.clause} ORDER BY createdAt DESC LIMIT 200`,
+              agencyFilter.params
             ),
         effectiveAdmin
           ? pool.query<any[]>("SELECT * FROM transactions ORDER BY createdAt DESC LIMIT 500")
           : pool.query<any[]>(
-              "SELECT * FROM transactions WHERE agencyId = ? ORDER BY createdAt DESC LIMIT 250",
-              [uid]
+              `SELECT * FROM transactions WHERE ${agencyFilter.clause} ORDER BY createdAt DESC LIMIT 250`,
+              agencyFilter.params
             ),
         effectiveAdmin
           ? pool.query<any[]>("SELECT * FROM recharge_requests ORDER BY createdAt DESC LIMIT 300")
           : pool.query<any[]>(
-              "SELECT * FROM recharge_requests WHERE agencyId = ? ORDER BY createdAt DESC LIMIT 100",
-              [uid]
+              `SELECT * FROM recharge_requests WHERE ${agencyFilter.clause} ORDER BY createdAt DESC LIMIT 100`,
+              agencyFilter.params
             ),
         effectiveAdmin
           ? pool.query<any[]>("SELECT * FROM support_tickets ORDER BY createdAt DESC LIMIT 300")
           : pool.query<any[]>(
-              "SELECT * FROM support_tickets WHERE agencyId = ? ORDER BY createdAt DESC LIMIT 150",
-              [uid]
+              `SELECT * FROM support_tickets WHERE ${agencyFilter.clause} ORDER BY createdAt DESC LIMIT 150`,
+              agencyFilter.params
             ),
-        effectiveAdmin
-          ? pool.query<any[]>(
-              "SELECT * FROM notifications WHERE agencyId = 'admin' ORDER BY createdAt DESC LIMIT 50"
-            )
-          : pool.query<any[]>(
-              "SELECT * FROM notifications WHERE agencyId = ? ORDER BY createdAt DESC LIMIT 50",
-              [uid]
-            ),
-        effectiveAdmin
-          ? pool.query<any[]>("SELECT * FROM users ORDER BY createdAt DESC")
-          : Promise.resolve([[] as any[]]),
-        getSyncVersions(pool, uid, effectiveAdmin, precomputedCatalogVersion),
+        getSyncVersions(pool, matchedAgencyIds, effectiveAdmin, precomputedCatalogVersion),
       ]);
 
-      const mappedAgencies = effectiveAdmin ? agencyRows.map(mapUserRow).filter(Boolean) as any[] : [];
-      const agencyLookupById = new Map<string, any>();
-      const agencyLookupByEmail = new Map<string, any>();
-      if (currentUser) {
-        if (currentUser.id) agencyLookupById.set(currentUser.id, currentUser);
-        if (currentUser.email) agencyLookupByEmail.set(String(currentUser.email).trim().toLowerCase(), currentUser);
-      }
-      for (const ag of mappedAgencies) {
-        if (ag?.id) agencyLookupById.set(ag.id, ag);
-        if (ag?.email) agencyLookupByEmail.set(String(ag.email).trim().toLowerCase(), ag);
-      }
-
-      const enrichWithAgencyName = <T extends { agencyId?: string; agencyName?: string }>(item: T): T => {
-        const stored = typeof item.agencyName === "string" ? item.agencyName.trim() : "";
-        const matched =
-          (item.agencyId ? agencyLookupById.get(item.agencyId) : undefined) ||
-          (stored && isEmailLike(stored) ? agencyLookupByEmail.get(stored.toLowerCase()) : undefined);
-        if (matched) {
-          return {
-            ...item,
-            agencyName: resolveAgencyNameFromRow(matched, stored, matched.email),
-          };
-        }
-        if (isPlaceholderAgencyName(stored)) {
-          return {
-            ...item,
-            agencyName: item.agencyId ? `Agence #${String(item.agencyId).substring(0, 6)}` : "Agence Partenaire",
-          };
-        }
-        return item;
-      };
+      const enrichWithAgencyName = buildEnricher(mappedAgencies);
 
       return res.json({
+        scope,
         currentAgency: currentUser,
         role: effectiveAdmin ? "admin" : "agency",
         catalogOmitted: !includeCatalog,
@@ -838,20 +1182,28 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
         catalogVersion: versions.catalogVersion,
         ...(includeCatalog
           ? {
-              countries: countryRows.map(mapCountryRow),
-              services: serviceRows.map(mapServiceRow),
+              ...(scope === "all"
+                ? {
+                    countries: countryRows.map(mapCountryRow),
+                    services: serviceRows.map(mapServiceRow),
+                  }
+                : {}),
               organizedTrips: tripRows.map(mapTripRow),
               studyPrograms: studyRows.map(mapStudyProgramRow),
             }
           : {}),
-        applications: appRows.map(mapApplicationRow).map(enrichWithAgencyName),
-        studyApplications: studyAppRows.map(mapStudyApplicationRow).map(enrichWithAgencyName),
+        ...(scope === "all"
+          ? {
+              applications: appRows.map(mapApplicationListRow).map(enrichWithAgencyName),
+              notifications: notifRows.map(mapNotificationRow),
+              agencies: mappedAgencies,
+            }
+          : {}),
+        studyApplications: studyAppRows.map(mapStudyApplicationListRow).map(enrichWithAgencyName),
         tripReservations: tripResRows.map(mapTripReservationRow).map(enrichWithAgencyName),
         transactions: txRows.map(mapTransactionRow).map(enrichWithAgencyName),
         rechargeRequests: rechargeRows.map(mapRechargeRow).map(enrichWithAgencyName),
-        supportTickets: ticketRows.map(mapTicketRow).map(enrichWithAgencyName),
-        notifications: notifRows.map(mapNotificationRow),
-        agencies: mappedAgencies,
+        supportTickets: ticketRows.map(mapTicketListRow).map(enrichWithAgencyName),
       });
     } catch (err) {
       console.error("[MySQL /bootstrap]", err);
@@ -1360,6 +1712,30 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
     }
   });
 
+  router.get("/applications/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const pool = getMysqlPool();
+      const [rows] = await pool.query<any[]>("SELECT * FROM applications WHERE id = ? LIMIT 1", [req.params.id]);
+      if (rows.length === 0) return res.status(404).json({ error: "Dossier introuvable." });
+
+      const app = mapApplicationRow(rows[0]);
+      const isAdmin = Boolean(req.user!.isAdmin);
+      if (!isAdmin && app.agencyId !== req.user!.uid) {
+        const email = (req.user!.email || "").toLowerCase();
+        let ownerMatched = false;
+        if (email) {
+          const [uRows] = await pool.query<any[]>("SELECT id FROM users WHERE email = ? LIMIT 1", [email]);
+          if (uRows.length > 0 && uRows[0].id === app.agencyId) ownerMatched = true;
+        }
+        if (!ownerMatched) return res.status(403).json({ error: "Accès refusé." });
+      }
+      return res.json({ application: app });
+    } catch (err) {
+      console.error("[MySQL GET /applications/:id]", err);
+      return res.status(500).json({ error: "Erreur chargement dossier." });
+    }
+  });
+
   router.patch("/applications/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const pool = getMysqlPool();
@@ -1369,7 +1745,13 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       const current = mapApplicationRow(rows[0]);
       const isAdmin = Boolean(req.user!.isAdmin);
       if (!isAdmin && current.agencyId !== req.user!.uid) {
-        return res.status(403).json({ error: "Accès refusé." });
+        const email = (req.user!.email || "").toLowerCase();
+        let ownerMatched = false;
+        if (email) {
+          const [uRows] = await pool.query<any[]>("SELECT id FROM users WHERE email = ? LIMIT 1", [email]);
+          if (uRows.length > 0 && uRows[0].id === current.agencyId) ownerMatched = true;
+        }
+        if (!ownerMatched) return res.status(403).json({ error: "Accès refusé." });
       }
 
       const updates = { ...(req.body || {}) };
@@ -1378,6 +1760,16 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
         delete updates.price;
         delete updates.adminNotes;
         delete updates.finalDocument;
+      }
+
+      if (isDeferredMarker(updates.finalDocument)) {
+        updates.finalDocument = current.finalDocument;
+      }
+      if (Array.isArray(updates.attachments)) {
+        updates.attachments = restoreDeferredAttachments(updates.attachments, current.attachments || []);
+      }
+      if (updates.customFormData) {
+        updates.customFormData = restoreDeferredTree(updates.customFormData, current.customFormData);
       }
 
       const merged = { ...current, ...updates, id: req.params.id };
@@ -1567,6 +1959,30 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
     }
   });
 
+  router.get("/study-applications/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const pool = getMysqlPool();
+      const [rows] = await pool.query<any[]>("SELECT * FROM study_applications WHERE id = ? LIMIT 1", [req.params.id]);
+      if (rows.length === 0) return res.status(404).json({ error: "Dossier études introuvable." });
+
+      const item = mapStudyApplicationRow(rows[0]);
+      const isAdmin = Boolean(req.user!.isAdmin);
+      if (!isAdmin && item.agencyId !== req.user!.uid) {
+        const email = (req.user!.email || "").toLowerCase();
+        let ownerMatched = false;
+        if (email) {
+          const [uRows] = await pool.query<any[]>("SELECT id FROM users WHERE email = ? LIMIT 1", [email]);
+          if (uRows.length > 0 && uRows[0].id === item.agencyId) ownerMatched = true;
+        }
+        if (!ownerMatched) return res.status(403).json({ error: "Accès refusé." });
+      }
+      return res.json({ studyApplication: item });
+    } catch (err) {
+      console.error("[MySQL GET /study-applications/:id]", err);
+      return res.status(500).json({ error: "Erreur chargement dossier études." });
+    }
+  });
+
   router.patch("/study-applications/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const pool = getMysqlPool();
@@ -1576,7 +1992,13 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       const current = mapStudyApplicationRow(rows[0]);
       const isAdmin = Boolean(req.user!.isAdmin);
       if (!isAdmin && current.agencyId !== req.user!.uid) {
-        return res.status(403).json({ error: "Accès refusé." });
+        const email = (req.user!.email || "").toLowerCase();
+        let ownerMatched = false;
+        if (email) {
+          const [uRows] = await pool.query<any[]>("SELECT id FROM users WHERE email = ? LIMIT 1", [email]);
+          if (uRows.length > 0 && uRows[0].id === current.agencyId) ownerMatched = true;
+        }
+        if (!ownerMatched) return res.status(403).json({ error: "Accès refusé." });
       }
 
       const updates = { ...(req.body || {}) };
@@ -1586,6 +2008,16 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
         delete updates.paidAmount;
         delete updates.paymentStatus;
         delete updates.adminNotes;
+      }
+
+      if (isDeferredMarker(updates.finalDocument)) {
+        updates.finalDocument = current.finalDocument;
+      }
+      if (Array.isArray(updates.attachments)) {
+        updates.attachments = restoreDeferredAttachments(updates.attachments, current.attachments || []);
+      }
+      if (updates.documents) {
+        updates.documents = restoreDeferredTree(updates.documents, current.documents);
       }
 
       if (isAdmin && typeof updates.addPaymentAmount === "number" && updates.addPaymentAmount > 0) {
@@ -2153,6 +2585,30 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
     }
   });
 
+  router.get("/support-tickets/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const pool = getMysqlPool();
+      const [rows] = await pool.query<any[]>("SELECT * FROM support_tickets WHERE id = ? LIMIT 1", [req.params.id]);
+      if (rows.length === 0) return res.status(404).json({ error: "Ticket introuvable." });
+
+      const item = mapTicketRow(rows[0]);
+      const isAdmin = Boolean(req.user!.isAdmin);
+      if (!isAdmin && item.agencyId !== req.user!.uid) {
+        const email = (req.user!.email || "").toLowerCase();
+        let ownerMatched = false;
+        if (email) {
+          const [uRows] = await pool.query<any[]>("SELECT id FROM users WHERE email = ? LIMIT 1", [email]);
+          if (uRows.length > 0 && uRows[0].id === item.agencyId) ownerMatched = true;
+        }
+        if (!ownerMatched) return res.status(403).json({ error: "Accès refusé." });
+      }
+      return res.json({ ticket: item });
+    } catch (err) {
+      console.error("[MySQL GET /support-tickets/:id]", err);
+      return res.status(500).json({ error: "Erreur chargement ticket." });
+    }
+  });
+
   router.patch("/support-tickets/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const pool = getMysqlPool();
@@ -2162,10 +2618,28 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       const current = mapTicketRow(rows[0]);
       const isAdmin = Boolean(req.user!.isAdmin);
       if (!isAdmin && current.agencyId !== req.user!.uid) {
-        return res.status(403).json({ error: "Accès refusé." });
+        const email = (req.user!.email || "").toLowerCase();
+        let ownerMatched = false;
+        if (email) {
+          const [uRows] = await pool.query<any[]>("SELECT id FROM users WHERE email = ? LIMIT 1", [email]);
+          if (uRows.length > 0 && uRows[0].id === current.agencyId) ownerMatched = true;
+        }
+        if (!ownerMatched) return res.status(403).json({ error: "Accès refusé." });
       }
 
-      const updates = req.body || {};
+      const updates = { ...(req.body || {}) };
+      if (Array.isArray(updates.attachments)) {
+        updates.attachments = restoreDeferredAttachments(updates.attachments, current.attachments || []);
+      }
+      if (Array.isArray(updates.messages)) {
+        const currentMsgs = Array.isArray(current.messages) ? current.messages : [];
+        updates.messages = updates.messages.map((m: any, idx: number) => {
+          if (!m || !Array.isArray(m.attachments)) return m;
+          const prevAttachments = currentMsgs[idx]?.attachments || [];
+          return { ...m, attachments: restoreDeferredAttachments(m.attachments, prevAttachments) };
+        });
+      }
+
       const merged = { ...current, ...updates, id: req.params.id };
       const now = nowIso();
 

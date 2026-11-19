@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +6,7 @@ import { useAppStore, Application } from "../../src/store/useAppStore";
 import { 
   CheckCircle, XCircle, AlertCircle, 
   Info, Clock, Send, UploadCloud, FileText, User, 
-  MessageSquare, Download, Eye, X, FileCheck, Calendar, Phone, Mail, MapPin
+  MessageSquare, Download, Eye, X, FileCheck, Calendar, Phone, Mail, MapPin, Loader2
 } from "lucide-react";
 import { uploadFileToServer, downloadFileSafe, resolveAttachmentData } from "../../src/utils/fileUpload";
 import { useLanguage } from "../../src/i18n/LanguageContext";
@@ -24,6 +24,9 @@ export function ApplicationManagement() {
 
   const applications = useAppStore(state => state.applications);
   const agencies = useAppStore(state => state.agencies);
+  const mysqlCoreLoading = useAppStore(state => state.mysqlCoreLoading);
+  const mysqlCoreLoaded = useAppStore(state => state.mysqlCoreLoaded);
+  const hydrateApplicationDetails = useAppStore(state => state.hydrateApplicationDetails);
   const updateApplication = useAppStore(state => state.updateApplication);
   const addApplicationTimelineEntry = useAppStore(state => state.addApplicationTimelineEntry);
 
@@ -66,6 +69,12 @@ export function ApplicationManagement() {
   const selectedApp = useMemo(() => {
     return resolvedApplications.find((a) => a.id === selectedAppId);
   }, [resolvedApplications, selectedAppId]);
+
+  useEffect(() => {
+    if (selectedApp?.id && selectedApp.hasDeferredAssets) {
+      void hydrateApplicationDetails(selectedApp.id);
+    }
+  }, [selectedApp?.id, selectedApp?.hasDeferredAssets, hydrateApplicationDetails]);
 
   const getStatusBadge = useCallback((status: string) => {
     switch (status) {
@@ -159,8 +168,9 @@ export function ApplicationManagement() {
 
   const handleOpenPreview = async (att: any) => {
     const data = await resolveAttachmentData(att);
+    const fallbackSrc = (att.dataUrl && !String(att.dataUrl).startsWith("deferred:") ? att.dataUrl : "") || att.url || "";
     setPreviewDoc({ 
-      src: data || att.dataUrl || att.url, 
+      src: data || fallbackSrc, 
       title: att.category || att.name,
       type: att.type || (att.name?.toLowerCase().endsWith(".pdf") ? "application/pdf" : undefined)
     });
@@ -196,8 +206,17 @@ export function ApplicationManagement() {
     // 2. Pièces dans customFormData.attachments
     if (selectedApp.customFormData?.attachments && Array.isArray(selectedApp.customFormData.attachments)) {
       selectedApp.customFormData.attachments.forEach((att: any) => {
-        if (att && att.dataUrl && !list.some(x => x.dataUrl === att.dataUrl)) {
-          list.push(att);
+        if (att && (att.dataUrl || att.url) && !list.some(x => (att.dataUrl && x.dataUrl === att.dataUrl) || (att.url && x.url === att.url))) {
+          list.push({
+            id: att.id || "",
+            name: att.name || "Document",
+            category: att.category || "Justificatif",
+            type: att.type || "application/octet-stream",
+            size: att.size,
+            dataUrl: att.dataUrl || "",
+            url: att.url,
+            storageId: att.storageId || att.id
+          });
         }
       });
     }
@@ -205,15 +224,19 @@ export function ApplicationManagement() {
     // 3. Fallback pièces encodées en direct dans customFormData
     if (selectedApp.customFormData) {
       Object.entries(selectedApp.customFormData).forEach(([key, val]) => {
-        if (key !== "attachments" && key !== "applicantDetails" && key !== "textFields" && typeof val === "string" && (isImageBase64(val) || isPdfBase64(val))) {
-          if (!list.some(x => x.dataUrl === val)) {
-            list.push({
-              id: key,
-              name: `${key}.${isPdfBase64(val) ? 'pdf' : 'jpg'}`,
-              category: key,
-              type: isPdfBase64(val) ? 'application/pdf' : 'image/jpeg',
-              dataUrl: val
-            });
+        if (key !== "attachments" && key !== "applicantDetails" && key !== "textFields" && typeof val === "string") {
+          const isDeferred = val.startsWith("deferred:");
+          if (isImageBase64(val) || isPdfBase64(val) || isDeferred) {
+            if (!list.some(x => (isDeferred ? x.url === val : x.dataUrl === val))) {
+              list.push({
+                id: key,
+                name: `${key}.${isPdfBase64(val) ? 'pdf' : 'jpg'}`,
+                category: key,
+                type: isPdfBase64(val) ? 'application/pdf' : (isDeferred ? 'application/octet-stream' : 'image/jpeg'),
+                dataUrl: isDeferred ? "" : val,
+                ...(isDeferred ? { url: val } : {})
+              });
+            }
           }
         }
       });
@@ -289,10 +312,17 @@ export function ApplicationManagement() {
 
           <div className="flex-1 overflow-y-auto divide-y divide-slate-100 custom-scrollbar">
             {paginatedApplications.length === 0 ? (
-              <div className="p-8 text-center text-slate-400">
-                <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p>Aucun dossier ne correspond à votre filtre.</p>
-              </div>
+              mysqlCoreLoading && !mysqlCoreLoaded && resolvedApplications.length === 0 ? (
+                <div className="p-10 text-center text-slate-500">
+                  <Loader2 className="w-8 h-8 mx-auto mb-3 text-[#7B1B38] animate-spin" />
+                  <p className="text-xs font-bold text-slate-700">{isEn ? "Loading applications..." : "Chargement des dossiers en cours..."}</p>
+                </div>
+              ) : (
+                <div className="p-8 text-center text-slate-400">
+                  <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                  <p>Aucun dossier ne correspond à votre filtre.</p>
+                </div>
+              )
             ) : (
               paginatedApplications.map(app => (
                 <div 

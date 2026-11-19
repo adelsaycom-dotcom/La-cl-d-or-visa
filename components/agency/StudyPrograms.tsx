@@ -33,6 +33,8 @@ export default function StudyPrograms() {
   const catalogLoading = useAppStore(state => state.catalogLoading);
   const catalogLoaded = useAppStore(state => state.catalogLoaded);
   const studyApplications = useAppStore(state => state.studyApplications);
+  const mysqlSecondaryLoading = useAppStore(state => state.mysqlSecondaryLoading);
+  const mysqlSecondaryLoaded = useAppStore(state => state.mysqlSecondaryLoaded);
   const addStudyApplication = useAppStore(state => state.addStudyApplication);
   const currentAgency = useAppStore(state => state.currentAgency);
   const currentAgencyId = currentAgency?.id || auth.currentUser?.uid || 'unknown';
@@ -237,7 +239,14 @@ export default function StudyPrograms() {
     setResolvingDocName(docName);
     try {
       const resolved = await resolveAttachmentData(rawUrl);
-      const isPdf = resolved.startsWith('data:application/pdf') || docName.toLowerCase().endsWith('.pdf');
+      if (!resolved) {
+        toast.error("Document indisponible", "Impossible de récupérer l'aperçu de ce document.");
+        return;
+      }
+      const isPdf =
+        resolved.startsWith('data:application/pdf') ||
+        docName.toLowerCase().endsWith('.pdf') ||
+        rawUrl.toLowerCase().includes('.pdf');
       setPreviewDoc({
         src: resolved,
         title: docName,
@@ -1165,19 +1174,27 @@ export default function StudyPrograms() {
             ))}
 
             {myApplications.length === 0 && (
-              <div className="py-16 text-center bg-white rounded-3xl border border-slate-200 border-dashed">
-                <FileText className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                <h4 className="text-base font-black text-slate-800">Aucun dossier étudiant déposé pour le moment</h4>
-                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                  Découvrez les pays et universités disponibles dans l'onglet « Explorer les Universités » pour soumettre votre premier dossier.
-                </p>
-                <Button
-                  onClick={() => setActiveTab('programs')}
-                  className="mt-4 bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs h-9 px-4 rounded-xl"
-                >
-                  Explorer le catalogue
-                </Button>
-              </div>
+              mysqlSecondaryLoading && !mysqlSecondaryLoaded && (studyApplications || []).length === 0 ? (
+                <div className="py-16 text-center bg-white rounded-3xl border border-slate-200">
+                  <Loader2 className="w-9 h-9 mx-auto text-[#7B1B38] animate-spin mb-3" />
+                  <h4 className="text-base font-black text-slate-800">Chargement de vos candidatures...</h4>
+                  <p className="text-xs text-slate-500 mt-1">Récupération des dossiers étudiants depuis le serveur.</p>
+                </div>
+              ) : (
+                <div className="py-16 text-center bg-white rounded-3xl border border-slate-200 border-dashed">
+                  <FileText className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                  <h4 className="text-base font-black text-slate-800">Aucun dossier étudiant déposé pour le moment</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                    Découvrez les pays et universités disponibles dans l'onglet « Explorer les Universités » pour soumettre votre premier dossier.
+                  </p>
+                  <Button
+                    onClick={() => setActiveTab('programs')}
+                    className="mt-4 bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs h-9 px-4 rounded-xl"
+                  >
+                    Explorer le catalogue
+                  </Button>
+                </div>
+              )
             )}
 
             {myApplications.length > appPageSize && (

@@ -18,15 +18,17 @@ interface DocumentPreviewModalProps {
 export function DocumentPreviewModal({ doc, onClose }: DocumentPreviewModalProps) {
   const [blobUrl, setBlobUrl] = useState<string>("");
   const [resolvedImgSrc, setResolvedImgSrc] = useState<string>("");
+  const [resolvedAsPdf, setResolvedAsPdf] = useState<boolean>(false);
   const [isLoadingBlob, setIsLoadingBlob] = useState(false);
 
   const isPdf = Boolean(
-    doc && (
+    resolvedAsPdf ||
+    (doc && (
       doc.src?.startsWith("data:application/pdf") ||
       doc.type?.includes("pdf") ||
       doc.title?.toLowerCase().endsWith(".pdf") ||
       doc.src?.toLowerCase().includes(".pdf")
-    )
+    ))
   );
 
   useEffect(() => {
@@ -34,6 +36,7 @@ export function DocumentPreviewModal({ doc, onClose }: DocumentPreviewModalProps
     let isMounted = true;
 
     const loadPreview = async () => {
+      setResolvedAsPdf(false);
       if (!doc || !doc.src) {
         setBlobUrl("");
         setResolvedImgSrc("");
@@ -41,35 +44,45 @@ export function DocumentPreviewModal({ doc, onClose }: DocumentPreviewModalProps
         return;
       }
 
-      if (isPdf) {
+      const expectsPdf = Boolean(
+        doc.src?.startsWith("data:application/pdf") ||
+        doc.type?.includes("pdf") ||
+        doc.title?.toLowerCase().endsWith(".pdf") ||
+        doc.src?.toLowerCase().includes(".pdf")
+      );
+
+      if (expectsPdf || doc.src.startsWith("/api/files/") || doc.src.startsWith("deferred:")) {
         setIsLoadingBlob(true);
+        setBlobUrl("");
+        setResolvedImgSrc("");
         try {
           const resolved = await resolveAttachmentData(doc.src);
           if (!isMounted) return;
-          if (resolved.startsWith("blob:")) {
-            setBlobUrl(resolved);
-          } else if (resolved) {
-            const blob = await base64ToBlob(resolved, "application/pdf");
-            if (!isMounted) return;
-            if (blob && blob.size > 0) {
-              createdBlobUrl = URL.createObjectURL(blob);
-              setBlobUrl(createdBlobUrl);
+          const detectedPdf = expectsPdf || resolved.startsWith("data:application/pdf");
+          if (detectedPdf) {
+            setResolvedAsPdf(true);
+            if (resolved.startsWith("blob:")) {
+              setBlobUrl(resolved);
+            } else if (resolved) {
+              const blob = await base64ToBlob(resolved, "application/pdf");
+              if (!isMounted) return;
+              if (blob && blob.size > 0) {
+                createdBlobUrl = URL.createObjectURL(blob);
+                setBlobUrl(createdBlobUrl);
+              }
             }
+          } else {
+            setResolvedImgSrc(resolved || (doc.src.startsWith("deferred:") ? "" : doc.src));
           }
         } catch (e) {
-          console.error("Erreur création Blob PDF:", e);
+          console.error("Erreur préparation aperçu:", e);
         } finally {
           if (isMounted) setIsLoadingBlob(false);
         }
       } else {
         setBlobUrl("");
         setIsLoadingBlob(false);
-        if (doc.src.startsWith("/api/files/")) {
-          const resolved = await resolveAttachmentData(doc.src);
-          if (isMounted) setResolvedImgSrc(resolved || doc.src);
-        } else {
-          setResolvedImgSrc(doc.src);
-        }
+        setResolvedImgSrc(doc.src);
       }
     };
 
@@ -81,7 +94,7 @@ export function DocumentPreviewModal({ doc, onClose }: DocumentPreviewModalProps
         URL.revokeObjectURL(createdBlobUrl);
       }
     };
-  }, [doc, isPdf]);
+  }, [doc]);
 
   if (!doc) return null;
 
@@ -202,9 +215,14 @@ export function DocumentPreviewModal({ doc, onClose }: DocumentPreviewModalProps
                 </Button>
               </div>
             )
+          ) : isLoadingBlob ? (
+            <div className="flex flex-col items-center justify-center gap-3 text-slate-400 p-8">
+              <Loader2 className="w-8 h-8 animate-spin text-[#7B1B38]" />
+              <span className="text-xs font-semibold">Chargement de l'image...</span>
+            </div>
           ) : (
             <img 
-              src={resolvedImgSrc || doc.src} 
+              src={resolvedImgSrc || (!doc.src?.startsWith("deferred:") ? doc.src : "")} 
               alt={doc.title} 
               className="max-w-full max-h-[72vh] object-contain rounded-xl p-2 select-none" 
             />

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   MessageSquare, AlertCircle, Plus, Send, ArrowLeft, Search, CheckCircle,
-  Clock, Paperclip, Image as ImageIcon, X, Eye, FileText, Sparkles
+  Clock, Paperclip, Image as ImageIcon, X, Eye, FileText, Sparkles, Loader2
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,6 +21,8 @@ import { useLanguage } from "../../src/i18n/LanguageContext";
 import { useToast } from "@/components/ui/toast";
 import { TablePagination } from "../common/TablePagination";
 import { DocumentPreviewModal, type PreviewDocData } from "../common/DocumentPreviewModal";
+import { AttachmentThumbnail } from "../common/AttachmentThumbnail";
+import { resolveAttachmentData } from "../../src/utils/fileUpload";
 import {
   filterAndSortTickets,
   hasTicketAttachments,
@@ -38,6 +40,9 @@ export function AgencySupport() {
 
   // Sélecteurs Zustand atomiques
   const supportTickets = useAppStore((s) => s.supportTickets);
+  const mysqlSecondaryLoading = useAppStore((s) => s.mysqlSecondaryLoading);
+  const mysqlSecondaryLoaded = useAppStore((s) => s.mysqlSecondaryLoaded);
+  const hydrateSupportTicketDetails = useAppStore((s) => s.hydrateSupportTicketDetails);
   const addSupportTicket = useAppStore((s) => s.addSupportTicket);
   const updateSupportTicket = useAppStore((s) => s.updateSupportTicket);
   const applications = useAppStore((s) => s.applications);
@@ -97,6 +102,12 @@ export function AgencySupport() {
     () => supportTickets.find((t) => t.id === selectedTicketId) ?? null,
     [supportTickets, selectedTicketId]
   );
+
+  useEffect(() => {
+    if (selectedTicket?.id && selectedTicket.hasDeferredAssets) {
+      void hydrateSupportTicketDetails(selectedTicket.id);
+    }
+  }, [selectedTicket?.id, selectedTicket?.hasDeferredAssets, hydrateSupportTicketDetails]);
 
   const linkedAppForSelectedTicket = useMemo(
     () => (selectedTicket?.applicationId ? applicationsById.get(selectedTicket.applicationId) ?? null : null),
@@ -260,9 +271,13 @@ export function AgencySupport() {
     setDescription(templateText);
   }, []);
 
-  const handleOpenAttachmentPreview = useCallback((att: SupportTicketAttachment) => {
+  const handleOpenAttachmentPreview = useCallback(async (att: SupportTicketAttachment) => {
+    const resolved =
+      att.dataUrl && !att.dataUrl.startsWith("deferred:")
+        ? att.dataUrl
+        : (await resolveAttachmentData(att)) || att.url || "";
     setPreviewDoc({
-      src: att.dataUrl,
+      src: resolved,
       title: att.name,
       type: att.type,
     });
@@ -376,22 +391,29 @@ export function AgencySupport() {
           {/* Liste des tickets */}
           <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
             {filteredTickets.length === 0 ? (
-              <div className="p-8 text-center text-slate-500 flex flex-col items-center">
-                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center border border-slate-200 mb-3 shadow-sm">
-                  <MessageSquare className="w-6 h-6 text-slate-300" />
+              mysqlSecondaryLoading && !mysqlSecondaryLoaded && supportTickets.length === 0 ? (
+                <div className="p-10 text-center text-slate-500 flex flex-col items-center">
+                  <Loader2 className="w-8 h-8 text-[#7B1B38] animate-spin mb-3" />
+                  <p className="text-xs font-bold text-slate-700">{isEn ? "Loading conversations..." : "Chargement des discussions..."}</p>
                 </div>
-                <p className="text-sm font-bold text-slate-800">{isEn ? "No matching ticket" : "Aucun ticket correspondant"}</p>
-                <p className="text-xs text-slate-500 mt-1 max-w-[240px]">
-                  {search ? (isEn ? "Try adjusting your search or filters." : "Modifiez votre recherche ou réinitialisez les filtres.") : (isEn ? "No tickets in this category." : "Vous n'avez aucun ticket dans cette catégorie.")}
-                </p>
-                <Button
-                  onClick={() => setIsNewTicketOpen(true)}
-                  variant="outline"
-                  className="mt-4 rounded-xl border-slate-300 font-bold text-xs"
-                >
-                  <Plus className="w-3.5 h-3.5 mr-1.5" /> {isEn ? "Open a Request" : "Ouvrir une demande"}
-                </Button>
-              </div>
+              ) : (
+                <div className="p-8 text-center text-slate-500 flex flex-col items-center">
+                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center border border-slate-200 mb-3 shadow-sm">
+                    <MessageSquare className="w-6 h-6 text-slate-300" />
+                  </div>
+                  <p className="text-sm font-bold text-slate-800">{isEn ? "No matching ticket" : "Aucun ticket correspondant"}</p>
+                  <p className="text-xs text-slate-500 mt-1 max-w-[240px]">
+                    {search ? (isEn ? "Try adjusting your search or filters." : "Modifiez votre recherche ou réinitialisez les filtres.") : (isEn ? "No tickets in this category." : "Vous n'avez aucun ticket dans cette catégorie.")}
+                  </p>
+                  <Button
+                    onClick={() => setIsNewTicketOpen(true)}
+                    variant="outline"
+                    className="mt-4 rounded-xl border-slate-300 font-bold text-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1.5" /> {isEn ? "Open a Request" : "Ouvrir une demande"}
+                  </Button>
+                </div>
+              )
             ) : (
               paginatedTickets.map((ticket) => {
                 const isSelected = selectedTicketId === ticket.id;
@@ -592,7 +614,7 @@ export function AgencySupport() {
                             className="flex items-center gap-2 p-2 bg-white/10 hover:bg-white/20 rounded-xl cursor-pointer transition-colors border border-white/10"
                           >
                             {att.type.startsWith("image/") ? (
-                              <img src={att.dataUrl} alt={att.name} className="w-10 h-10 rounded-lg object-cover bg-black/20 shrink-0" />
+                              <AttachmentThumbnail attachment={att} size="sm" />
                             ) : (
                               <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
                                 <FileText className="w-5 h-5 text-white" />
@@ -643,7 +665,7 @@ export function AgencySupport() {
                                 }`}
                               >
                                 {att.type.startsWith("image/") ? (
-                                  <img src={att.dataUrl} alt={att.name} className="w-10 h-10 rounded-lg object-cover bg-black/10 shrink-0" />
+                                  <AttachmentThumbnail attachment={att} size="sm" />
                                 ) : (
                                   <div className="w-10 h-10 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
                                     <FileText className="w-5 h-5 text-slate-700" />

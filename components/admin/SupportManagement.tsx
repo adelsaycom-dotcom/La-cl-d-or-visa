@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   MessageSquare, AlertCircle, Send, ArrowLeft, Search, CheckCircle,
-  Paperclip, X, Eye, FileText, Building2, RotateCcw
+  Paperclip, X, Eye, FileText, Building2, RotateCcw, Loader2
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,6 +19,8 @@ import { useLanguage } from "../../src/i18n/LanguageContext";
 import { useToast } from "@/components/ui/toast";
 import { TablePagination } from "../common/TablePagination";
 import { DocumentPreviewModal, type PreviewDocData } from "../common/DocumentPreviewModal";
+import { AttachmentThumbnail } from "../common/AttachmentThumbnail";
+import { resolveAttachmentData } from "../../src/utils/fileUpload";
 import {
   filterAndSortTickets,
   hasTicketAttachments,
@@ -36,6 +38,9 @@ export function SupportManagement() {
 
   // Sélecteurs Zustand atomiques
   const rawTickets = useAppStore((s) => s.supportTickets);
+  const mysqlSecondaryLoading = useAppStore((s) => s.mysqlSecondaryLoading);
+  const mysqlSecondaryLoaded = useAppStore((s) => s.mysqlSecondaryLoaded);
+  const hydrateSupportTicketDetails = useAppStore((s) => s.hydrateSupportTicketDetails);
   const agencies = useAppStore((s) => s.agencies);
   const updateSupportTicket = useAppStore((s) => s.updateSupportTicket);
   const applications = useAppStore((s) => s.applications);
@@ -83,6 +88,12 @@ export function SupportManagement() {
     () => tickets.find((t) => t.id === selectedTicketId) ?? null,
     [tickets, selectedTicketId]
   );
+
+  useEffect(() => {
+    if (selectedTicket?.id && selectedTicket.hasDeferredAssets) {
+      void hydrateSupportTicketDetails(selectedTicket.id);
+    }
+  }, [selectedTicket?.id, selectedTicket?.hasDeferredAssets, hydrateSupportTicketDetails]);
 
   const linkedAppForSelectedTicket = useMemo(
     () => (selectedTicket?.applicationId ? applicationsById.get(selectedTicket.applicationId) ?? null : null),
@@ -170,9 +181,13 @@ export function SupportManagement() {
     [selectedTicket, updateSupportTicket]
   );
 
-  const handleOpenAttachmentPreview = useCallback((att: SupportTicketAttachment) => {
+  const handleOpenAttachmentPreview = useCallback(async (att: SupportTicketAttachment) => {
+    const resolved =
+      att.dataUrl && !att.dataUrl.startsWith("deferred:")
+        ? att.dataUrl
+        : (await resolveAttachmentData(att)) || att.url || "";
     setPreviewDoc({
-      src: att.dataUrl,
+      src: resolved,
       title: att.name,
       type: att.type,
     });
@@ -258,11 +273,18 @@ export function SupportManagement() {
 
           <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
             {filteredTickets.length === 0 ? (
-              <div className="p-8 text-center text-slate-500">
-                <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                <p className="text-sm font-bold text-slate-700">Aucun ticket trouvé</p>
-                <p className="text-xs text-slate-400 mt-1">Ajustez vos filtres ou effectuez une autre recherche.</p>
-              </div>
+              mysqlSecondaryLoading && !mysqlSecondaryLoaded && rawTickets.length === 0 ? (
+                <div className="p-10 text-center text-slate-500 flex flex-col items-center">
+                  <Loader2 className="w-8 h-8 text-[#7B1B38] animate-spin mb-3" />
+                  <p className="text-xs font-bold text-slate-700">{isEn ? "Loading tickets..." : "Chargement des tickets..."}</p>
+                </div>
+              ) : (
+                <div className="p-8 text-center text-slate-500">
+                  <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm font-bold text-slate-700">Aucun ticket trouvé</p>
+                  <p className="text-xs text-slate-400 mt-1">Ajustez vos filtres ou effectuez une autre recherche.</p>
+                </div>
+              )
             ) : (
               paginatedTickets.map((ticket) => {
                 const isSelected = selectedTicketId === ticket.id;
@@ -495,7 +517,7 @@ export function SupportManagement() {
                             className="flex items-center gap-2 p-2 bg-slate-50 hover:bg-slate-100 rounded-xl cursor-pointer transition-colors border border-slate-200"
                           >
                             {att.type.startsWith("image/") ? (
-                              <img src={att.dataUrl} alt={att.name} className="w-10 h-10 rounded-lg object-cover bg-slate-200 shrink-0" />
+                              <AttachmentThumbnail attachment={att} size="sm" />
                             ) : (
                               <div className="w-10 h-10 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
                                 <FileText className="w-5 h-5 text-slate-700" />
@@ -546,7 +568,7 @@ export function SupportManagement() {
                                 }`}
                               >
                                 {att.type.startsWith("image/") ? (
-                                  <img src={att.dataUrl} alt={att.name} className="w-10 h-10 rounded-lg object-cover bg-black/10 shrink-0" />
+                                  <AttachmentThumbnail attachment={att} size="sm" />
                                 ) : (
                                   <div className="w-10 h-10 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
                                     <FileText className="w-5 h-5 text-slate-700" />

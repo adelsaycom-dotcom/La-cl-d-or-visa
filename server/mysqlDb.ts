@@ -380,6 +380,33 @@ export async function ensureMysqlConnected(): Promise<boolean> {
   return pendingInitPromise;
 }
 
+const COMPOSITE_INDEXES: Array<{ table: string; name: string; columns: string }> = [
+  { table: "applications", name: "idx_apps_agency_sub", columns: "agencyId, submissionDate" },
+  { table: "study_applications", name: "idx_study_apps_agency_sub", columns: "agencyId, submissionDate" },
+  { table: "trip_reservations", name: "idx_trip_res_agency_created", columns: "agencyId, createdAt" },
+  { table: "transactions", name: "idx_tx_agency_created", columns: "agencyId, createdAt" },
+  { table: "recharge_requests", name: "idx_recharge_agency_created", columns: "agencyId, createdAt" },
+  { table: "support_tickets", name: "idx_tickets_agency_created", columns: "agencyId, createdAt" },
+  { table: "notifications", name: "idx_notif_agency_created", columns: "agencyId, createdAt" },
+];
+
+async function ensureCompositeIndexes(conn: PoolConnection): Promise<void> {
+  for (const idx of COMPOSITE_INDEXES) {
+    try {
+      const [rows] = await conn.query<any[]>(
+        `SELECT 1 FROM information_schema.STATISTICS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ? LIMIT 1`,
+        [idx.table, idx.name]
+      );
+      if (rows.length === 0) {
+        await conn.query(`ALTER TABLE ${idx.table} ADD INDEX ${idx.name} (${idx.columns})`);
+      }
+    } catch {
+      // Ignorer si privilèges restreints ou index déjà présent
+    }
+  }
+}
+
 export async function initMysqlDatabase(): Promise<boolean> {
   const cfg = resolveMysqlConfig();
   if (!cfg.configured) {
@@ -424,13 +451,14 @@ export async function initMysqlDatabase(): Promise<boolean> {
       for (const ddl of SCHEMA_TABLES_SQL) {
         await conn.query(ddl);
       }
+      await ensureCompositeIndexes(conn);
     } finally {
       conn.release();
     }
 
     mysqlReady = true;
     lastMysqlError = null;
-    console.log("[MySQL] Base de données MySQL connectée et 13 tables vérifiées.");
+    console.log("[MySQL] Base de données MySQL connectée, 13 tables et index composites vérifiés.");
     return true;
   } catch (err: any) {
     mysqlReady = false;

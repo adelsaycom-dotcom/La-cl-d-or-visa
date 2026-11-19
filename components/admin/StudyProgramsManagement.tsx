@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useAppStore, StudyProgram, StudyApplication } from '../../src/store/useAppStore';
 import { 
   Plus, Edit, Trash2, MapPin, Search, GraduationCap, 
@@ -48,6 +48,9 @@ export default function StudyProgramsManagement() {
     studyPrograms, 
     studyApplications, 
     agencies,
+    mysqlSecondaryLoading,
+    mysqlSecondaryLoaded,
+    hydrateStudyApplicationDetails,
     addStudyProgram, 
     updateStudyProgram, 
     deleteStudyProgram, 
@@ -144,6 +147,20 @@ export default function StudyProgramsManagement() {
   const [paymentInput, setPaymentInput] = useState<number>(0);
   const [adminNoteInput, setAdminNoteInput] = useState('');
   const [uploadingFinalDoc, setUploadingFinalDoc] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    if (isAppDetailsOpen && selectedApp?.id && selectedApp.hasDeferredAssets) {
+      void hydrateStudyApplicationDetails(selectedApp.id).then((hydrated) => {
+        if (active && hydrated) {
+          setSelectedApp(hydrated);
+        }
+      });
+    }
+    return () => {
+      active = false;
+    };
+  }, [isAppDetailsOpen, selectedApp?.id, selectedApp?.hasDeferredAssets, hydrateStudyApplicationDetails]);
 
   // Prévisualisation document
   const [previewDoc, setPreviewDoc] = useState<PreviewDocData | null>(null);
@@ -978,15 +995,24 @@ export default function StudyProgramsManagement() {
                   })}
 
                   {filteredApplications.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-14 text-center text-slate-500">
-                        <GraduationCap className="w-10 h-10 mx-auto mb-2 text-slate-300" />
-                        <p className="font-bold text-slate-700">Aucun dossier étudiant trouvé</p>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          Ajustez vos filtres par pays ou par université pour afficher les candidatures.
-                        </p>
-                      </td>
-                    </tr>
+                    mysqlSecondaryLoading && !mysqlSecondaryLoaded && (studyApplications || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-14 text-center text-slate-500">
+                          <Loader2 className="w-8 h-8 mx-auto mb-2 text-[#7B1B38] animate-spin" />
+                          <p className="font-bold text-slate-700">Chargement des candidatures en cours...</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="py-14 text-center text-slate-500">
+                          <GraduationCap className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                          <p className="font-bold text-slate-700">Aucun dossier étudiant trouvé</p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            Ajustez vos filtres par pays ou par université pour afficher les candidatures.
+                          </p>
+                        </td>
+                      </tr>
+                    )
                   )}
                 </tbody>
               </table>

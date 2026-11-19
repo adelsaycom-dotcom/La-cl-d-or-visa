@@ -176,6 +176,7 @@ export interface StudyApplication {
     dataUrl: string;
     url?: string;
     storageId?: string;
+    deferred?: boolean;
     uploadedAt: string;
     uploadedBy: "Agency" | "Admin";
   }>;
@@ -194,6 +195,7 @@ export interface StudyApplication {
   finalDocumentName?: string;
   finalDocumentDate?: string;
   adminNotes?: string;
+  hasDeferredAssets?: boolean;
 }
 
 export type ServiceType = "Evisa" | "Invitation" | "Rendez-vous" | "Dossier" | "Residence" | "Permis" | "Assurance" | "Etude";
@@ -231,10 +233,12 @@ export interface Application {
     dataUrl: string;
     url?: string;
     storageId?: string;
+    deferred?: boolean;
     uploadedAt: string;
     uploadedBy: "Agency" | "Admin";
   }>;
   adminNotes?: string;
+  hasDeferredAssets?: boolean;
 }
 
 export interface AppState {
@@ -308,9 +312,16 @@ export interface AppState {
   refreshCatalog: (force?: boolean) => Promise<void>;
 
   databaseMode: 'mysql' | 'firestore';
+  mysqlCoreLoading: boolean;
+  mysqlCoreLoaded: boolean;
+  mysqlSecondaryLoading: boolean;
+  mysqlSecondaryLoaded: boolean;
   lastMysqlSyncVersion: string | null;
   lastMysqlCatalogVersion: string | null;
   refreshAllFromMysql: (force?: boolean) => Promise<void>;
+  hydrateApplicationDetails: (id: string) => Promise<Application | null>;
+  hydrateStudyApplicationDetails: (id: string) => Promise<StudyApplication | null>;
+  hydrateSupportTicketDetails: (id: string) => Promise<SupportTicket | null>;
 
   quotaExceeded: boolean;
   setQuotaExceeded: (exceeded: boolean) => void;
@@ -323,6 +334,7 @@ export interface AppState {
 }
 
 let pendingMysqlRefreshPromise: Promise<void> | null = null;
+const pendingDetailHydrations = new Map<string, Promise<any>>();
 
 export const useAppStore = create<AppState>()((set, get) => ({
   authReady: false,
@@ -331,10 +343,113 @@ export const useAppStore = create<AppState>()((set, get) => ({
   catalogLoading: false,
   catalogLoaded: false,
   databaseMode: 'firestore',
+  mysqlCoreLoading: false,
+  mysqlCoreLoaded: false,
+  mysqlSecondaryLoading: false,
+  mysqlSecondaryLoaded: false,
   lastMysqlSyncVersion: null,
   lastMysqlCatalogVersion: null,
   quotaExceeded: false,
   setQuotaExceeded: (exceeded) => set({ quotaExceeded: exceeded }),
+
+  hydrateApplicationDetails: async (id: string) => {
+    const existing = get().applications.find(a => a.id === id) || null;
+    if (!id || (await getBackendMode()) !== 'mysql') return existing;
+
+    const key = `app:${id}`;
+    const inFlight = pendingDetailHydrations.get(key);
+    if (inFlight) return inFlight;
+
+    const promise = (async () => {
+      try {
+        const res = await apiFetch(`/api/db/applications/${encodeURIComponent(id)}`);
+        const full = res?.application as Application | undefined;
+        if (full) {
+          set(state => ({
+            applications: state.applications.some(a => a.id === id)
+              ? state.applications.map(a => (a.id === id ? full : a))
+              : [full, ...state.applications],
+          }));
+          return full;
+        }
+        return existing;
+      } catch (err) {
+        console.warn('[MySQL Detail] Erreur hydratation dossier:', err);
+        return existing;
+      } finally {
+        pendingDetailHydrations.delete(key);
+      }
+    })();
+
+    pendingDetailHydrations.set(key, promise);
+    return promise;
+  },
+
+  hydrateStudyApplicationDetails: async (id: string) => {
+    const existing = get().studyApplications.find(a => a.id === id) || null;
+    if (!id || (await getBackendMode()) !== 'mysql') return existing;
+
+    const key = `study:${id}`;
+    const inFlight = pendingDetailHydrations.get(key);
+    if (inFlight) return inFlight;
+
+    const promise = (async () => {
+      try {
+        const res = await apiFetch(`/api/db/study-applications/${encodeURIComponent(id)}`);
+        const full = res?.studyApplication as StudyApplication | undefined;
+        if (full) {
+          set(state => ({
+            studyApplications: state.studyApplications.some(a => a.id === id)
+              ? state.studyApplications.map(a => (a.id === id ? full : a))
+              : [full, ...state.studyApplications],
+          }));
+          return full;
+        }
+        return existing;
+      } catch (err) {
+        console.warn('[MySQL Detail] Erreur hydratation candidature études:', err);
+        return existing;
+      } finally {
+        pendingDetailHydrations.delete(key);
+      }
+    })();
+
+    pendingDetailHydrations.set(key, promise);
+    return promise;
+  },
+
+  hydrateSupportTicketDetails: async (id: string) => {
+    const existing = get().supportTickets.find(t => t.id === id) || null;
+    if (!id || (await getBackendMode()) !== 'mysql') return existing;
+
+    const key = `ticket:${id}`;
+    const inFlight = pendingDetailHydrations.get(key);
+    if (inFlight) return inFlight;
+
+    const promise = (async () => {
+      try {
+        const res = await apiFetch(`/api/db/support-tickets/${encodeURIComponent(id)}`);
+        const full = res?.ticket as SupportTicket | undefined;
+        if (full) {
+          set(state => ({
+            supportTickets: state.supportTickets.some(t => t.id === id)
+              ? state.supportTickets.map(t => (t.id === id ? full : t))
+              : [full, ...state.supportTickets],
+          }));
+          return full;
+        }
+        return existing;
+      } catch (err) {
+        console.warn('[MySQL Detail] Erreur hydratation ticket support:', err);
+        return existing;
+      } finally {
+        pendingDetailHydrations.delete(key);
+      }
+    })();
+
+    pendingDetailHydrations.set(key, promise);
+    return promise;
+  },
 
   refreshAllFromMysql: async (force = false) => {
     if (pendingMysqlRefreshPromise) {
@@ -346,8 +461,155 @@ export const useAppStore = create<AppState>()((set, get) => ({
       if (mode !== 'mysql') return;
 
       const currentState = get();
-      let latestCatalogVersion: string | null = null;
+      const cachedCatalogSnapshot = catalogService.getCachedCatalogSnapshot();
+      const knownCatalogVersion =
+        currentState.lastMysqlCatalogVersion ||
+        cachedCatalogSnapshot?.catalogVersion ||
+        null;
 
+      const isInitialLoad =
+        !force &&
+        (!currentState.lastMysqlSyncVersion ||
+          !currentState.mysqlCoreLoaded ||
+          !currentState.mysqlSecondaryLoaded);
+
+      // =====================================================================
+      // CHARGEMENT INITIAL EN 2 ÉTAPES PRIORITAIRES (Core ~60ms -> Secondary)
+      // =====================================================================
+      if (isInitialLoad) {
+        set({
+          mysqlCoreLoading: !currentState.mysqlCoreLoaded,
+          mysqlSecondaryLoading: !currentState.mysqlSecondaryLoaded,
+        });
+
+        try {
+          const coreParams = new URLSearchParams({ scope: 'core' });
+          const mustForceCatalog =
+            force || (!currentState.catalogLoaded && !cachedCatalogSnapshot) || !knownCatalogVersion;
+          if (!mustForceCatalog && knownCatalogVersion) {
+            coreParams.set('catalogVersion', knownCatalogVersion);
+          }
+
+          const bootCore = await apiFetch(`/api/db/bootstrap?${coreParams.toString()}`);
+          const agency = bootCore.currentAgency || null;
+          const roleRaw = String(bootCore.role || agency?.role || '').trim().toLowerCase();
+          const resolvedRole: 'admin' | 'agency' | null =
+            roleRaw === 'admin' ? 'admin' : roleRaw === 'agency' ? 'agency' : null;
+
+          if (bootCore.restricted) {
+            set({
+              currentAgency: agency,
+              authRole: resolvedRole,
+              agencyBalance: Number(agency?.balance || 0),
+              b2cMarginPercent: typeof agency?.b2cMarginPercent === 'number' ? agency.b2cMarginPercent : 15,
+              databaseMode: 'mysql',
+              mysqlCoreLoading: false,
+              mysqlCoreLoaded: true,
+              mysqlSecondaryLoading: false,
+              quotaExceeded: false,
+            });
+            return;
+          }
+
+          // Validation immédiate de l'étape 1 : Dashboard, Mes Dossiers, Agences, Pays/Services
+          set((state) => {
+            const shouldFillFromCache =
+              bootCore.catalogOmitted &&
+              (!state.catalogLoaded || state.countries.length === 0) &&
+              cachedCatalogSnapshot !== null;
+
+            return {
+              currentAgency: agency,
+              authRole: resolvedRole,
+              agencyBalance: Number(agency?.balance || 0),
+              b2cMarginPercent: typeof agency?.b2cMarginPercent === 'number' ? agency.b2cMarginPercent : 15,
+              ...(bootCore.catalogOmitted
+                ? shouldFillFromCache
+                  ? {
+                      countries: (cachedCatalogSnapshot!.countries || []) as any,
+                      services: (cachedCatalogSnapshot!.services || []) as any,
+                      organizedTrips: (cachedCatalogSnapshot!.organizedTrips || []) as any,
+                      studyPrograms: (cachedCatalogSnapshot!.studyPrograms || []) as any,
+                    }
+                  : {}
+                : {
+                    countries: bootCore.countries || [],
+                    services: bootCore.services || [],
+                  }),
+              applications: bootCore.applications || [],
+              notifications: bootCore.notifications || [],
+              agencies: Array.isArray(bootCore.agencies) ? bootCore.agencies : state.agencies,
+              catalogLoading: false,
+              catalogLoaded: true,
+              databaseMode: 'mysql',
+              mysqlCoreLoading: false,
+              mysqlCoreLoaded: true,
+              quotaExceeded: false,
+            };
+          });
+
+          // Étape 2 : Support, Études, Voyages, Finances + version de synchronisation
+          const secParams = new URLSearchParams({ scope: 'secondary' });
+          if (bootCore.catalogOmitted) {
+            secParams.set('includeCatalog', '0');
+          }
+
+          const bootSec = await apiFetch(`/api/db/bootstrap?${secParams.toString()}`);
+
+          if (!bootSec.catalogOmitted) {
+            const latestCountries = !bootCore.catalogOmitted
+              ? (bootCore.countries || [])
+              : get().countries;
+            const latestServices = !bootCore.catalogOmitted
+              ? (bootCore.services || [])
+              : get().services;
+
+            catalogService.seedFromBootstrap(
+              {
+                countries: latestCountries,
+                services: latestServices,
+                organizedTrips: bootSec.organizedTrips || [],
+                studyPrograms: bootSec.studyPrograms || [],
+              },
+              bootSec.catalogVersion || null
+            );
+          }
+
+          set((state) => ({
+            ...(bootSec.catalogOmitted
+              ? {}
+              : {
+                  organizedTrips: bootSec.organizedTrips || [],
+                  studyPrograms: bootSec.studyPrograms || [],
+                }),
+            studyApplications: bootSec.studyApplications || [],
+            tripReservations: bootSec.tripReservations || [],
+            transactions: bootSec.transactions || [],
+            rechargeRequests: bootSec.rechargeRequests || [],
+            supportTickets: bootSec.supportTickets || [],
+            lastMysqlSyncVersion: bootSec.syncVersion || state.lastMysqlSyncVersion,
+            lastMysqlCatalogVersion: bootSec.catalogVersion || state.lastMysqlCatalogVersion || knownCatalogVersion,
+            mysqlCoreLoading: false,
+            mysqlCoreLoaded: true,
+            mysqlSecondaryLoading: false,
+            mysqlSecondaryLoaded: true,
+            databaseMode: 'mysql',
+            quotaExceeded: false,
+          }));
+          return;
+        } finally {
+          set((state) =>
+            state.mysqlCoreLoading || state.mysqlSecondaryLoading
+              ? { mysqlCoreLoading: false, mysqlSecondaryLoading: false }
+              : {}
+          );
+        }
+      }
+
+      // =====================================================================
+      // POLLING INCRÉMENTAL / RAFRAÎCHISSEMENT COMPLET
+      // =====================================================================
+      let latestCatalogVersion: string | null = null;
       if (!force && currentState.lastMysqlSyncVersion) {
         try {
           const ver = await apiFetch('/api/db/sync-version');
@@ -359,12 +621,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
           // En cas d'erreur transitoire, poursuivre avec le bootstrap complet
         }
       }
-
-      const cachedCatalogSnapshot = catalogService.getCachedCatalogSnapshot();
-      const knownCatalogVersion =
-        currentState.lastMysqlCatalogVersion ||
-        cachedCatalogSnapshot?.catalogVersion ||
-        null;
 
       const mustIncludeCatalog =
         force ||
@@ -393,6 +649,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
           agencyBalance: Number(agency?.balance || 0),
           b2cMarginPercent: typeof agency?.b2cMarginPercent === 'number' ? agency.b2cMarginPercent : 15,
           databaseMode: 'mysql',
+          mysqlCoreLoading: false,
+          mysqlSecondaryLoading: false,
           quotaExceeded: false
         });
         return;
@@ -446,6 +704,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
           agencies: boot.agencies || [],
           catalogLoading: false,
           catalogLoaded: true,
+          mysqlCoreLoading: false,
+          mysqlCoreLoaded: true,
+          mysqlSecondaryLoading: false,
+          mysqlSecondaryLoaded: true,
           databaseMode: 'mysql',
           lastMysqlSyncVersion: boot.syncVersion || state.lastMysqlSyncVersion,
           lastMysqlCatalogVersion: boot.catalogVersion || state.lastMysqlCatalogVersion || knownCatalogVersion,
@@ -1597,6 +1859,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
       studyApplications: [],
       catalogLoading: false,
       catalogLoaded: false,
+      mysqlCoreLoading: false,
+      mysqlCoreLoaded: false,
+      mysqlSecondaryLoading: false,
+      mysqlSecondaryLoaded: false,
       lastMysqlSyncVersion: null,
       lastMysqlCatalogVersion: null
     });
@@ -1621,6 +1887,9 @@ export interface SupportTicketAttachment {
   type: string;
   size: number;
   dataUrl: string;
+  url?: string;
+  storageId?: string;
+  deferred?: boolean;
 }
 
 export interface SupportTicketMessage {
@@ -1654,6 +1923,7 @@ export interface SupportTicket {
   attachments?: SupportTicketAttachment[];
   messages: SupportTicketMessage[];
   createdAt: string;
+  hasDeferredAssets?: boolean;
 }
 
 export interface Transaction {

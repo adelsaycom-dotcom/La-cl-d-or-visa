@@ -8,7 +8,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getFirestoreDb } from "../../src/firebase";
 import {
-  Check, X, FileText, Wallet, History, PlusSquare, Building, AlertCircle
+  Check, X, FileText, Wallet, History, PlusSquare, Building, AlertCircle, Loader2
 } from "lucide-react";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { useToast } from "@/components/ui/toast";
@@ -34,6 +34,8 @@ export function FinancesManagement() {
   // Sélecteurs Zustand atomiques
   const rechargeRequests = useAppStore((s) => s.rechargeRequests);
   const transactions = useAppStore((s) => s.transactions);
+  const mysqlSecondaryLoading = useAppStore((s) => s.mysqlSecondaryLoading);
+  const mysqlSecondaryLoaded = useAppStore((s) => s.mysqlSecondaryLoaded);
   const agencies = useAppStore((s) => s.agencies);
   const agenciesLookup = useMemo(() => buildAgenciesLookup(agencies || []), [agencies]);
 
@@ -438,13 +440,20 @@ export function FinancesManagement() {
           {/* TAB 1: PENDING RECHARGES */}
           {activeTab === "pending" && (
             pendingRecharges.length === 0 ? (
-              <div className="p-16 text-center text-slate-500">
-                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
-                  <Check className="w-8 h-8 text-emerald-400" />
+              mysqlSecondaryLoading && !mysqlSecondaryLoaded && rechargeRequests.length === 0 ? (
+                <div className="p-16 text-center text-slate-500">
+                  <Loader2 className="w-8 h-8 mx-auto mb-3 text-[#7B1B38] animate-spin" />
+                  <p className="text-sm font-bold text-slate-700">{isEn ? "Loading top-up requests..." : "Chargement des demandes en cours..."}</p>
                 </div>
-                <h3 className="font-bold text-lg text-slate-800 mb-1">{isEn ? "Everything is up to date!" : "Tout est à jour !"}</h3>
-                <p>{isEn ? "No pending top-up requests to review." : "Aucune demande de recharge en attente de validation."}</p>
-              </div>
+              ) : (
+                <div className="p-16 text-center text-slate-500">
+                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
+                    <Check className="w-8 h-8 text-emerald-400" />
+                  </div>
+                  <h3 className="font-bold text-lg text-slate-800 mb-1">{isEn ? "Everything is up to date!" : "Tout est à jour !"}</h3>
+                  <p>{isEn ? "No pending top-up requests to review." : "Aucune demande de recharge en attente de validation."}</p>
+                </div>
+              )
             ) : (
               <div>
                 <div className="overflow-x-auto">
@@ -601,11 +610,18 @@ export function FinancesManagement() {
           {/* TAB 3: GLOBAL TRANSACTIONS HISTORY */}
           {activeTab === "history" && (
             allTransactions.length === 0 ? (
-              <div className="p-16 text-center text-slate-500">
-                <History className="mx-auto h-12 w-12 text-slate-300 mb-4" />
-                <p className="font-medium text-lg text-slate-800">{isEn ? "No transaction history" : "Aucun historique"}</p>
-                <p className="text-sm">{isEn ? "Transactions will appear here." : "Les transactions apparaîtront ici."}</p>
-              </div>
+              mysqlSecondaryLoading && !mysqlSecondaryLoaded && transactions.length === 0 ? (
+                <div className="p-16 text-center text-slate-500">
+                  <Loader2 className="w-8 h-8 mx-auto mb-3 text-[#7B1B38] animate-spin" />
+                  <p className="text-sm font-bold text-slate-700">{isEn ? "Loading ledger history..." : "Chargement de l'historique financier..."}</p>
+                </div>
+              ) : (
+                <div className="p-16 text-center text-slate-500">
+                  <History className="mx-auto h-12 w-12 text-slate-300 mb-4" />
+                  <p className="font-medium text-lg text-slate-800">{isEn ? "No transaction history" : "Aucun historique"}</p>
+                  <p className="text-sm">{isEn ? "Transactions will appear here." : "Les transactions apparaîtront ici."}</p>
+                </div>
+              )
             ) : (
               <div>
                 <div className="overflow-x-auto">

@@ -14,6 +14,9 @@ import { getBackendMode } from "../services/apiClient";
 
 // Cache mémoire pour l'affichage ultra-rapide des aperçus
 const attachmentMemoryCache = new Map<string, string>();
+const deferredRecordCache = new Map<string, { record: any; fetchedAt: number }>();
+const pendingRecordHydrations = new Map<string, Promise<any>>();
+const DEFERRED_RECORD_TTL_MS = 2 * 60 * 1000;
 
 const ALLOWED_UPLOAD_MIME_TYPES = new Set<string>([
   "image/jpeg",
@@ -52,6 +55,136 @@ export async function fetchProtectedFileAsBlobUrl(fileUrl: string): Promise<stri
   const objectUrl = URL.createObjectURL(blob);
   attachmentMemoryCache.set(fileUrl, objectUrl);
   return objectUrl;
+}
+
+async function fetchDeferredRecord(kind: "app" | "study" | "ticket", id: string): Promise<any> {
+  const cacheKey = `${kind}:${id}`;
+  const cached = deferredRecordCache.get(cacheKey);
+  if (cached && Date.now() - cached.fetchedAt < DEFERRED_RECORD_TTL_MS) {
+    return cached.record;
+  }
+
+  const inFlight = pendingRecordHydrations.get(cacheKey);
+  if (inFlight) return inFlight;
+
+  const endpoint =
+    kind === "app"
+      ? `/api/db/applications/${encodeURIComponent(id)}`
+      : kind === "study"
+      ? `/api/db/study-applications/${encodeURIComponent(id)}`
+      : `/api/db/support-tickets/${encodeURIComponent(id)}`;
+
+  const promise = (async () => {
+    const headers = await getBearerAuthHeaders();
+    const res = await fetch(endpoint, { headers, cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`Erreur récupération détail (${res.status})`);
+    }
+    const payload = await res.json();
+    const record =
+      kind === "app"
+        ? payload?.application
+        : kind === "study"
+        ? payload?.studyApplication
+        : payload?.ticket;
+    if (record) {
+      deferredRecordCache.set(cacheKey, { record, fetchedAt: Date.now() });
+    }
+    return record || null;
+  })().finally(() => {
+    pendingRecordHydrations.delete(cacheKey);
+  });
+
+  pendingRecordHydrations.set(cacheKey, promise);
+  return promise;
+}
+
+function extractDeferredField(record: any, restPath: string): string {
+  if (!record || !restPath) return "";
+
+  if (restPath === "finalDocument") {
+    return typeof record.finalDocument === "string" ? record.finalDocument : "";
+  }
+
+  if (restPath.startsWith("att:")) {
+    const ref = decodeURIComponent(restPath.slice(4));
+    const list = Array.isArray(record.attachments) ? record.attachments : [];
+    const byId = list.find((a: any) => a && (String(a.id || "") === ref || String(a.storageId || "") === ref));
+    const byIndex = !byId && /^\d+$/.test(ref) ? list[Number(ref)] : undefined;
+    const found = byId || byIndex;
+    return (found?.dataUrl || found?.url || "") as string;
+  }
+
+  if (restPath.startsWith("documents:")) {
+    const docKey = decodeURIComponent(restPath.slice("documents:".length));
+    const val = record.documents?.[docKey];
+    return typeof val === "string" ? val : "";
+  }
+
+  if (restPath.startsWith("customFormData:")) {
+    const segments = restPath
+      .slice("customFormData:".length)
+      .split(":")
+      .filter(Boolean)
+      .map((s) => decodeURIComponent(s));
+    let cursor: any = record.customFormData;
+    for (const seg of segments) {
+      if (cursor === null || cursor === undefined) return "";
+      cursor = Array.isArray(cursor) && /^\d+$/.test(seg) ? cursor[Number(seg)] : cursor[seg];
+    }
+    if (typeof cursor === "string") return cursor;
+    if (cursor && typeof cursor === "object") {
+      return cursor.dataUrl || cursor.url || "";
+    }
+    return "";
+  }
+
+  const msgMatch = restPath.match(/^msg:(\d+):att:(.*)$/);
+  if (msgMatch) {
+    const msgIdx = Number(msgMatch[1]);
+    const ref = decodeURIComponent(msgMatch[2]);
+    const list = Array.isArray(record.messages?.[msgIdx]?.attachments)
+      ? record.messages[msgIdx].attachments
+      : [];
+    const byId = list.find((a: any) => a && (String(a.id || "") === ref || String(a.storageId || "") === ref));
+    const byIndex = !byId && /^\d+$/.test(ref) ? list[Number(ref)] : undefined;
+    const found = byId || byIndex;
+    return (found?.dataUrl || found?.url || "") as string;
+  }
+
+  return "";
+}
+
+async function resolveDeferredMarker(marker: string): Promise<string> {
+  if (!marker.startsWith("deferred:")) return "";
+  if (attachmentMemoryCache.has(marker)) {
+    return attachmentMemoryCache.get(marker)!;
+  }
+
+  const match = marker.match(/^deferred:(app|study|ticket):([^:]+):(.*)$/);
+  if (!match) return "";
+
+  const kind = match[1] as "app" | "study" | "ticket";
+  const id = decodeURIComponent(match[2]);
+  const restPath = match[3];
+
+  try {
+    const record = await fetchDeferredRecord(kind, id);
+    const extracted = extractDeferredField(record, restPath);
+    if (!extracted || extracted.startsWith("deferred:")) return "";
+
+    let resolved = extracted;
+    if (extracted.startsWith("/api/files/")) {
+      resolved = await fetchProtectedFileAsBlobUrl(extracted);
+    }
+    if (resolved) {
+      attachmentMemoryCache.set(marker, resolved);
+    }
+    return resolved;
+  } catch (err) {
+    console.warn("[fileUpload] Impossible de charger le document différé:", err);
+    return "";
+  }
 }
 
 export function fileToBase64(file: File): Promise<string> {
@@ -265,6 +398,9 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
   // Cas 1 : Chaîne déjà en base64 Data URL ou URL fichier privé
   if (typeof attachment === "string") {
     if (attachment.startsWith("data:") || attachment.startsWith("blob:")) return attachment;
+    if (attachment.startsWith("deferred:")) {
+      return await resolveDeferredMarker(attachment);
+    }
     if (attachment.startsWith("/api/files/")) {
       try {
         return await fetchProtectedFileAsBlobUrl(attachment);
@@ -318,13 +454,23 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
 
   // Cas 2 : Objet pièce jointe
   const attObj = attachment;
-  if (attObj.dataUrl && attObj.dataUrl.startsWith("data:")) {
+  if (attObj.dataUrl && (attObj.dataUrl.startsWith("data:") || attObj.dataUrl.startsWith("blob:"))) {
     return attObj.dataUrl;
   }
 
-  // Si attObj.url est déjà un data:
-  if (attObj.url && typeof attObj.url === "string" && attObj.url.startsWith("data:")) {
+  // Si attObj.url est déjà un data: ou blob:
+  if (attObj.url && typeof attObj.url === "string" && (attObj.url.startsWith("data:") || attObj.url.startsWith("blob:"))) {
     return attObj.url;
+  }
+
+  // Si référence différée MySQL (deferred:...)
+  if (attObj.url && typeof attObj.url === "string" && attObj.url.startsWith("deferred:")) {
+    const resolved = await resolveDeferredMarker(attObj.url);
+    if (resolved) return resolved;
+  }
+  if (attObj.dataUrl && typeof attObj.dataUrl === "string" && attObj.dataUrl.startsWith("deferred:")) {
+    const resolved = await resolveDeferredMarker(attObj.dataUrl);
+    if (resolved) return resolved;
   }
 
   // Si attObj.url est une URL fichier privé /api/files/

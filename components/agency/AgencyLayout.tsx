@@ -7,7 +7,7 @@ import {
 import { 
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Logo } from '@/components/Logo';
 import { signOut } from "firebase/auth";
@@ -16,6 +16,13 @@ import { useAppStore } from "../../src/store/useAppStore";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { prefetchRouteChunk, prefetchAgencyPortalChunks } from "../../src/utils/routePrefetch";
+
+const OutletLoader = () => (
+  <div className="flex justify-center items-center w-full p-10 min-h-[320px]">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7B1B38]" />
+  </div>
+);
 
 export function AgencyLayout() {
   const agencyBalance = useAppStore(state => state.agencyBalance);
@@ -60,6 +67,11 @@ export function AgencyLayout() {
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
+
+  // Préchargement silencieux des chunks de l'espace agence en arrière-plan
+  useEffect(() => {
+    prefetchAgencyPortalChunks();
+  }, []);
 
   const { language, t } = useLanguage();
   const isEn = language === "en";
@@ -107,7 +119,6 @@ export function AgencyLayout() {
         style={{ 
           backgroundImage: `url('/assets/dashboard-wing-bg.webp')`,
           backgroundPosition: 'right 15% center',
-          backgroundAttachment: 'fixed',
           backgroundSize: 'cover'
         }}
       />
@@ -128,7 +139,7 @@ export function AgencyLayout() {
       {/* Sidebar Ultra-Transparente en Verre Dépoli */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white/10 backdrop-blur-2xl text-slate-900 border-r border-white/20 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:shrink-0 flex flex-col shadow-lg lg:shadow-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Logo Area */}
-        <div className="h-20 flex items-center justify-between px-6 border-b border-white/15 shrink-0 bg-white/5 backdrop-blur-sm">
+        <div className="h-20 flex items-center justify-between px-6 border-b border-white/15 shrink-0 bg-white/5">
           <Link to="/agency" className="flex items-center gap-3">
              <Logo imageClassName="h-8 w-auto" />
              <div className="flex flex-col">
@@ -142,7 +153,7 @@ export function AgencyLayout() {
         </div>
 
         {/* Agency Info */}
-        <div className="px-5 py-4 border-b border-white/15 shrink-0 bg-white/5 backdrop-blur-sm">
+        <div className="px-5 py-4 border-b border-white/15 shrink-0 bg-white/5">
            <div className="flex items-center gap-3 mb-3">
              <div className="w-10 h-10 rounded-xl bg-white/40 flex items-center justify-center border border-white/50 shadow-2xs shrink-0 backdrop-blur-md">
                <Building2 className="w-5 h-5 text-[#7B1B38]" />
@@ -176,7 +187,9 @@ export function AgencyLayout() {
               <Link 
                 key={item.path} 
                 to={item.path}
-                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 group ${
+                onMouseEnter={() => prefetchRouteChunk(item.path)}
+                onFocus={() => prefetchRouteChunk(item.path)}
+                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-150 group ${
                   isActive 
                     ? 'bg-slate-900/80 text-white shadow-md font-bold backdrop-blur-md' 
                     : item.highlight 
@@ -330,7 +343,12 @@ export function AgencyLayout() {
              )}
 
              {/* Quick Apply Button (Desktop) */}
-             <Link to="/agency/apply" className="hidden md:flex items-center gap-2 bg-[#7B1B38]/90 hover:bg-[#7B1B38] text-white px-4 py-2 rounded-xl font-bold text-sm transition-colors shadow-sm shadow-[#7B1B38]/20 hover:shadow">
+             <Link
+               to="/agency/apply"
+               onMouseEnter={() => prefetchRouteChunk("/agency/apply")}
+               onFocus={() => prefetchRouteChunk("/agency/apply")}
+               className="hidden md:flex items-center gap-2 bg-[#7B1B38]/90 hover:bg-[#7B1B38] text-white px-4 py-2 rounded-xl font-bold text-sm transition-colors shadow-sm shadow-[#7B1B38]/20 hover:shadow"
+             >
                <FileText className="w-4 h-4" /> {t("nav.newApplication")}
              </Link>
 
@@ -392,49 +410,41 @@ export function AgencyLayout() {
         {/* Page Content */}
         <div className="flex-1 overflow-auto p-4 lg:p-8">
           <div className="mx-auto max-w-[1600px]">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                {isSuspended && (
-                  <div className="mb-6 p-5 bg-red-50 border-2 border-red-300 rounded-2xl flex items-start gap-3 shadow-sm">
-                    <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                    <div className="text-xs text-red-900 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-black text-sm">{isEn ? "Agency Account Temporarily Suspended" : "Compte Agence Temporairement Suspendu"}</span>
-                        {currentAgency.bannedUntil && (
-                          <span className="bg-red-200 text-red-900 px-2 py-0.5 rounded-full font-bold text-[10px]">
-                            {isEn ? `Until ${new Date(currentAgency.bannedUntil).toLocaleDateString()}` : `Jusqu'au ${new Date(currentAgency.bannedUntil).toLocaleDateString()}`}
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-1 leading-relaxed">
-                        {isEn ? "Your access to applications and B2B wallet is restricted by administration." : "Votre accès aux dépôts de demandes et au solde B2B est restreint par l'administration."}
-                        {currentAgency.banReason && (
-                          <span className="block mt-1 font-semibold italic text-red-800">
-                            {isEn ? `Reason: ${currentAgency.banReason}` : `Motif : ${currentAgency.banReason}`}
-                          </span>
-                        )}
-                      </p>
-                      {!isSupportRoute && (
-                        <Link to="/agency/support" className="inline-block mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors">
-                          {isEn ? "Contact emergency support to restore your account →" : "Contacter le support d'urgence pour régulariser votre compte →"}
-                        </Link>
-                      )}
-                    </div>
+            {isSuspended && (
+              <div className="mb-6 p-5 bg-red-50 border-2 border-red-300 rounded-2xl flex items-start gap-3 shadow-sm">
+                <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                <div className="text-xs text-red-900 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-black text-sm">{isEn ? "Agency Account Temporarily Suspended" : "Compte Agence Temporairement Suspendu"}</span>
+                    {currentAgency.bannedUntil && (
+                      <span className="bg-red-200 text-red-900 px-2 py-0.5 rounded-full font-bold text-[10px]">
+                        {isEn ? `Until ${new Date(currentAgency.bannedUntil).toLocaleDateString()}` : `Jusqu'au ${new Date(currentAgency.bannedUntil).toLocaleDateString()}`}
+                      </span>
+                    )}
                   </div>
-                )}
-                {(!isSuspended || isSupportRoute) && (
-                  <ErrorBoundary scoped key={location.pathname}>
-                    <Outlet />
-                  </ErrorBoundary>
-                )}
-              </motion.div>
-            </AnimatePresence>
+                  <p className="mt-1 leading-relaxed">
+                    {isEn ? "Your access to applications and B2B wallet is restricted by administration." : "Votre accès aux dépôts de demandes et au solde B2B est restreint par l'administration."}
+                    {currentAgency.banReason && (
+                      <span className="block mt-1 font-semibold italic text-red-800">
+                        {isEn ? `Reason: ${currentAgency.banReason}` : `Motif : ${currentAgency.banReason}`}
+                      </span>
+                    )}
+                  </p>
+                  {!isSupportRoute && (
+                    <Link to="/agency/support" className="inline-block mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors">
+                      {isEn ? "Contact emergency support to restore your account →" : "Contacter le support d'urgence pour régulariser votre compte →"}
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
+            {(!isSuspended || isSupportRoute) && (
+              <ErrorBoundary scoped key={location.pathname}>
+                <Suspense fallback={<OutletLoader />}>
+                  <Outlet />
+                </Suspense>
+              </ErrorBoundary>
+            )}
           </div>
         </div>
       </main>
