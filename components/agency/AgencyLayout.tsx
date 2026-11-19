@@ -131,15 +131,15 @@ export function AgencyLayout() {
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden backdrop-blur-sm"
+            className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden"
           />
         )}
       </AnimatePresence>
 
-      {/* Sidebar Ultra-Transparente en Verre Dépoli */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white/10 backdrop-blur-2xl text-slate-900 border-r border-white/20 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:shrink-0 flex flex-col shadow-lg lg:shadow-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* Sidebar Translucide Légère */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white/85 text-slate-900 border-r border-slate-200/70 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:shrink-0 flex flex-col shadow-lg lg:shadow-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Logo Area */}
-        <div className="h-20 flex items-center justify-between px-6 border-b border-white/15 shrink-0 bg-white/5">
+        <div className="h-20 flex items-center justify-between px-6 border-b border-slate-200/60 shrink-0 bg-white/40">
           <Link to="/agency" className="flex items-center gap-3">
              <Logo imageClassName="h-8 w-auto" />
              <div className="flex flex-col">
@@ -153,9 +153,9 @@ export function AgencyLayout() {
         </div>
 
         {/* Agency Info */}
-        <div className="px-5 py-4 border-b border-white/15 shrink-0 bg-white/5">
+        <div className="px-5 py-4 border-b border-slate-200/60 shrink-0 bg-white/30">
            <div className="flex items-center gap-3 mb-3">
-             <div className="w-10 h-10 rounded-xl bg-white/40 flex items-center justify-center border border-white/50 shadow-2xs shrink-0 backdrop-blur-md">
+             <div className="w-10 h-10 rounded-xl bg-white/90 flex items-center justify-center border border-slate-200/70 shadow-2xs shrink-0">
                <Building2 className="w-5 h-5 text-[#7B1B38]" />
              </div>
              <div className="min-w-0">
@@ -166,14 +166,14 @@ export function AgencyLayout() {
              </div>
            </div>
            
-           <div className="bg-white/20 backdrop-blur-xl rounded-xl p-3 border border-white/30 shadow-2xs">
+           <div className="bg-white/80 rounded-xl p-3 border border-slate-200/70 shadow-2xs">
              <div className="text-[10px] text-slate-600 font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
                <span>{t("header.agencyBalance")}</span>
                <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs" />
              </div>
              <div className="text-xl font-black text-slate-900 font-mono tracking-tight flex items-center gap-2">
                <WalletCards className="w-4 h-4 text-slate-500 shrink-0" />
-               <span>{agencyBalance.toLocaleString()}</span>
+               <span>{agencyBalance.toLocaleString("fr-FR").replace(/\u202F/g, " ")}</span>
                <span className="text-xs font-bold text-slate-600">DZD</span>
              </div>
            </div>
@@ -191,10 +191,10 @@ export function AgencyLayout() {
                 onFocus={() => prefetchRouteChunk(item.path)}
                 className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-150 group ${
                   isActive 
-                    ? 'bg-slate-900/80 text-white shadow-md font-bold backdrop-blur-md' 
+                    ? 'bg-slate-900 text-white shadow-md font-bold' 
                     : item.highlight 
-                      ? 'text-orange-600 hover:bg-white/20 font-bold'
-                      : 'text-slate-800 hover:bg-white/20 hover:text-slate-950 font-medium'
+                      ? 'text-orange-600 hover:bg-white/70 font-bold'
+                      : 'text-slate-800 hover:bg-white/70 hover:text-slate-950 font-medium'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -223,8 +223,8 @@ export function AgencyLayout() {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 bg-transparent overflow-hidden">
         
-        {/* Top Header Ultra-Transparent en Verre Dépoli */}
-        <header className="h-20 bg-white/10 backdrop-blur-2xl border-b border-white/20 flex items-center justify-between px-4 lg:px-8 shrink-0 sticky top-0 z-30 shadow-2xs">
+        {/* Top Header Translucide */}
+        <header className="h-20 bg-white/85 border-b border-slate-200/70 flex items-center justify-between px-4 lg:px-8 shrink-0 sticky top-0 z-30 shadow-2xs">
           <div className="flex items-center gap-3 sm:gap-4">
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-slate-600 hover:text-slate-900 p-1">
               <Menu className="w-6 h-6" />
@@ -236,13 +236,13 @@ export function AgencyLayout() {
 
           <div className="flex items-center gap-2 sm:gap-3">
              {/* B2B / B2C Counter Mode Switcher */}
-             <div className="flex items-center bg-white/15 backdrop-blur-md p-1 rounded-2xl border border-white/25 shadow-inner">
+             <div className="flex items-center bg-white/75 p-1 rounded-2xl border border-slate-200/80 shadow-inner">
                <button
                  type="button"
                  onClick={() => setB2cMode(false)}
                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                    !b2cMode 
-                     ? 'bg-white/90 text-slate-900 shadow-sm border border-white/60' 
+                     ? 'bg-white text-slate-900 shadow-sm border border-slate-200/70' 
                      : 'text-slate-600 hover:text-slate-900'
                  }`}
                  title={isEn ? "Display net wholesale B2B prices debited from your wallet" : "Afficher les prix d'achat B2B nets débités de votre solde"}
@@ -271,7 +271,7 @@ export function AgencyLayout() {
                <button
                  type="button"
                  onClick={() => setShowMarginInput(!showMarginInput)}
-                 className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-white/20 rounded-xl transition-colors"
+                 className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-white/60 rounded-xl transition-colors"
                  title={isEn ? "Configure B2C markup percentage" : "Régler le taux de marge B2C"}
                >
                  <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -280,7 +280,7 @@ export function AgencyLayout() {
 
              {/* Popover / Mini-Dialog to adjust margin % */}
              {showMarginInput && (
-               <div className="absolute top-18 right-24 bg-white/90 backdrop-blur-2xl border border-white/40 rounded-2xl p-4 shadow-2xl z-50 w-72 animate-in fade-in zoom-in-95">
+               <div className="absolute top-18 right-24 bg-white border border-slate-200 rounded-2xl p-4 shadow-2xl z-50 w-72 animate-in fade-in zoom-in-95">
                  <div className="flex items-center justify-between mb-2">
                    <span className="text-xs font-black uppercase text-slate-800 flex items-center gap-1.5">
                      <Percent className="w-3.5 h-3.5 text-[#7B1B38]" /> {isEn ? "B2C Markup Rate" : "Taux de Marge B2C"}
@@ -366,8 +366,8 @@ export function AgencyLayout() {
                   </span>
                 )}
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 p-0 rounded-2xl shadow-2xl border border-white/40 bg-white/80 backdrop-blur-2xl overflow-hidden">
-                <div className="bg-white/40 px-4 py-3 border-b border-white/20 flex justify-between items-center">
+              <DropdownMenuContent align="end" className="w-80 p-0 rounded-2xl shadow-2xl border border-slate-200 bg-white overflow-hidden">
+                <div className="bg-slate-50/80 px-4 py-3 border-b border-slate-100 flex justify-between items-center">
                   <span className="font-bold text-slate-800">{isEn ? "Notifications" : "Notifications"}</span>
                   {notificationsCount > 0 && (
                     <span className="bg-[#7B1B38]/10 text-[#7B1B38] px-2 py-0.5 rounded-full text-xs font-bold">{notificationsCount}</span>
@@ -380,9 +380,9 @@ export function AgencyLayout() {
                        <p className="text-sm">{isEn ? "No new notifications" : "Aucune nouvelle notification"}</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-white/20">
+                    <div className="divide-y divide-slate-100">
                       {unreadNotifications.map(notif => (
-                        <div key={notif.id} className="p-4 hover:bg-white/30 cursor-pointer transition-colors" onClick={() => handleNotificationClick(notif.id, notif.link)}>
+                        <div key={notif.id} className="p-4 hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => handleNotificationClick(notif.id, notif.link)}>
                            <p className="text-sm font-bold text-slate-800 mb-1 leading-tight">{notif.title}</p>
                            <p className="text-xs text-slate-500 line-clamp-2">{notif.message}</p>
                         </div>
@@ -391,7 +391,7 @@ export function AgencyLayout() {
                   )}
                 </div>
                 {notificationsCount > 0 && (
-                  <div className="p-2 border-t border-white/20 bg-white/30">
+                  <div className="p-2 border-t border-slate-100 bg-slate-50">
                     <button className="w-full py-2 text-xs font-bold text-[#7B1B38] hover:bg-[#7B1B38]/10 rounded-lg transition-colors" onClick={handleMarkAllRead}>
                       {isEn ? "Mark all as read" : "Tout marquer comme lu"}
                     </button>
@@ -401,7 +401,7 @@ export function AgencyLayout() {
             </DropdownMenu>
 
             {/* Profile */}
-            <div className="w-9 h-9 rounded-full bg-white/25 border border-white/40 flex items-center justify-center text-[#7B1B38] shadow-2xs backdrop-blur-md">
+            <div className="w-9 h-9 rounded-full bg-white/80 border border-slate-200/80 flex items-center justify-center text-[#7B1B38] shadow-2xs">
               <User className="w-5 h-5" />
             </div>
           </div>

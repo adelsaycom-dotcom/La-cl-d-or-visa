@@ -61,7 +61,10 @@ function writePersistentCache<T>(key: keyof typeof memoryCache, data: T[]) {
   (memoryCache as any)[key] = entry;
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.setItem(`${STORAGE_KEY_PREFIX}${key}`, JSON.stringify(entry));
+      const serialized = JSON.stringify(entry);
+      if (serialized.length <= 262144) {
+        window.localStorage.setItem(`${STORAGE_KEY_PREFIX}${key}`, serialized);
+      }
     }
   } catch {
     // Quota localStorage dépassé (ex: images lourdes) : le cache mémoire reste actif

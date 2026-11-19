@@ -73,7 +73,7 @@ export function Login() {
   // Hover state for interactive map hub tooltip
   const [activeHub, setActiveHub] = useState<string | null>(null);
 
-  // Préchauffage silencieux dès l'affichage de la page de connexion (mode backend, chunks JS et cache catalogue)
+  // Préchauffage silencieux dès l'affichage de la page de connexion (mode backend, chunks agence principaux et cache catalogue)
   useEffect(() => {
     let cancelled = false;
     const warmTimer = window.setTimeout(() => {
@@ -85,9 +85,7 @@ export function Login() {
       void import("@/components/agency/AgencyLayout");
       void import("@/components/agency/Dashboard");
       void import("@/components/agency/AgencyApplications");
-      void import("@/components/admin/AdminDashboard");
-      void import("@/components/admin/ApplicationManagement");
-    }, 100);
+    }, 150);
     return () => {
       cancelled = true;
       window.clearTimeout(warmTimer);

@@ -374,7 +374,9 @@ export default function OrganizedTrips() {
                     <div className="h-52 relative overflow-hidden group">
                       <img 
                         src={trip.photoUrl || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&q=80"} 
-                        alt={trip.title} 
+                        alt={trip.title}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
                       />
                       
@@ -644,7 +646,9 @@ export default function OrganizedTrips() {
               <div className="relative h-64 w-full overflow-hidden shrink-0 bg-slate-900">
                 <img 
                   src={detailedTrip.photoUrl || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&q=80"} 
-                  alt={detailedTrip.title} 
+                  alt={detailedTrip.title}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover" 
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent"></div>

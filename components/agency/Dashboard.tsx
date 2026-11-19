@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { 
   WalletCards, CheckCircle2, Clock, Plane, Building2, Car, ShieldCheck, 
   GraduationCap, Mail, CalendarDays, FileText, ArrowUpRight, Globe, FolderOpen, 
-  MapPin, Star, AlertCircle
+  MapPin, Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
@@ -10,21 +10,29 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAppStore } from "../../src/store/useAppStore";
 import { auth } from "../../src/firebase";
 import { useLanguage } from "../../src/i18n/LanguageContext";
-import { AnimatedCounter } from "@/components/common/AnimatedCounter";
 
 export function AgencyDashboard() {
   const { language, t } = useLanguage();
   const isEn = language === "en";
 
-  const { agencyBalance, applications, organizedTrips, currentAgency } = useAppStore();
+  const agencyBalance = useAppStore(state => state.agencyBalance);
+  const applications = useAppStore(state => state.applications);
+  const organizedTrips = useAppStore(state => state.organizedTrips);
+  const currentAgency = useAppStore(state => state.currentAgency);
   const agencyDisplayName = currentAgency?.agencyName || currentAgency?.companyName || currentAgency?.name || auth.currentUser?.displayName || (isEn ? "My Agency" : "Mon Agence");
   const navigate = useNavigate();
 
   const [newTripPopupOpen, setNewTripPopupOpen] = useState(false);
   const [popupTrip, setPopupTrip] = useState<any>(null);
 
-  const featuredTrips = organizedTrips.filter(t => t.featured && t.status === 'active');
-  const activeTrips = organizedTrips.filter(t => t.status === 'active');
+  const featuredTrips = useMemo(
+    () => (organizedTrips || []).filter(t => t.featured && t.status === 'active'),
+    [organizedTrips]
+  );
+  const activeTrips = useMemo(
+    () => (organizedTrips || []).filter(t => t.status === 'active'),
+    [organizedTrips]
+  );
 
   useEffect(() => {
     // Affiche un popup pour le voyage actif le plus récemment ajouté si non encore vu
@@ -58,9 +66,17 @@ export function AgencyDashboard() {
     navigate('/agency/trips');
   };
   
-  const pendingApps = applications.filter(a => a.status === "Pending" || a.status === "Processing").length;
-  const approvedApps = applications.filter(a => a.status === "Approved").length;
-  const rejectedApps = applications.filter(a => a.status === "Rejected").length;
+  const { pendingApps, approvedApps, rejectedApps } = useMemo(() => {
+    let pending = 0;
+    let approved = 0;
+    let rejected = 0;
+    for (const a of applications || []) {
+      if (a.status === "Pending" || a.status === "Processing") pending += 1;
+      else if (a.status === "Approved") approved += 1;
+      else if (a.status === "Rejected") rejected += 1;
+    }
+    return { pendingApps: pending, approvedApps: approved, rejectedApps: rejected };
+  }, [applications]);
 
   // 10 services officiels correspondant au mockup exact
   const quickServices = [
@@ -140,9 +156,9 @@ export function AgencyDashboard() {
     <div className="relative space-y-6 animate-in fade-in duration-500 pb-10">
 
       {/* 1. CARTE DE BIENVENUE HERO */}
-      <div className="rounded-3xl border border-white/30 bg-white/15 backdrop-blur-2xl p-6 sm:p-7 shadow-xs relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div className="rounded-3xl border border-white/60 bg-white/80 p-6 sm:p-7 shadow-xs relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="space-y-2 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B1B38]/15 border border-[#7B1B38]/25 text-[#7B1B38] text-[11px] font-bold backdrop-blur-sm">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B1B38]/10 border border-[#7B1B38]/20 text-[#7B1B38] text-[11px] font-bold">
             <span className="w-2 h-2 rounded-full bg-[#7B1B38]"></span>
             <span>{isEn ? "B2B Partner Portal • La Clé d'Or" : "Portail Agence B2B • La Clé d'Or"}</span>
           </div>
@@ -185,9 +201,9 @@ export function AgencyDashboard() {
                 <Link
                   key={srv.id}
                   to={srv.path}
-                  className="bg-white/15 backdrop-blur-2xl border border-white/25 rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-xs hover:bg-white/30 hover:border-white/50 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-32 group"
+                  className="bg-white/80 border border-white/70 rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-xs hover:bg-white/95 hover:border-slate-200 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-32 group"
                 >
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-2.5 transition-transform group-hover:scale-110 shadow-2xs backdrop-blur-md ${srv.iconBg}`}>
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-2.5 transition-transform group-hover:scale-110 shadow-2xs ${srv.iconBg}`}>
                     <srv.icon className="w-6 h-6" />
                   </div>
                   <span className="font-bold text-slate-900 text-xs sm:text-[13px] leading-tight line-clamp-2">
@@ -208,44 +224,44 @@ export function AgencyDashboard() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-              <div className="bg-white/15 backdrop-blur-2xl rounded-2xl p-5 border border-white/25 shadow-xs flex items-center justify-between">
+              <div className="bg-white/80 rounded-2xl p-5 border border-white/70 shadow-xs flex items-center justify-between">
                 <div>
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 block mb-1">
                     {isEn ? "IN PROGRESS" : "EN COURS"}
                   </span>
                   <span className="text-3xl font-black font-mono text-slate-900">
-                    <AnimatedCounter value={pendingApps} duration={1.5} />
+                    {pendingApps}
                   </span>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-700 flex items-center justify-center shrink-0 shadow-2xs backdrop-blur-md">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-700 flex items-center justify-center shrink-0 shadow-2xs">
                   <Clock className="w-6 h-6" />
                 </div>
               </div>
 
-              <div className="bg-white/15 backdrop-blur-2xl rounded-2xl p-5 border border-white/25 shadow-xs flex items-center justify-between">
+              <div className="bg-white/80 rounded-2xl p-5 border border-white/70 shadow-xs flex items-center justify-between">
                 <div>
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 block mb-1">
                     {isEn ? "APPROVED" : "APPROUVÉS"}
                   </span>
                   <span className="text-3xl font-black font-mono text-slate-900">
-                    <AnimatedCounter value={approvedApps} duration={1.5} />
+                    {approvedApps}
                   </span>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-700 flex items-center justify-center shrink-0 shadow-2xs backdrop-blur-md">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-700 flex items-center justify-center shrink-0 shadow-2xs">
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
               </div>
 
-              <div className="bg-white/15 backdrop-blur-2xl rounded-2xl p-5 border border-white/25 shadow-xs flex items-center justify-between">
+              <div className="bg-white/80 rounded-2xl p-5 border border-white/70 shadow-xs flex items-center justify-between">
                 <div>
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 block mb-1">
                     {isEn ? "REJECTED" : "REJETÉS"}
                   </span>
                   <span className="text-3xl font-black font-mono text-slate-900">
-                    <AnimatedCounter value={rejectedApps} duration={1.5} />
+                    {rejectedApps}
                   </span>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-400/40 text-rose-700 flex items-center justify-center shrink-0 shadow-2xs backdrop-blur-md">
+                <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-400/40 text-rose-700 flex items-center justify-center shrink-0 shadow-2xs">
                   <ShieldCheck className="w-6 h-6" />
                 </div>
               </div>
@@ -268,9 +284,9 @@ export function AgencyDashboard() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {featuredTrips.slice(0, 2).map(trip => (
-                  <div key={trip.id} className="bg-white/15 backdrop-blur-2xl rounded-2xl border border-white/25 shadow-xs overflow-hidden flex flex-col group hover:shadow-md transition-all">
+                  <div key={trip.id} className="bg-white/80 rounded-2xl border border-white/70 shadow-xs overflow-hidden flex flex-col group hover:shadow-md transition-all">
                     <div className="h-32 relative overflow-hidden">
-                      <img src={trip.photoUrl} alt={trip.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <img src={trip.photoUrl} alt={trip.title} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent"></div>
                       <div className="absolute top-2 left-2">
                         <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
@@ -305,8 +321,8 @@ export function AgencyDashboard() {
         <div className="lg:col-span-4 space-y-6">
 
           {/* A. Widget Solde Disponible (Available Balance) */}
-          <div className="rounded-3xl overflow-hidden border border-white/25 shadow-xs bg-white/15 backdrop-blur-2xl">
-            <div className="bg-gradient-to-br from-slate-950/80 via-slate-900/75 to-[#13111C]/80 p-6 text-white relative overflow-hidden backdrop-blur-md">
+          <div className="rounded-3xl overflow-hidden border border-white/70 shadow-xs bg-white/85">
+            <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-[#13111C] p-6 text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 w-36 h-36 bg-[#7B1B38]/30 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
               
               <div className="flex items-center justify-between mb-3 relative z-10">
@@ -320,22 +336,22 @@ export function AgencyDashboard() {
 
               <div className="text-3xl font-black font-mono text-white tracking-tight flex items-center gap-2 relative z-10">
                 <WalletCards className="w-6 h-6 text-slate-300 shrink-0" />
-                <AnimatedCounter value={agencyBalance} suffix=" DZD" duration={1.8} />
+                <span>{agencyBalance.toLocaleString("fr-FR").replace(/\u202F/g, " ")} DZD</span>
               </div>
             </div>
 
-            <div className="p-5 space-y-3.5 bg-white/10 backdrop-blur-xl border-t border-white/15">
-              <div className="flex items-center justify-between text-xs pb-3 border-b border-white/15">
+            <div className="p-5 space-y-3.5 bg-white/80 border-t border-slate-100">
+              <div className="flex items-center justify-between text-xs pb-3 border-b border-slate-200/70">
                 <span className="text-slate-700 font-semibold">{isEn ? "Flight Bookings" : "Réservations Vols"}</span>
                 <span className="font-bold text-slate-900 font-mono">0 DZD</span>
               </div>
-              <div className="flex items-center justify-between text-xs pb-3 border-b border-white/15">
+              <div className="flex items-center justify-between text-xs pb-3 border-b border-slate-200/70">
                 <span className="text-slate-700 font-semibold">{isEn ? "Services & Visas" : "Services & Visas"}</span>
                 <span className="font-bold text-slate-900 font-mono">0 DZD</span>
               </div>
               <Link
                 to="/agency/wallet"
-                className="w-full mt-2 py-3 rounded-2xl bg-white/25 hover:bg-white/40 text-[#7B1B38] border border-white/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer backdrop-blur-md"
+                className="w-full mt-2 py-3 rounded-2xl bg-slate-100/90 hover:bg-slate-200/80 text-[#7B1B38] border border-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer"
               >
                 <span>{isEn ? "Manage Wallet" : "Gérer le Portefeuille"}</span>
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -344,7 +360,7 @@ export function AgencyDashboard() {
           </div>
 
           {/* B. Widget Demandes Récentes (Recent Applications) */}
-          <div className="rounded-3xl border border-white/25 bg-white/15 backdrop-blur-2xl p-6 shadow-xs space-y-4">
+          <div className="rounded-3xl border border-white/70 bg-white/80 p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-900 text-sm">
                 {isEn ? "Recent Applications" : "Demandes Récentes"}
@@ -364,7 +380,7 @@ export function AgencyDashboard() {
                   <div 
                     key={app.id} 
                     onClick={() => navigate('/agency/applications')}
-                    className="flex items-center justify-between p-3 rounded-xl bg-white/25 border border-white/30 hover:bg-white/45 hover:shadow-2xs transition-all text-xs cursor-pointer backdrop-blur-md"
+                    className="flex items-center justify-between p-3 rounded-xl bg-white/90 border border-slate-200/80 hover:bg-white hover:shadow-2xs transition-all text-xs cursor-pointer"
                   >
                     <div className="min-w-0 pr-2">
                       <span className="font-bold text-slate-900 block truncate">{app.travelerName}</span>
@@ -399,9 +415,9 @@ export function AgencyDashboard() {
           {popupTrip && (
             <div className="flex flex-col">
               <div className="h-48 relative">
-                <img src={popupTrip.photoUrl} alt={popupTrip.title} className="w-full h-full object-cover" />
+                <img src={popupTrip.photoUrl} alt={popupTrip.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent flex flex-col justify-end p-6">
-                  <div className="inline-flex items-center gap-1.5 bg-[#7B1B38]/30 text-rose-100 border border-[#7B1B38]/40 backdrop-blur-md px-2.5 py-1 rounded-full text-xs font-bold w-fit mb-2">
+                  <div className="inline-flex items-center gap-1.5 bg-[#7B1B38]/40 text-rose-100 border border-[#7B1B38]/50 px-2.5 py-1 rounded-full text-xs font-bold w-fit mb-2">
                     <Star className="w-3.5 h-3.5 fill-current" /> {isEn ? "New offer available!" : "Nouvelle offre disponible"}
                   </div>
                   <h2 className="text-white font-black text-xl leading-tight mb-1">{popupTrip.title}</h2>

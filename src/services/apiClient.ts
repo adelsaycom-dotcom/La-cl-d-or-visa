@@ -50,32 +50,49 @@ export async function getBackendMode(forceRefresh = false): Promise<BackendDatab
   }
 
   pendingProbe = (async () => {
-    try {
+    const probeOnce = async (): Promise<BackendDatabaseMode | null> => {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 6000);
-      const res = await fetch("/api/health", {
-        method: "GET",
-        cache: "no-store",
-        signal: controller.signal,
-      });
-      clearTimeout(timer);
-      if (res.ok) {
-        const data = await res.json();
-        const mode: BackendDatabaseMode = data?.database === "mysql" ? "mysql" : "firestore";
-        setCachedBackendMode(mode);
-        return mode;
+      const timer = setTimeout(() => controller.abort(), 4000);
+      try {
+        const res = await fetch("/api/health", {
+          method: "GET",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          return data?.database === "mysql" ? "mysql" : "firestore";
+        }
+      } finally {
+        clearTimeout(timer);
+      }
+      return null;
+    };
+
+    try {
+      let detected = await probeOnce();
+      if (!detected && cachedMode !== "mysql") {
+        await new Promise((r) => setTimeout(r, 350));
+        detected = await probeOnce();
+      }
+      if (detected) {
+        if (detected === "mysql" || cachedMode !== "mysql" || forceRefresh) {
+          setCachedBackendMode(detected);
+          return detected;
+        }
       }
     } catch {
-      // Conserver MySQL si déjà confirmé dans la session (évite de retomber sur Firestore lors d'une micro-coupure)
+      // Conserver MySQL si déjà confirmé dans la session (évite toute bascule vers Firestore sur micro-coupure)
       if (cachedMode === "mysql") {
         cachedAt = Date.now();
         return "mysql";
       }
     }
+
     if (cachedMode === "mysql") {
       return "mysql";
     }
-    setCachedBackendMode("firestore");
+    // Ne pas mettre en cache 'firestore' si la sonde réseau a échoué sans réponse valide
     return "firestore";
   })().finally(() => {
     pendingProbe = null;

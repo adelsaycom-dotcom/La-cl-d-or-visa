@@ -1,4 +1,11 @@
+import dns from "dns";
 import "dotenv/config";
+
+// Prioriser IPv4 évite les blocages DNS/IPv6 de 5-10s sur Linux/Hostinger (Googleapis & MySQL)
+if (typeof dns.setDefaultResultOrder === "function") {
+  dns.setDefaultResultOrder("ipv4first");
+}
+
 import express, { type Request, type Response, type NextFunction } from "express";
 import compression from "compression";
 import helmet from "helmet";
@@ -12,7 +19,7 @@ import { GoogleGenAI } from "@google/genai";
 import { initializeApp as initializeAdminApp, getApps as getAdminApps } from "firebase-admin/app";
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
 import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
-import { initMysqlDatabase, isMysqlActive, getMysqlPool, getMysqlStatus } from "./server/mysqlDb";
+import { initMysqlDatabase, isMysqlActive, ensureMysqlConnected, getMysqlPool, getMysqlStatus } from "./server/mysqlDb";
 import { createMysqlRouter } from "./server/mysqlRoutes";
 
 interface AuthenticatedUser {
@@ -161,6 +168,12 @@ async function startServer() {
   // Initialisation MySQL Hostinger (crée automatiquement les 12 tables si configuré)
   await initMysqlDatabase();
 
+  // Préchauffage non bloquant des certificats publics Google Firebase Auth (évite une latence froide à la 1ère connexion)
+  void Promise.allSettled([
+    fetch("https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"),
+    fetch("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"),
+  ]).catch(() => {});
+
   // Compression HTTP (gzip) pour réduire drastiquement la taille des réponses JSON et assets
   app.use(compression({ threshold: 1024 }));
 
@@ -280,10 +293,16 @@ async function startServer() {
     },
   });
 
+  // Drapeaux SVG légers servis statiquement avec cache long (remplace le bundle JS de 240 Ko)
+  const flagsDir = path.join(process.cwd(), "node_modules", "country-flag-icons", "3x2");
+  if (fs.existsSync(flagsDir)) {
+    app.use("/flags", express.static(flagsDir, { maxAge: "30d", immutable: true }));
+  }
+
   app.use("/api/", apiLimiter);
 
-  // Cache mémoire ultra-court (15s) pour éviter de revérifier RSA + SQL sur les rafales d'appels à la connexion
-  const AUTH_CACHE_TTL_MS = 15_000;
+  // Cache mémoire (60s) pour éviter de revérifier RSA + SQL sur les rafales d'appels à la connexion et la navigation
+  const AUTH_CACHE_TTL_MS = 60_000;
   const verifiedTokenCache = new Map<string, { user: AuthenticatedUser; expiresAt: number }>();
 
   // 4. Middleware d'authentification Firebase ID Token
@@ -312,6 +331,10 @@ async function startServer() {
       const emailVerified = Boolean(decoded.email_verified);
 
       let isAdmin = ADMIN_EMAILS.has(email);
+
+      if (!isAdmin && !isMysqlActive()) {
+        await ensureMysqlConnected();
+      }
 
       if (!isAdmin && isMysqlActive()) {
         try {
@@ -373,7 +396,10 @@ async function startServer() {
   }
 
   // Routes API
-  app.get("/api/health", (_req, res) => {
+  app.get("/api/health", async (_req, res) => {
+    if (!isMysqlActive() && getMysqlStatus().configured) {
+      await ensureMysqlConnected();
+    }
     const mysqlStatus = getMysqlStatus();
     res.json({
       status: "ok",

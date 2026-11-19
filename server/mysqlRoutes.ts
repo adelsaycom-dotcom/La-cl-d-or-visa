@@ -202,6 +202,11 @@ function mapServiceRow(row: any) {
   };
 }
 
+function buildCatalogMediaUrl(kind: "trip" | "study-program", id: string, version?: string): string {
+  const v = version ? `?v=${encodeURIComponent(version)}` : "";
+  return `/api/db/media/${kind}/${encodeURIComponent(id)}${v}`;
+}
+
 function mapTripRow(row: any) {
   return {
     id: row.id,
@@ -219,6 +224,21 @@ function mapTripRow(row: any) {
     status: row.status || "active",
     customFormFields: parseJsonSafe<any[]>(row.customFormFields, []),
     createdAt: row.createdAt,
+  };
+}
+
+function mapTripListRow(row: any) {
+  const base = mapTripRow(row);
+  const version = String(row.updatedAt || row.createdAt || "1");
+  const mediaUrl = buildCatalogMediaUrl("trip", String(row.id), version);
+  const image =
+    base.image === "__MEDIA__" || isLargeInlineDataUrl(base.image) ? mediaUrl : base.image;
+  const photoUrl =
+    base.photoUrl === "__MEDIA__" || isLargeInlineDataUrl(base.photoUrl) ? mediaUrl : base.photoUrl;
+  return {
+    ...base,
+    image,
+    photoUrl,
   };
 }
 
@@ -246,7 +266,61 @@ function mapStudyProgramRow(row: any) {
   };
 }
 
+function mapStudyProgramListRow(row: any) {
+  const base = mapStudyProgramRow(row);
+  const version = String(row.updatedAt || row.createdAt || "1");
+  const image =
+    base.image === "__MEDIA__" || isLargeInlineDataUrl(base.image)
+      ? buildCatalogMediaUrl("study-program", String(row.id), version)
+      : base.image;
+  return {
+    ...base,
+    image,
+  };
+}
+
 const INLINE_BLOB_THRESHOLD = 2048;
+
+const APP_LIST_SELECT = `
+  id, agencyId, agencyName, serviceType, country, visaType, travelerName, passportNumber, status, price, submissionDate,
+  CASE WHEN CHAR_LENGTH(finalDocument) > 2048 AND finalDocument LIKE 'data:%' THEN CONCAT('deferred:app:', id, ':finalDocument') ELSE finalDocument END AS finalDocument,
+  finalDocumentName, finalDocumentDate, adminNotes, extraData,
+  CASE WHEN CHAR_LENGTH(customFormData) > 16384 AND customFormData LIKE '%data:%' THEN '__DEFERRED__' ELSE customFormData END AS customFormData,
+  CASE WHEN CHAR_LENGTH(attachments) > 16384 AND attachments LIKE '%data:%' THEN '__DEFERRED__' ELSE attachments END AS attachments,
+  timeline
+`;
+
+const STUDY_APP_LIST_SELECT = `
+  id, programId, programTitle, country, countryFlag, university, city, agencyId, agencyName,
+  studentName, passportNumber, email, phone, status, price, paidAmount, paymentStatus, submissionDate,
+  CASE WHEN CHAR_LENGTH(finalDocument) > 2048 AND finalDocument LIKE 'data:%' THEN CONCAT('deferred:study:', id, ':finalDocument') ELSE finalDocument END AS finalDocument,
+  finalDocumentName, finalDocumentDate, adminNotes,
+  CASE WHEN CHAR_LENGTH(documents) > 16384 AND documents LIKE '%data:%' THEN '__DEFERRED__' ELSE documents END AS documents,
+  CASE WHEN CHAR_LENGTH(attachments) > 16384 AND attachments LIKE '%data:%' THEN '__DEFERRED__' ELSE attachments END AS attachments,
+  timeline
+`;
+
+const TICKET_LIST_SELECT = `
+  id, agencyId, agencyName, subject, description, category, priority, status, isUrgent,
+  applicationId, applicationRef, applicationSummary,
+  CASE WHEN CHAR_LENGTH(attachments) > 16384 AND attachments LIKE '%data:%' THEN '__DEFERRED__' ELSE attachments END AS attachments,
+  CASE WHEN CHAR_LENGTH(messages) > 16384 AND messages LIKE '%data:%' THEN '__DEFERRED__' ELSE messages END AS messages,
+  createdAt
+`;
+
+const TRIP_LIST_SELECT = `
+  id, title, destination, startDate, endDate, price, description, totalSeats, availableSeats,
+  CASE WHEN CHAR_LENGTH(image) > 2048 AND image LIKE 'data:%' THEN '__MEDIA__' ELSE image END AS image,
+  CASE WHEN CHAR_LENGTH(photoUrl) > 2048 AND photoUrl LIKE 'data:%' THEN '__MEDIA__' ELSE photoUrl END AS photoUrl,
+  featured, status, customFormFields, createdAt, updatedAt
+`;
+
+const STUDY_PROGRAM_LIST_SELECT = `
+  id, title, country, countryFlag, university, city, type, description, admissionConditions, conditions,
+  processingTime, intake, languageOfStudy, price, tuitionFeeYear, requiredDocuments,
+  CASE WHEN CHAR_LENGTH(image) > 2048 AND image LIKE 'data:%' THEN '__MEDIA__' ELSE image END AS image,
+  status, createdAt, updatedAt
+`;
 
 function isLargeInlineDataUrl(val: unknown): val is string {
   return typeof val === "string" && val.startsWith("data:") && val.length > INLINE_BLOB_THRESHOLD;
@@ -412,10 +486,19 @@ function mapApplicationRow(row: any) {
 }
 
 function mapApplicationListRow(row: any) {
-  const base = mapApplicationRow(row);
-  let hasDeferredAssets = false;
+  const rawCustomDeferred = row.customFormData === "__DEFERRED__";
+  const rawAttDeferred = row.attachments === "__DEFERRED__";
+  const safeRow = {
+    ...row,
+    customFormData: rawCustomDeferred ? null : row.customFormData,
+    attachments: rawAttDeferred ? "[]" : row.attachments,
+  };
+  const base = mapApplicationRow(safeRow);
+  let hasDeferredAssets = rawCustomDeferred || rawAttDeferred;
   let finalDocument = base.finalDocument;
-  if (isLargeInlineDataUrl(finalDocument)) {
+  if (isDeferredMarker(finalDocument)) {
+    hasDeferredAssets = true;
+  } else if (isLargeInlineDataUrl(finalDocument)) {
     finalDocument = `deferred:app:${base.id}:finalDocument`;
     hasDeferredAssets = true;
   }
@@ -487,10 +570,19 @@ function mapStudyApplicationRow(row: any) {
 }
 
 function mapStudyApplicationListRow(row: any) {
-  const base = mapStudyApplicationRow(row);
-  let hasDeferredAssets = false;
+  const rawDocsDeferred = row.documents === "__DEFERRED__";
+  const rawAttDeferred = row.attachments === "__DEFERRED__";
+  const safeRow = {
+    ...row,
+    documents: rawDocsDeferred ? "{}" : row.documents,
+    attachments: rawAttDeferred ? "[]" : row.attachments,
+  };
+  const base = mapStudyApplicationRow(safeRow);
+  let hasDeferredAssets = rawDocsDeferred || rawAttDeferred;
   let finalDocument = base.finalDocument;
-  if (isLargeInlineDataUrl(finalDocument)) {
+  if (isDeferredMarker(finalDocument)) {
+    hasDeferredAssets = true;
+  } else if (isLargeInlineDataUrl(finalDocument)) {
     finalDocument = `deferred:study:${base.id}:finalDocument`;
     hasDeferredAssets = true;
   }
@@ -572,8 +664,15 @@ function mapTicketRow(row: any) {
 }
 
 function mapTicketListRow(row: any) {
-  const base = mapTicketRow(row);
-  let hasDeferredAssets = false;
+  const rawAttDeferred = row.attachments === "__DEFERRED__";
+  const rawMsgsDeferred = row.messages === "__DEFERRED__";
+  const safeRow = {
+    ...row,
+    attachments: rawAttDeferred ? "[]" : row.attachments,
+    messages: rawMsgsDeferred ? "[]" : row.messages,
+  };
+  const base = mapTicketRow(safeRow);
+  let hasDeferredAssets = rawAttDeferred || rawMsgsDeferred;
   const attRes = stripAttachmentsForList(base.attachments || [], `deferred:ticket:${base.id}`);
   if (attRes.stripped) hasDeferredAssets = true;
 
@@ -780,8 +879,55 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
   };
 
   // =========================================================================
-  // 1. CATALOGUE PUBLIC (Page d'accueil + Agences connectées)
+  // 1. CATALOGUE PUBLIC & MÉDIAS MIS EN CACHE (Page d'accueil + Agences)
   // =========================================================================
+  const sendCatalogImageResponse = (res: Response, rawValue?: string | null) => {
+    const val = typeof rawValue === "string" ? rawValue.trim() : "";
+    if (!val) {
+      return res.status(404).end();
+    }
+    if (val.startsWith("data:image/")) {
+      const match = val.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/s);
+      if (!match) return res.status(404).end();
+      const mimeType = match[1].toLowerCase() === "image/jpg" ? "image/jpeg" : match[1].toLowerCase();
+      const buffer = Buffer.from(match[2], "base64");
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+      return res.send(buffer);
+    }
+    if (val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/")) {
+      return res.redirect(302, val);
+    }
+    return res.status(404).end();
+  };
+
+  router.get("/media/trip/:id", async (req, res) => {
+    try {
+      const [rows] = await getMysqlPool().query<any[]>(
+        "SELECT photoUrl, image FROM organized_trips WHERE id = ? LIMIT 1",
+        [req.params.id]
+      );
+      if (!rows || rows.length === 0) return res.status(404).end();
+      return sendCatalogImageResponse(res, rows[0].photoUrl || rows[0].image);
+    } catch {
+      return res.status(500).end();
+    }
+  });
+
+  router.get("/media/study-program/:id", async (req, res) => {
+    try {
+      const [rows] = await getMysqlPool().query<any[]>(
+        "SELECT image FROM study_programs WHERE id = ? LIMIT 1",
+        [req.params.id]
+      );
+      if (!rows || rows.length === 0) return res.status(404).end();
+      return sendCatalogImageResponse(res, rows[0].image);
+    } catch {
+      return res.status(500).end();
+    }
+  });
+
   router.get("/catalog", async (_req, res) => {
     try {
       const pool = getMysqlPool();
@@ -794,18 +940,18 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       ] = await Promise.all([
         pool.query<any[]>("SELECT * FROM countries ORDER BY name ASC"),
         pool.query<any[]>("SELECT * FROM services ORDER BY updatedAt DESC"),
-        pool.query<any[]>("SELECT * FROM organized_trips ORDER BY createdAt DESC"),
-        pool.query<any[]>("SELECT * FROM study_programs ORDER BY createdAt DESC"),
+        pool.query<any[]>(`SELECT ${TRIP_LIST_SELECT} FROM organized_trips ORDER BY createdAt DESC`),
+        pool.query<any[]>(`SELECT ${STUDY_PROGRAM_LIST_SELECT} FROM study_programs ORDER BY createdAt DESC`),
         getCatalogVersionOnly(pool),
       ]);
 
-      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Cache-Control", "public, max-age=15, stale-while-revalidate=60");
       return res.json({
         catalogVersion,
         countries: countryRows.map(mapCountryRow),
         services: serviceRows.map(mapServiceRow),
-        organizedTrips: tripRows.map(mapTripRow),
-        studyPrograms: studyRows.map(mapStudyProgramRow),
+        organizedTrips: tripRows.map(mapTripListRow),
+        studyPrograms: studyRows.map(mapStudyProgramListRow),
       });
     } catch (err) {
       console.error("[MySQL /catalog]", err);
@@ -1024,7 +1170,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       };
 
       // =====================================================================
-      // MODE RAPIDE "CORE" : Débloque immédiatement Dashboard & Mes Dossiers (<100ms)
+      // MODE RAPIDE "CORE" : Débloque immédiatement Dashboard & Mes Dossiers (<50ms)
       // =====================================================================
       if (scope === "core") {
         const [
@@ -1035,9 +1181,9 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
           [agencyRows],
         ] = await Promise.all([
           effectiveAdmin
-            ? pool.query<any[]>("SELECT * FROM applications ORDER BY submissionDate DESC LIMIT 300")
+            ? pool.query<any[]>(`SELECT ${APP_LIST_SELECT} FROM applications ORDER BY submissionDate DESC LIMIT 300`)
             : pool.query<any[]>(
-                `SELECT * FROM applications WHERE ${agencyFilter.clause} ORDER BY submissionDate DESC LIMIT 200`,
+                `SELECT ${APP_LIST_SELECT} FROM applications WHERE ${agencyFilter.clause} ORDER BY submissionDate DESC LIMIT 200`,
                 agencyFilter.params
               ),
           effectiveAdmin
@@ -1094,9 +1240,9 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
           [usersRes],
         ] = await Promise.all([
           effectiveAdmin
-            ? pool.query<any[]>("SELECT * FROM applications ORDER BY submissionDate DESC LIMIT 300")
+            ? pool.query<any[]>(`SELECT ${APP_LIST_SELECT} FROM applications ORDER BY submissionDate DESC LIMIT 300`)
             : pool.query<any[]>(
-                `SELECT * FROM applications WHERE ${agencyFilter.clause} ORDER BY submissionDate DESC LIMIT 200`,
+                `SELECT ${APP_LIST_SELECT} FROM applications WHERE ${agencyFilter.clause} ORDER BY submissionDate DESC LIMIT 200`,
                 agencyFilter.params
               ),
           effectiveAdmin
@@ -1136,12 +1282,12 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
         [ticketRows],
         versions,
       ] = await Promise.all([
-        includeCatalog ? pool.query<any[]>("SELECT * FROM organized_trips ORDER BY createdAt DESC") : Promise.resolve([[] as any[]]),
-        includeCatalog ? pool.query<any[]>("SELECT * FROM study_programs ORDER BY createdAt DESC") : Promise.resolve([[] as any[]]),
+        includeCatalog ? pool.query<any[]>(`SELECT ${TRIP_LIST_SELECT} FROM organized_trips ORDER BY createdAt DESC`) : Promise.resolve([[] as any[]]),
+        includeCatalog ? pool.query<any[]>(`SELECT ${STUDY_PROGRAM_LIST_SELECT} FROM study_programs ORDER BY createdAt DESC`) : Promise.resolve([[] as any[]]),
         effectiveAdmin
-          ? pool.query<any[]>("SELECT * FROM study_applications ORDER BY submissionDate DESC LIMIT 300")
+          ? pool.query<any[]>(`SELECT ${STUDY_APP_LIST_SELECT} FROM study_applications ORDER BY submissionDate DESC LIMIT 300`)
           : pool.query<any[]>(
-              `SELECT * FROM study_applications WHERE ${agencyFilter.clause} ORDER BY submissionDate DESC LIMIT 200`,
+              `SELECT ${STUDY_APP_LIST_SELECT} FROM study_applications WHERE ${agencyFilter.clause} ORDER BY submissionDate DESC LIMIT 200`,
               agencyFilter.params
             ),
         effectiveAdmin
@@ -1163,9 +1309,9 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
               agencyFilter.params
             ),
         effectiveAdmin
-          ? pool.query<any[]>("SELECT * FROM support_tickets ORDER BY createdAt DESC LIMIT 300")
+          ? pool.query<any[]>(`SELECT ${TICKET_LIST_SELECT} FROM support_tickets ORDER BY createdAt DESC LIMIT 300`)
           : pool.query<any[]>(
-              `SELECT * FROM support_tickets WHERE ${agencyFilter.clause} ORDER BY createdAt DESC LIMIT 150`,
+              `SELECT ${TICKET_LIST_SELECT} FROM support_tickets WHERE ${agencyFilter.clause} ORDER BY createdAt DESC LIMIT 150`,
               agencyFilter.params
             ),
         getSyncVersions(pool, matchedAgencyIds, effectiveAdmin, precomputedCatalogVersion),
@@ -1188,8 +1334,8 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
                     services: serviceRows.map(mapServiceRow),
                   }
                 : {}),
-              organizedTrips: tripRows.map(mapTripRow),
-              studyPrograms: studyRows.map(mapStudyProgramRow),
+              organizedTrips: tripRows.map(mapTripListRow),
+              studyPrograms: studyRows.map(mapStudyProgramListRow),
             }
           : {}),
         ...(scope === "all"
@@ -1400,6 +1546,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       const t = req.body || {};
       const id = String(t.id || genId("trip"));
       const createdAt = String(t.createdAt || nowIso());
+      const updatedAt = nowIso();
       const availableSeats =
         t.availableSeats !== undefined ? Number(t.availableSeats) : Number(t.totalSeats || 0);
       await getMysqlPool().query(
@@ -1427,10 +1574,13 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
           String(t.status || "active"),
           stringifyJsonSafe(t.customFormFields || [], "[]"),
           createdAt,
-          nowIso(),
+          updatedAt,
         ]
       );
-      return res.json({ success: true, trip: { ...t, id, createdAt, availableSeats } });
+      return res.json({
+        success: true,
+        trip: mapTripListRow({ ...t, id, createdAt, updatedAt, availableSeats }),
+      });
     } catch (err) {
       console.error("[MySQL POST /trips]", err);
       return res.status(500).json({ error: "Erreur création voyage." });
@@ -1442,7 +1592,16 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       const pool = getMysqlPool();
       const [rows] = await pool.query<any[]>("SELECT * FROM organized_trips WHERE id = ? LIMIT 1", [req.params.id]);
       if (rows.length === 0) return res.status(404).json({ error: "Voyage introuvable." });
-      const merged = { ...mapTripRow(rows[0]), ...(req.body || {}), id: req.params.id };
+      const existing = mapTripRow(rows[0]);
+      const incoming = { ...(req.body || {}) };
+      if (typeof incoming.image === "string" && incoming.image.startsWith("/api/db/media/")) {
+        incoming.image = existing.image;
+      }
+      if (typeof incoming.photoUrl === "string" && incoming.photoUrl.startsWith("/api/db/media/")) {
+        incoming.photoUrl = existing.photoUrl;
+      }
+      const merged = { ...existing, ...incoming, id: req.params.id };
+      const updatedAt = nowIso();
       await pool.query(
         `UPDATE organized_trips SET title = ?, destination = ?, startDate = ?, endDate = ?, price = ?, description = ?, totalSeats = ?, availableSeats = ?, image = ?, photoUrl = ?, featured = ?, status = ?, customFormFields = ?, updatedAt = ? WHERE id = ?`,
         [
@@ -1459,11 +1618,11 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
           merged.featured ? 1 : 0,
           String(merged.status || "active"),
           stringifyJsonSafe(merged.customFormFields || [], "[]"),
-          nowIso(),
+          updatedAt,
           req.params.id,
         ]
       );
-      return res.json({ success: true, trip: merged });
+      return res.json({ success: true, trip: mapTripListRow({ ...merged, updatedAt }) });
     } catch (err) {
       return res.status(500).json({ error: "Erreur mise à jour voyage." });
     }
@@ -1483,6 +1642,7 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       const p = req.body || {};
       const id = String(p.id || genId("prog"));
       const createdAt = String(p.createdAt || nowIso());
+      const updatedAt = nowIso();
       await getMysqlPool().query(
         `INSERT INTO study_programs (id, title, country, countryFlag, university, city, type, description, admissionConditions, conditions, processingTime, intake, languageOfStudy, price, tuitionFeeYear, requiredDocuments, image, status, createdAt, updatedAt)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1515,10 +1675,13 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
           p.image || null,
           String(p.status || "active"),
           createdAt,
-          nowIso(),
+          updatedAt,
         ]
       );
-      return res.json({ success: true, program: { ...p, id, createdAt } });
+      return res.json({
+        success: true,
+        program: mapStudyProgramListRow({ ...p, id, createdAt, updatedAt }),
+      });
     } catch (err) {
       console.error("[MySQL POST /study-programs]", err);
       return res.status(500).json({ error: "Erreur création programme études." });
@@ -1530,7 +1693,13 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
       const pool = getMysqlPool();
       const [rows] = await pool.query<any[]>("SELECT * FROM study_programs WHERE id = ? LIMIT 1", [req.params.id]);
       if (rows.length === 0) return res.status(404).json({ error: "Programme introuvable." });
-      const merged = { ...mapStudyProgramRow(rows[0]), ...(req.body || {}), id: req.params.id };
+      const existing = mapStudyProgramRow(rows[0]);
+      const incoming = { ...(req.body || {}) };
+      if (typeof incoming.image === "string" && incoming.image.startsWith("/api/db/media/")) {
+        incoming.image = existing.image;
+      }
+      const merged = { ...existing, ...incoming, id: req.params.id };
+      const updatedAt = nowIso();
       await pool.query(
         `UPDATE study_programs SET title = ?, country = ?, countryFlag = ?, university = ?, city = ?, type = ?, description = ?, admissionConditions = ?, conditions = ?, processingTime = ?, intake = ?, languageOfStudy = ?, price = ?, tuitionFeeYear = ?, requiredDocuments = ?, image = ?, status = ?, updatedAt = ? WHERE id = ?`,
         [
@@ -1551,11 +1720,11 @@ export function createMysqlRouter(requireAuth: RequireAuthMiddleware): Router {
           stringifyJsonSafe(merged.requiredDocuments || [], "[]"),
           merged.image || null,
           String(merged.status || "active"),
-          nowIso(),
+          updatedAt,
           req.params.id,
         ]
       );
-      return res.json({ success: true, program: merged });
+      return res.json({ success: true, program: mapStudyProgramListRow({ ...merged, updatedAt }) });
     } catch (err) {
       return res.status(500).json({ error: "Erreur mise à jour programme." });
     }

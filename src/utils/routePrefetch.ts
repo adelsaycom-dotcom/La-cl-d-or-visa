@@ -64,26 +64,12 @@ export function prefetchAgencyPortalChunks(): void {
   scheduleIdleBatch([
     "/agency",
     "/agency/applications",
-    "/agency/apply",
-    "/agency/trips",
-    "/agency/study",
-    "/agency/wallet",
-    "/agency/support",
-    "/agency/passport-index",
-    "/agency/settings",
-  ]);
+  ], 800);
 }
 
 export function prefetchAdminPortalChunks(): void {
   scheduleIdleBatch([
     "/admin",
     "/admin/applications",
-    "/admin/agencies",
-    "/admin/finances",
-    "/admin/support",
-    "/admin/trips",
-    "/admin/study",
-    "/admin/countries",
-    "/admin/settings",
-  ]);
+  ], 800);
 }

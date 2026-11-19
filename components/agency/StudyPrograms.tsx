@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useAppStore, StudyProgram, StudyApplication } from '../../src/store/useAppStore';
 import { 
   Search, MapPin, FileText, ChevronRight, GraduationCap, 
@@ -36,6 +36,7 @@ export default function StudyPrograms() {
   const mysqlSecondaryLoading = useAppStore(state => state.mysqlSecondaryLoading);
   const mysqlSecondaryLoaded = useAppStore(state => state.mysqlSecondaryLoaded);
   const addStudyApplication = useAppStore(state => state.addStudyApplication);
+  const hydrateStudyApplicationDetails = useAppStore(state => state.hydrateStudyApplicationDetails);
   const currentAgency = useAppStore(state => state.currentAgency);
   const currentAgencyId = currentAgency?.id || auth.currentUser?.uid || 'unknown';
 
@@ -234,6 +235,15 @@ export default function StudyPrograms() {
     const start = (safeAppPage - 1) * appPageSize;
     return myApplications.slice(start, start + appPageSize);
   }, [myApplications, safeAppPage, appPageSize]);
+
+  useEffect(() => {
+    if (activeTab !== 'my-applications') return;
+    paginatedApplications.forEach((app) => {
+      if (app.hasDeferredAssets) {
+        void hydrateStudyApplicationDetails(app.id);
+      }
+    });
+  }, [activeTab, paginatedApplications, hydrateStudyApplicationDetails]);
 
   const handleOpenDoc = async (docName: string, rawUrl: string) => {
     setResolvingDocName(docName);
@@ -848,6 +858,8 @@ export default function StudyPrograms() {
                         <img
                           src={prog.image || "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80"}
                           alt={prog.university}
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent"></div>
@@ -1223,6 +1235,8 @@ export default function StudyPrograms() {
                 <img
                   src={detailedProgram.image || "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80"}
                   alt={detailedProgram.university}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent"></div>

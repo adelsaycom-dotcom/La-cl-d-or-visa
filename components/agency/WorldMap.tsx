@@ -1,9 +1,9 @@
-import React, { memo, useState } from "react";
+import React, { memo, useMemo, useState } from "react";
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
 import { Tooltip } from "react-tooltip";
 import { Plus, Minus, Maximize } from "lucide-react";
 
-const geoUrl = "https://unpkg.com/world-atlas@2.0.2/countries-110m.json";
+const geoUrl = "/countries-110m.json";
 
 interface Destination {
   country: string;
@@ -38,6 +38,19 @@ const getStatusText = (status?: string) => {
 const MapChart = ({ destinations }: WorldMapProps) => {
   const [position, setPosition] = useState({ coordinates: [0, 20], zoom: 1 });
 
+  const destinationMap = useMemo(() => {
+    const map = new Map<string, Destination>();
+    for (const d of destinations || []) {
+      if (!d || !d.country) continue;
+      const key = d.country.trim().toLowerCase();
+      map.set(key, d);
+      if (d.country === "United States") {
+        map.set("united states of america", d);
+      }
+    }
+    return map;
+  }, [destinations]);
+
   function handleZoomIn() {
     if (position.zoom >= 4) return;
     setPosition((pos) => ({ ...pos, zoom: pos.zoom * 1.5 }));
@@ -58,7 +71,7 @@ const MapChart = ({ destinations }: WorldMapProps) => {
 
   return (
     <div className="relative w-full h-[500px] md:h-[600px] bg-[#e0f2fe] border border-slate-200 rounded-3xl overflow-hidden mt-8 shadow-inner">
-      <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 bg-white/90 backdrop-blur-sm p-1.5 rounded-xl shadow-md border border-slate-200/50">
+      <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 bg-white/95 p-1.5 rounded-xl shadow-md border border-slate-200/70">
         <button onClick={handleZoomIn} className="p-2 hover:bg-slate-100 rounded-lg text-slate-700 transition-colors">
           <Plus className="w-5 h-5" />
         </button>
@@ -70,7 +83,7 @@ const MapChart = ({ destinations }: WorldMapProps) => {
         </button>
       </div>
 
-      <div className="absolute bottom-4 left-4 z-10 bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-md border border-slate-200/50 text-xs font-bold flex flex-col gap-2">
+      <div className="absolute bottom-4 left-4 z-10 bg-white/95 p-4 rounded-2xl shadow-md border border-slate-200/70 text-xs font-bold flex flex-col gap-2">
         <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500"></div> Sans Visa</div>
         <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-blue-500"></div> Visa à l'arrivée</div>
         <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-purple-500"></div> eTA / e-Visa</div>
@@ -89,14 +102,7 @@ const MapChart = ({ destinations }: WorldMapProps) => {
             {({ geographies }) =>
               geographies.map((geo) => {
                 const geoName = geo?.properties?.name || "";
-                const destinationMatch = (destinations || []).find(
-                   d => d && (
-                     (d.country || "").toLowerCase() === geoName.toLowerCase() ||
-                     (d.country === "United States" && geoName === "United States of America") ||
-                     (d.country === "United Kingdom" && geoName === "United Kingdom") ||
-                     (d.country === "Russia" && geoName === "Russia")
-                   )
-                );
+                const destinationMatch = destinationMap.get(geoName.toLowerCase());
 
                 const color = getStatusColor(destinationMatch?.status);
 

@@ -290,11 +290,15 @@ export async function uploadFileToServer(
     // Quota sessionStorage dépassé, le cache mémoire prend le relais
   }
 
-  // 3. Tenter en priorité la sauvegarde authentifiée sur le disque privé serveur Node.js
+  // 3. Tenter en priorité la sauvegarde authentifiée sur le disque privé serveur Node.js + MySQL
   let localServerUrl = "";
   let backendMode: "mysql" | "firestore" = "firestore";
   try {
     backendMode = await getBackendMode();
+  } catch {
+    // Repli géré ci-dessous
+  }
+  try {
     const authHeaders = await getBearerAuthHeaders();
     if (authHeaders.Authorization) {
       const controller = new AbortController();
@@ -325,6 +329,10 @@ export async function uploadFileToServer(
     }
   } catch {
     // Mode sans backend Express disque
+  }
+
+  if (!localServerUrl && backendMode === "mysql") {
+    throw new Error("Impossible d'enregistrer le document sur le serveur. Veuillez réessayer.");
   }
 
   // 4. Sauvegarde Firestore 'attachments' UNIQUEMENT en mode secours (si pas de MySQL et pas déjà stocké sur le serveur)
@@ -411,7 +419,7 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
     if (attachment.startsWith("http") || attachment.startsWith("/uploads/")) return attachment;
     
     // Si c'est un identifiant storageId ou une URL relative /attachments/att_...
-    const match = attachment.match(/att_\d+_[a-z0-9]+/);
+    const match = attachment.match(/att_\d+_[a-z0-9]+(?:\.(?:pdf|jpg|jpeg|png|webp))?/i);
     if (match) {
       const attId = match[0];
       if (attachmentMemoryCache.has(attId)) return attachmentMemoryCache.get(attId)!;
@@ -419,6 +427,17 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
       if (cached) {
         attachmentMemoryCache.set(attId, cached);
         return cached;
+      }
+      const mode = await getBackendMode();
+      if (mode === "mysql") {
+        if (/\.(pdf|jpg|png|webp)$/i.test(attId)) {
+          try {
+            return await fetchProtectedFileAsBlobUrl(`/api/files/${attId}`);
+          } catch {
+            return "";
+          }
+        }
+        return "";
       }
       try {
         const [{ doc, getDoc }, db] = await Promise.all([
@@ -506,6 +525,18 @@ export async function resolveAttachmentData(attachment: any): Promise<string> {
     if (cached) {
       attachmentMemoryCache.set(storageId, cached);
       return cached;
+    }
+
+    const mode = await getBackendMode();
+    if (mode === "mysql") {
+      if (/\.(pdf|jpg|png|webp)$/i.test(String(storageId))) {
+        try {
+          return await fetchProtectedFileAsBlobUrl(`/api/files/${storageId}`);
+        } catch {
+          return "";
+        }
+      }
+      return "";
     }
 
     try {

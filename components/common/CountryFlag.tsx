@@ -1,5 +1,4 @@
-import React from "react";
-import * as Flags from "country-flag-icons/react/3x2";
+import { useState } from "react";
 import { hasFlag } from "country-flag-icons";
 import { Globe2 } from "lucide-react";
 import { getCountryIsoCode } from "../../src/utils/flags";
@@ -22,8 +21,8 @@ const SIZE_CLASSES: Record<NonNullable<CountryFlagProps["size"]>, string> = {
 };
 
 /**
- * Drapeau vectoriel SVG universel (100% compatible Windows, macOS, Linux, Android, iOS).
- * Évite les emojis Unicode régionaux qui s'affichent sous forme de lettres brutes ("FR", "DZ") sous Windows.
+ * Drapeau vectoriel SVG universel servi à la demande depuis /flags/*.svg.
+ * Évite d'embarquer 240 Ko de composants SVG synchrones en RAM et reste 100% compatible Windows/macOS/Linux/mobile.
  */
 export function CountryFlag({
   country,
@@ -33,33 +32,32 @@ export function CountryFlag({
   rounded = false,
   title
 }: CountryFlagProps) {
+  const [failedIso, setFailedIso] = useState<string | null>(null);
   const iso =
     getCountryIsoCode(country) ||
     getCountryIsoCode(fallbackCode);
 
   const dimClass = SIZE_CLASSES[size];
 
-  if (iso && iso !== "WORLD" && hasFlag(iso)) {
-    const flagMap = Flags as unknown as Record<
-      string,
-      React.ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" | "false" }>
-    >;
-    const FlagComponent = flagMap[iso];
-    if (FlagComponent) {
-      return (
-        <span
-          className={`inline-flex items-center justify-center shrink-0 overflow-hidden shadow-2xs ring-1 ring-black/10 ${
-            rounded ? "rounded-full aspect-square" : "rounded-[3px]"
-          } ${dimClass} ${className}`}
-          title={title || country || iso}
-        >
-          <FlagComponent
-            className="w-full h-full object-cover"
-            aria-hidden="true"
-          />
-        </span>
-      );
-    }
+  if (iso && iso !== "WORLD" && hasFlag(iso) && failedIso !== iso) {
+    return (
+      <span
+        className={`inline-flex items-center justify-center shrink-0 overflow-hidden shadow-2xs ring-1 ring-black/10 ${
+          rounded ? "rounded-full aspect-square" : "rounded-[3px]"
+        } ${dimClass} ${className}`}
+        title={title || country || iso}
+      >
+        <img
+          src={`/flags/${iso}.svg`}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailedIso(iso)}
+          className="w-full h-full object-cover"
+          aria-hidden="true"
+        />
+      </span>
+    );
   }
 
   return (

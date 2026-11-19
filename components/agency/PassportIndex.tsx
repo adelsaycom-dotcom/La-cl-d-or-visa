@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, Globe2, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import WorldMap from "./WorldMap";
 import { useLanguage } from "../../src/i18n/LanguageContext";
 import { CountryFlag } from "../common/CountryFlag";
+import { TablePagination } from "../common/TablePagination";
 
 export type VisaStatus = "free" | "voa" | "required" | "eta";
 
@@ -23,14 +24,29 @@ export function PassportIndex() {
 
   const [selectedPassport, setSelectedPassport] = useState("Algérien");
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
 
   const passports = PASSPORT_DATA;
 
   const data = passports[selectedPassport] || passports["Algérien"];
 
-  const filteredDestinations = data.destinations.filter(d => 
-    d.country.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredDestinations = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return data.destinations;
+    return data.destinations.filter(d => d.country.toLowerCase().includes(q));
+  }, [data.destinations, searchQuery]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedPassport, searchQuery]);
+
+  const pageSize = 30;
+  const totalPages = Math.max(1, Math.ceil(filteredDestinations.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const paginatedDestinations = useMemo(() => {
+    const start = (safePage - 1) * pageSize;
+    return filteredDestinations.slice(start, start + pageSize);
+  }, [filteredDestinations, safePage, pageSize]);
 
   const getStatusColor = (status: VisaStatus) => {
     switch (status) {
@@ -158,8 +174,8 @@ export function PassportIndex() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredDestinations.map((dest, i) => (
-            <div key={i} className={`p-4 rounded-xl border flex items-center justify-between ${getStatusColor(dest.status)} bg-white shadow-sm hover:shadow-md transition-shadow`}>
+          {paginatedDestinations.map((dest) => (
+            <div key={dest.code || dest.country} className={`p-4 rounded-xl border flex items-center justify-between ${getStatusColor(dest.status)} bg-white shadow-sm hover:shadow-md transition-shadow`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 border border-slate-200 shadow-xs">
                   <CountryFlag country={dest.country} size="lg" />
@@ -186,6 +202,16 @@ export function PassportIndex() {
             </div>
           )}
         </div>
+
+        <TablePagination
+          currentPage={safePage}
+          totalPages={totalPages}
+          totalCount={filteredDestinations.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          itemLabel={isEn ? "destinations" : "destinations"}
+          className="rounded-xl border border-slate-200 shadow-xs"
+        />
       </div>
     </div>
   );
