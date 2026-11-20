@@ -14,6 +14,30 @@ export default defineConfig(() => {
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
     },
+    optimizeDeps: {
+      include: [
+        'react',
+        'react-dom',
+        'react-router-dom',
+        'framer-motion',
+        'lucide-react',
+        'lenis',
+        'zustand',
+        'clsx',
+        'tailwind-merge',
+        'class-variance-authority',
+        'country-flag-icons',
+        'firebase/app',
+        'firebase/auth',
+        'firebase/firestore',
+        '@base-ui/react/button',
+        '@base-ui/react/dialog',
+        '@base-ui/react/input',
+        '@base-ui/react/menu',
+        '@base-ui/react/select',
+        '@base-ui/react/tabs',
+      ],
+    },
     build: {
       rollupOptions: {
         output: {

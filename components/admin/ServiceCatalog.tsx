@@ -323,7 +323,7 @@ export function ServiceCatalog() {
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
               Catalogue B2B & Prestations
             </h2>
-            <span className="px-2.5 py-1 text-xs font-bold bg-[#7B1B38]/10 text-[#7B1B38] rounded-full">
+            <span className="px-2.5 py-1 text-xs font-bold bg-[#661915]/10 text-[#661915] rounded-full">
               Référentiel Dashboard Agence
             </span>
           </div>
@@ -370,7 +370,7 @@ export function ServiceCatalog() {
 
           <Button
             onClick={handleAddNew}
-            className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold h-11 px-5 rounded-xl shadow-sm shadow-[#7B1B38]/20 flex items-center gap-2 text-xs sm:text-sm cursor-pointer"
+            className="bg-[#661915] hover:bg-[#4d120f] text-white font-bold h-11 px-5 rounded-xl shadow-sm shadow-[#661915]/20 flex items-center gap-2 text-xs sm:text-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Nouvelle Prestation</span>
@@ -435,7 +435,7 @@ export function ServiceCatalog() {
                 onClick={() => handleSelectFamily(tab.id)}
                 className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 cursor-pointer ${
                   isActive
-                    ? "bg-[#7B1B38] text-white shadow-sm shadow-[#7B1B38]/20"
+                    ? "bg-[#661915] text-white shadow-sm shadow-[#661915]/20"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                 }`}
               >
@@ -517,7 +517,7 @@ export function ServiceCatalog() {
         {/* Pilules de raccourcis Pays Fréquents */}
         <div className="flex items-center gap-1.5 overflow-x-auto pt-2 border-t border-slate-100 scrollbar-none">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
-            <MapPin className="w-3 h-3 text-[#7B1B38]" /> Destinations :
+            <MapPin className="w-3 h-3 text-[#661915]" /> Destinations :
           </span>
           {POPULAR_DESTINATIONS.map((country) => {
             const isSelected = selectedCountryFilter === country;
@@ -551,7 +551,7 @@ export function ServiceCatalog() {
           </p>
           <Button
             onClick={handleAddNew}
-            className="mt-4 bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs rounded-xl cursor-pointer"
+            className="mt-4 bg-[#661915] hover:bg-[#4d120f] text-white font-bold text-xs rounded-xl cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5 mr-1" /> Ajouter une prestation
           </Button>
@@ -631,7 +631,7 @@ export function ServiceCatalog() {
                             Délai Moyen
                           </span>
                           <div className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-md mt-0.5">
-                            <Clock className="w-3 h-3 text-[#7B1B38]" />{" "}
+                            <Clock className="w-3 h-3 text-[#661915]" />{" "}
                             {srv.processingTime || "24h à 48h"}
                           </div>
                         </div>
@@ -834,10 +834,9 @@ export function ServiceCatalog() {
       <Dialog open={isEditorOpen} onOpenChange={(o) => !o && setIsEditorOpen(false)}>
         <DialogContent className="sm:max-w-[850px] p-0 overflow-hidden bg-slate-50 rounded-3xl border-0 shadow-2xl max-h-[92vh] flex flex-col">
           {/* Header Modal */}
-          <div className="bg-[#7B1B38] text-white p-6 shrink-0 flex justify-between items-center">
+          <div className="bg-[#661915] text-white p-6 shrink-0 flex justify-between items-center">
             <div>
-              <div className="flex items-center gap-2 text-white/80 text-xs font-bold uppercase tracking-wider mb-1">
-                <Sparkles className="w-3.5 h-3.5" />
+              <div className="text-white/80 text-xs font-bold uppercase tracking-[0.12em] mb-1">
                 <span>Configuration de l'Offre B2B</span>
               </div>
               <h3 className="text-xl sm:text-2xl font-black">
@@ -868,7 +867,7 @@ export function ServiceCatalog() {
             {/* Bloc 1: Informations Générales & Famille */}
             <section className="space-y-4">
               <h4 className="flex items-center gap-2 text-xs font-black text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-                <Settings className="w-4 h-4 text-[#7B1B38]" /> 1. Service Référent & Destination
+                <Settings className="w-4 h-4 text-[#661915]" /> 1. Service Référent & Destination
               </h4>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -887,7 +886,7 @@ export function ServiceCatalog() {
                       {AGENCY_SERVICES.map((f) => (
                         <SelectItem key={f.id} value={f.name} className="text-xs py-2 font-bold">
                           <div className="flex items-center gap-2">
-                            <f.icon className="w-3.5 h-3.5 text-[#7B1B38]" />
+                            <f.icon className="w-3.5 h-3.5 text-[#661915]" />
                             <span>{f.name}</span>
                             <span className="text-[10px] text-slate-400 font-normal">
                               ({f.badge})
@@ -1133,7 +1132,7 @@ export function ServiceCatalog() {
                 type="button"
                 onClick={handleSave}
                 disabled={isSubmitting}
-                className="font-bold text-xs h-10 px-7 bg-[#7B1B38] hover:bg-[#63142c] text-white rounded-xl shadow-sm shadow-[#7B1B38]/20 cursor-pointer"
+                className="font-bold text-xs h-10 px-7 bg-[#661915] hover:bg-[#4d120f] text-white rounded-xl shadow-sm shadow-[#661915]/20 cursor-pointer"
               >
                 <Save className="w-4 h-4 mr-1.5" />
                 {isSubmitting ? "Enregistrement..." : "Enregistrer la Prestation"}

@@ -80,7 +80,7 @@ export function PassportIndex() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
+            <div className="w-1.5 h-6 bg-[#661915] rounded-full"></div>
             {isEn ? "Global Passport Index" : "Index des Passeports"}
           </h2>
           <p className="text-sm text-slate-500 mt-1">
@@ -132,7 +132,7 @@ export function PassportIndex() {
             </div>
             <div className="text-center px-4 border-l border-slate-100">
               <div className="text-sm font-medium text-slate-500 mb-1">{isEn ? "Mobility Score" : "Score de Mobilité"}</div>
-              <div className="text-5xl font-black text-[#7B1B38]">{data.score}</div>
+              <div className="text-5xl font-black text-[#661915]">{data.score}</div>
             </div>
           </div>
         </div>
@@ -175,7 +175,7 @@ export function PassportIndex() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {paginatedDestinations.map((dest) => (
-            <div key={dest.code || dest.country} className={`p-4 rounded-xl border flex items-center justify-between ${getStatusColor(dest.status)} bg-white shadow-sm hover:shadow-md transition-shadow`}>
+            <div key={`${selectedPassport}-${dest.country}`} className={`p-4 rounded-xl border flex items-center justify-between ${getStatusColor(dest.status)} bg-white shadow-sm hover:shadow-md transition-shadow`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 border border-slate-200 shadow-xs">
                   <CountryFlag country={dest.country} size="lg" />

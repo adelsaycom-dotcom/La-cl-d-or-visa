@@ -45,7 +45,7 @@ interface LanguageSwitcherProps {
  * Commutateur de langue B2B ultra-moderne et ergonomique :
  * - Commutation en 1 seul clic
  * - Drapeaux ronds SVG haute précision (zéro emoji système, compatible 100% Windows/Android)
- * - Indicateur actif avec badge contrasté et accent de marque Clé d'Or (#7B1B38)
+ * - Indicateur actif avec badge contrasté et accent de marque Clé d'Or (#661915)
  * - Structure HTML purement valide (zéro imbrication de button, pas de dropdown instable)
  */
 export function LanguageSwitcher({ 
@@ -77,7 +77,7 @@ export function LanguageSwitcher({
           language === "fr"
             ? isGlass
               ? "bg-white text-slate-900 shadow-md scale-[1.02]"
-              : "bg-white text-[#7B1B38] shadow-sm border border-slate-200/80 scale-[1.02]"
+              : "bg-white text-[#661915] shadow-sm border border-slate-200/80 scale-[1.02]"
             : isGlass
               ? "text-white/70 hover:text-white hover:bg-white/5"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
@@ -101,7 +101,7 @@ export function LanguageSwitcher({
           language === "en"
             ? isGlass
               ? "bg-white text-slate-900 shadow-md scale-[1.02]"
-              : "bg-white text-[#7B1B38] shadow-sm border border-slate-200/80 scale-[1.02]"
+              : "bg-white text-[#661915] shadow-sm border border-slate-200/80 scale-[1.02]"
             : isGlass
               ? "text-white/70 hover:text-white hover:bg-white/5"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"

@@ -4,8 +4,8 @@ import { useAppStore, OrganizedTrip, TripReservation } from '../../src/store/use
 import { 
   MapPin, Calendar, DollarSign, Users, Search, Check, 
   Info, CheckCircle2, Clock, AlertCircle, ArrowRight, 
-  FileText, ShieldCheck, Loader2, Sparkles, Copy, Printer,
-  BookmarkCheck, Share2, Eye, X
+  FileText, ShieldCheck, Loader2, Copy, Printer,
+  BookmarkCheck, Share2, Eye, X, Plane
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -207,8 +207,8 @@ export default function OrganizedTrips() {
         <title>Reçu de Réservation - ${safeResId}</title>
         <style>
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; color: #1e293b; }
-          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #7B1B38; padding-bottom: 15px; margin-bottom: 25px; }
-          .brand { font-size: 24px; font-weight: 900; color: #7B1B38; }
+          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #661915; padding-bottom: 15px; margin-bottom: 25px; }
+          .brand { font-size: 24px; font-weight: 900; color: #661915; }
           .badge { background: #dcfce7; color: #15803d; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 13px; display: inline-block; }
           .ref { font-family: monospace; font-size: 16px; font-weight: bold; color: #0f172a; margin-top: 5px; }
           .section { margin-bottom: 20px; }
@@ -219,7 +219,7 @@ export default function OrganizedTrips() {
           .value { font-weight: bold; color: #0f172a; }
           .total { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-top: 20px; display: flex; justify-content: space-between; align-items: center; }
           .total-label { font-size: 16px; font-weight: bold; color: #1e293b; }
-          .total-amount { font-size: 22px; font-weight: 900; color: #7B1B38; }
+          .total-amount { font-size: 22px; font-weight: 900; color: #661915; }
           .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px dashed #cbd5e1; padding-top: 15px; }
           @media print { body { margin: 15mm; } }
         </style>
@@ -302,7 +302,7 @@ export default function OrganizedTrips() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
+            <div className="w-1.5 h-6 bg-[#661915] rounded-full"></div>
             {isEn ? "Organized Trips & Group Tours" : "Voyages Organisés"}
           </h1>
           <p className="text-slate-500 font-medium text-sm mt-1">
@@ -328,7 +328,7 @@ export default function OrganizedTrips() {
             onClick={() => setActiveTab('my-reservations')}
             className={`px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 ${
               activeTab === 'my-reservations' 
-                ? 'bg-[#7B1B38] text-white shadow-sm' 
+                ? 'bg-[#661915] text-white shadow-sm' 
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -359,7 +359,7 @@ export default function OrganizedTrips() {
 
           {catalogLoading && !catalogLoaded && filteredTrips.length === 0 ? (
             <div className="py-20 text-center bg-white rounded-3xl border border-slate-200">
-              <Loader2 className="w-9 h-9 mx-auto text-[#7B1B38] animate-spin mb-3" />
+              <Loader2 className="w-9 h-9 mx-auto text-[#661915] animate-spin mb-3" />
               <p className="font-bold text-slate-800 text-sm">
                 {isEn ? "Loading organized trips..." : "Chargement des voyages organisés..."}
               </p>
@@ -370,15 +370,22 @@ export default function OrganizedTrips() {
                 const bookedSeats = getBookedSeatsForTrip(trip.id);
 
                 return (
-                  <div key={trip.id} className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col hover:border-[#7B1B38]/30 hover:shadow-lg transition-all duration-300">
-                    <div className="h-52 relative overflow-hidden group">
-                      <img 
-                        src={trip.photoUrl || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&q=80"} 
-                        alt={trip.title}
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-                      />
+                  <div key={trip.id} className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col hover:border-[#661915]/30 hover:shadow-lg transition-all duration-300">
+                    <div className="h-52 relative overflow-hidden group bg-slate-900">
+                      {trip.photoUrl && !trip.photoUrl.includes('unsplash.com') ? (
+                        <img 
+                          src={trip.photoUrl} 
+                          alt={trip.title}
+                          loading="lazy"
+                          decoding="async"
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 via-slate-900 to-[#661915]/80">
+                          <Plane className="w-12 h-12 text-white/30" />
+                        </div>
+                      )}
                       
                       {/* Badge Prix B2B */}
                       <div className="absolute top-4 left-4">
@@ -408,7 +415,7 @@ export default function OrganizedTrips() {
                     <div className="p-5 flex-1 flex flex-col">
                       <div className="grid grid-cols-2 gap-3 mb-4">
                         <div className="bg-slate-50 rounded-xl p-2.5 flex flex-col items-center justify-center text-center border border-slate-100">
-                          <Calendar className="w-4 h-4 text-[#7B1B38] mb-1" />
+                          <Calendar className="w-4 h-4 text-[#661915] mb-1" />
                           <span className="text-[10px] text-slate-400 uppercase font-bold">{isEn ? "Departure" : "Départ"}</span>
                           <span className="text-xs font-bold text-slate-800">{formatSafeDate(trip.startDate, isEn ? 'en-US' : 'fr-FR')}</span>
                         </div>
@@ -444,7 +451,7 @@ export default function OrganizedTrips() {
                             ? 'bg-slate-200 text-slate-500 cursor-not-allowed' 
                             : bookedSeats > 0
                             ? 'bg-emerald-700 hover:bg-emerald-800 text-white'
-                            : 'bg-[#7B1B38] hover:bg-[#63142c] text-white'
+                            : 'bg-[#661915] hover:bg-[#4d120f] text-white'
                         }`}
                         disabled={trip.availableSeats <= 0}
                         onClick={() => handleOpenBooking(trip)}
@@ -523,7 +530,7 @@ export default function OrganizedTrips() {
               <p className="text-xs text-slate-500 mt-1 mb-4">
                 {isEn ? "Browse the departure catalog to book group trips for your travelers." : "Consultez le catalogue des départs pour enregistrer des réservations pour vos clients."}
               </p>
-              <Button onClick={() => setActiveTab('catalog')} className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs h-10 px-6 rounded-xl">
+              <Button onClick={() => setActiveTab('catalog')} className="bg-[#661915] hover:bg-[#4d120f] text-white font-bold text-xs h-10 px-6 rounded-xl">
                 {isEn ? "Explore Departure Catalog" : "Parcourir le catalogue"}
               </Button>
             </div>
@@ -540,7 +547,7 @@ export default function OrganizedTrips() {
                       className={`bg-white rounded-3xl border p-6 shadow-sm transition-all flex flex-col justify-between ${
                         isRecentlyBooked 
                           ? 'border-2 border-emerald-500 shadow-md ring-4 ring-emerald-50' 
-                          : 'border-slate-200 hover:border-[#7B1B38]/30'
+                          : 'border-slate-200 hover:border-[#661915]/30'
                       }`}
                     >
                       <div>
@@ -572,7 +579,7 @@ export default function OrganizedTrips() {
                           {trip ? trip.title : (isEn ? "Organized Tour" : "Circuit Organisé")}
                         </h3>
                         <p className="text-xs text-slate-500 font-medium mb-4 flex items-center gap-1.5">
-                          <MapPin className="w-3.5 h-3.5 text-[#7B1B38]" /> {trip?.destination || "Destination internationale"}
+                          <MapPin className="w-3.5 h-3.5 text-[#661915]" /> {trip?.destination || "Destination internationale"}
                           {trip?.startDate && (
                             <span className="text-slate-400">• Départ : {new Date(trip.startDate).toLocaleDateString()}</span>
                           )}
@@ -585,7 +592,7 @@ export default function OrganizedTrips() {
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-slate-500 font-medium">{isEn ? "Travelers Count" : "Nombre de personnes"} :</span>
-                            <span className="font-black text-[#7B1B38] font-mono">{res.numberOfPeople} pers.</span>
+                            <span className="font-black text-[#661915] font-mono">{res.numberOfPeople} pers.</span>
                           </div>
                           {res.passengerNames && res.passengerNames.length > 0 && (
                             <div className="pt-2 border-t border-slate-200/60">
@@ -613,7 +620,7 @@ export default function OrganizedTrips() {
                           <Printer className="w-3.5 h-3.5" />
                           <span>{isEn ? "Print Voucher" : "Imprimer le reçu"}</span>
                         </Button>
-                        <span className="font-black text-[#7B1B38] text-sm font-mono">
+                        <span className="font-black text-[#661915] text-sm font-mono">
                           {res.totalPrice?.toLocaleString()} DZD
                         </span>
                       </div>
@@ -644,13 +651,20 @@ export default function OrganizedTrips() {
             <div className="flex flex-col h-full overflow-hidden">
               {/* Image et présentation */}
               <div className="relative h-64 w-full overflow-hidden shrink-0 bg-slate-900">
-                <img 
-                  src={detailedTrip.photoUrl || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&q=80"} 
-                  alt={detailedTrip.title}
-                  loading="lazy"
-                  decoding="async"
-                  className="w-full h-full object-cover" 
-                />
+                {detailedTrip.photoUrl && !detailedTrip.photoUrl.includes('unsplash.com') ? (
+                  <img 
+                    src={detailedTrip.photoUrl} 
+                    alt={detailedTrip.title}
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 via-slate-900 to-[#661915]/80">
+                    <Plane className="w-14 h-14 text-white/30" />
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent"></div>
 
                 <div className="absolute top-4 left-4 flex items-center gap-2">
@@ -658,7 +672,7 @@ export default function OrganizedTrips() {
                     <CountryFlag country={detailedTrip.destination} size="sm" />
                     <span>{detailedTrip.destination}</span>
                   </Badge>
-                  <Badge className="bg-[#7B1B38] text-white text-xs font-black uppercase px-3 py-1 rounded-xl border-0">
+                  <Badge className="bg-[#661915] text-white text-xs font-black uppercase px-3 py-1 rounded-xl border-0">
                     {isEn ? "Group Tour" : "Circuit Organisé"}
                   </Badge>
                 </div>
@@ -675,7 +689,7 @@ export default function OrganizedTrips() {
                     {detailedTrip.title}
                   </h3>
                   <p className="text-sm text-slate-200 font-medium mt-1 flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4 text-[#7B1B38]" /> {detailedTrip.destination}
+                    <MapPin className="w-4 h-4 text-[#661915]" /> {detailedTrip.destination}
                   </p>
                 </div>
               </div>
@@ -685,7 +699,7 @@ export default function OrganizedTrips() {
                 {/* 1. Métriques et Dates */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                   <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-                    <Calendar className="w-4 h-4 text-[#7B1B38] mx-auto mb-1" />
+                    <Calendar className="w-4 h-4 text-[#661915] mx-auto mb-1" />
                     <span className="text-[10px] text-slate-400 uppercase font-bold block">{isEn ? "Departure" : "Départ"}</span>
                     <span className="text-xs font-black text-slate-800">
                       {new Date(detailedTrip.startDate).toLocaleDateString(isEn ? 'en-US' : 'fr-FR')}
@@ -707,7 +721,7 @@ export default function OrganizedTrips() {
                   </div>
 
                   <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-                    <DollarSign className="w-4 h-4 text-[#7B1B38] mx-auto mb-1" />
+                    <DollarSign className="w-4 h-4 text-[#661915] mx-auto mb-1" />
                     <span className="text-[10px] text-slate-400 uppercase font-bold block">{isEn ? "Total Quota" : "Capacité Totale"}</span>
                     <span className="text-xs font-black text-slate-800">{detailedTrip.totalSeats} places</span>
                   </div>
@@ -716,7 +730,7 @@ export default function OrganizedTrips() {
                 {/* 2. Description complète & Programme */}
                 <div>
                   <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-[#7B1B38]" /> {isEn ? "Program & Details" : "Programme & Descriptif du Séjour"}
+                    <FileText className="w-4 h-4 text-[#661915]" /> {isEn ? "Program & Details" : "Programme & Descriptif du Séjour"}
                   </h4>
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs text-slate-700 leading-relaxed font-normal whitespace-pre-line">
                     {detailedTrip.description || (isEn ? "All-inclusive organized trip with hotel, transfers, and excursions." : "Séjour organisé complet comprenant hébergement sélectionné, transferts et visites guidées.")}
@@ -752,7 +766,7 @@ export default function OrganizedTrips() {
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                     {isEn ? "B2B Rate per person" : "Tarif Agence B2B par personne"}
                   </span>
-                  <div className="text-2xl font-black font-mono text-[#7B1B38]">
+                  <div className="text-2xl font-black font-mono text-[#661915]">
                     {Number(detailedTrip.price || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">DZD</span>
                   </div>
                 </div>
@@ -772,7 +786,7 @@ export default function OrganizedTrips() {
                       handleOpenBooking(detailedTrip);
                     }}
                     disabled={detailedTrip.availableSeats <= 0}
-                    className="h-11 px-6 bg-[#7B1B38] hover:bg-[#63142c] text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 cursor-pointer"
+                    className="h-11 px-6 bg-[#661915] hover:bg-[#4d120f] text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 cursor-pointer"
                   >
                     <span>{isEn ? "Book This Trip" : "Réserver ce voyage"}</span>
                     <ArrowRight className="w-4 h-4" />
@@ -821,12 +835,12 @@ export default function OrganizedTrips() {
                   <div className="min-w-0 overflow-hidden">
                     <h4 className="font-black text-slate-900 text-sm truncate">{selectedTrip.title}</h4>
                     <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1 truncate">
-                      <MapPin className="w-3.5 h-3.5 text-[#7B1B38] shrink-0" /> {selectedTrip.destination} • Départ : {new Date(selectedTrip.startDate).toLocaleDateString()}
+                      <MapPin className="w-3.5 h-3.5 text-[#661915] shrink-0" /> {selectedTrip.destination} • Départ : {new Date(selectedTrip.startDate).toLocaleDateString()}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
                     <span className="text-[10px] uppercase font-bold text-slate-400 block">{isEn ? "Rate / Person" : "Tarif / pers"}</span>
-                    <span className="font-black text-[#7B1B38] text-sm font-mono">{Number(selectedTrip.price || 0).toLocaleString()} DZD</span>
+                    <span className="font-black text-[#661915] text-sm font-mono">{Number(selectedTrip.price || 0).toLocaleString()} DZD</span>
                   </div>
                 </div>
               )}
@@ -938,14 +952,14 @@ export default function OrganizedTrips() {
                   <div className="pt-4 border-t border-slate-100 flex justify-between items-center gap-4">
                     <div>
                       <span className="text-[11px] text-slate-400 block">{isEn ? "Estimated Total" : "Montant total estimé"}</span>
-                      <span className="font-black text-xl text-[#7B1B38] font-mono">
+                      <span className="font-black text-xl text-[#661915] font-mono">
                         {(selectedTrip.price * numberOfPeople).toLocaleString()} DZD
                       </span>
                     </div>
 
                     <Button 
                       type="submit"
-                      className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs h-11 px-6 rounded-xl gap-2 shadow-md shadow-[#7B1B38]/20 shrink-0"
+                      className="bg-[#661915] hover:bg-[#4d120f] text-white font-bold text-xs h-11 px-6 rounded-xl gap-2 shadow-md shadow-[#661915]/20 shrink-0"
                     >
                       {isEn ? "Review Booking Summary" : "Vérifier et Valider"} <ArrowRight className="w-4 h-4" />
                     </Button>
@@ -979,11 +993,11 @@ export default function OrganizedTrips() {
                     </div>
                     <div className="flex justify-between items-center py-2 border-b border-slate-200/80 gap-3 min-w-0">
                       <span className="text-slate-500 shrink-0">{isEn ? "Reserved Seats" : "Places réservées"} :</span>
-                      <span className="font-black text-[#7B1B38] font-mono text-sm">{numberOfPeople} voyageur(s)</span>
+                      <span className="font-black text-[#661915] font-mono text-sm">{numberOfPeople} voyageur(s)</span>
                     </div>
                     <div className="flex justify-between items-center pt-2 gap-3 min-w-0">
                       <span className="text-slate-700 font-bold text-sm shrink-0">{isEn ? "Total Amount to Charge" : "Montant total de la réservation"} :</span>
-                      <span className="font-black text-2xl text-[#7B1B38] font-mono text-right">
+                      <span className="font-black text-2xl text-[#661915] font-mono text-right">
                         {(selectedTrip.price * numberOfPeople).toLocaleString()} DZD
                       </span>
                     </div>
@@ -1007,7 +1021,7 @@ export default function OrganizedTrips() {
                       type="button" 
                       disabled={isSubmitting}
                       onClick={handleConfirmBooking}
-                      className="flex-1 h-12 rounded-xl text-xs font-black bg-[#7B1B38] hover:bg-[#63142c] text-white shadow-lg shadow-[#7B1B38]/30 gap-2"
+                      className="flex-1 h-12 rounded-xl text-xs font-black bg-[#661915] hover:bg-[#4d120f] text-white shadow-lg shadow-[#661915]/30 gap-2"
                     >
                       {isSubmitting ? (
                         <>
@@ -1093,7 +1107,7 @@ export default function OrganizedTrips() {
                     </div>
                     <div className="flex justify-between items-center pt-2">
                       <span className="text-slate-700 font-bold text-sm">{isEn ? "Total Price" : "Montant Total"} :</span>
-                      <span className="font-black text-2xl text-[#7B1B38] font-mono">
+                      <span className="font-black text-2xl text-[#661915] font-mono">
                         {((completedReservation?.totalPrice) || (selectedTrip.price * numberOfPeople)).toLocaleString()} DZD
                       </span>
                     </div>

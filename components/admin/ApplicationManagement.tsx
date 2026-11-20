@@ -256,7 +256,7 @@ export function ApplicationManagement() {
       <div className="flex justify-between items-center shrink-0">
         <div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
+            <div className="w-1.5 h-6 bg-[#661915] rounded-full"></div>
             {isEn ? "Applications & Visa Operations" : "Traitement des Dossiers"}
           </h2>
           <p className="text-slate-500 font-medium">
@@ -287,7 +287,7 @@ export function ApplicationManagement() {
                     onClick={() => setStatusFilter(status)}
                     className={`px-3 py-1.5 rounded-full font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
                       statusFilter === status 
-                        ? 'bg-[#7B1B38] text-white shadow-sm' 
+                        ? 'bg-[#661915] text-white shadow-sm' 
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
@@ -314,7 +314,7 @@ export function ApplicationManagement() {
             {paginatedApplications.length === 0 ? (
               mysqlCoreLoading && !mysqlCoreLoaded && resolvedApplications.length === 0 ? (
                 <div className="p-10 text-center text-slate-500">
-                  <Loader2 className="w-8 h-8 mx-auto mb-3 text-[#7B1B38] animate-spin" />
+                  <Loader2 className="w-8 h-8 mx-auto mb-3 text-[#661915] animate-spin" />
                   <p className="text-xs font-bold text-slate-700">{isEn ? "Loading applications..." : "Chargement des dossiers en cours..."}</p>
                 </div>
               ) : (
@@ -329,7 +329,7 @@ export function ApplicationManagement() {
                   key={app.id} 
                   onClick={() => setSelectedAppId(app.id)}
                   className={`p-4 cursor-pointer transition-colors ${
-                    selectedAppId === app.id ? 'bg-[#7B1B38]/5 border-l-4 border-[#7B1B38]' : 'hover:bg-slate-50'
+                    selectedAppId === app.id ? 'bg-[#661915]/5 border-l-4 border-[#661915]' : 'hover:bg-slate-50'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-2">
@@ -501,7 +501,7 @@ export function ApplicationManagement() {
                       <Button 
                         disabled={!finalDocFile && selectedApp.status === "Approved"}
                         onClick={handleApproveWithDoc} 
-                        className="w-full bg-[#7B1B38] hover:bg-[#63142c] text-white font-black text-xs h-11 rounded-xl shadow-md shadow-[#7B1B38]/20"
+                        className="w-full bg-[#661915] hover:bg-[#4d120f] text-white font-black text-xs h-11 rounded-xl shadow-md shadow-[#661915]/20"
                       >
                         {selectedApp.finalDocument && finalDocFile 
                           ? "Mettre à jour le visa délivré" 
@@ -513,7 +513,7 @@ export function ApplicationManagement() {
                   {/* Fiche Voyageur Complète */}
                   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                     <h4 className="font-black text-slate-800 pb-3 border-b border-slate-100 flex items-center gap-2 text-sm">
-                      <User className="w-4 h-4 text-[#7B1B38]" /> Fiche Voyageur & Identité
+                      <User className="w-4 h-4 text-[#661915]" /> Fiche Voyageur & Identité
                     </h4>
 
                     <div className="grid grid-cols-2 gap-4 text-xs">
@@ -574,7 +574,7 @@ export function ApplicationManagement() {
                         </div>
                         <div className="text-right">
                           <span className="text-slate-400 font-bold uppercase block mb-0.5">Tarif facturé</span>
-                          <span className="font-mono font-black text-[#7B1B38] text-sm">{selectedApp.price?.toLocaleString()} DZD</span>
+                          <span className="font-mono font-black text-[#661915] text-sm">{selectedApp.price?.toLocaleString()} DZD</span>
                         </div>
                       </div>
                     </div>
@@ -584,7 +584,7 @@ export function ApplicationManagement() {
                   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                       <h4 className="font-black text-slate-800 flex items-center gap-2 text-sm">
-                        <UploadCloud className="w-4 h-4 text-[#7B1B38]" /> Pièces Jointes Transmises ({appAttachments.length})
+                        <UploadCloud className="w-4 h-4 text-[#661915]" /> Pièces Jointes Transmises ({appAttachments.length})
                       </h4>
                       <span className="text-[10px] font-bold text-slate-400 uppercase">Documents réels reçus</span>
                     </div>
@@ -609,7 +609,7 @@ export function ApplicationManagement() {
 
                                 <div className="overflow-hidden min-w-0 flex-1">
                                   <div className="flex items-center gap-2">
-                                    <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-[10px] py-0">
+                                    <Badge className="bg-[#661915]/10 text-[#661915] font-bold text-[10px] py-0">
                                       {att.category || "Justificatif"}
                                     </Badge>
                                     {isPdf && <Badge variant="outline" className="text-[9px] py-0 text-rose-600 border-rose-300">PDF</Badge>}
@@ -649,7 +649,7 @@ export function ApplicationManagement() {
                 <div className="flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-[550px] xl:h-auto xl:max-h-[800px]">
                   <div className="p-4 border-b border-slate-100 bg-slate-50 shrink-0">
                     <h4 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
-                      <MessageSquare className="w-4 h-4 text-[#7B1B38]" /> Messagerie Directe avec l'Agence
+                      <MessageSquare className="w-4 h-4 text-[#661915]" /> Messagerie Directe avec l'Agence
                     </h4>
                   </div>
                   
@@ -662,12 +662,12 @@ export function ApplicationManagement() {
                     ) : (
                       selectedApp.timeline.map(entry => (
                         <div key={entry.id} className={`p-3.5 rounded-xl border text-xs ${
-                          entry.sender === 'Admin' ? 'bg-[#7B1B38]/5 border-[#7B1B38]/20 ml-6 shadow-xs' : 
+                          entry.sender === 'Admin' ? 'bg-[#661915]/5 border-[#661915]/20 ml-6 shadow-xs' : 
                           entry.sender === 'Agency' ? 'bg-white border-slate-200 mr-6 shadow-xs' :
                           'bg-slate-100 border-slate-200 mx-6 text-center'
                         }`}>
                           <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${
-                            entry.sender === 'Admin' ? 'text-[#7B1B38]' :
+                            entry.sender === 'Admin' ? 'text-[#661915]' :
                             entry.sender === 'System' ? 'text-slate-400' : 'text-slate-500'
                           }`}>
                             {entry.sender === 'System' ? 'Système' : entry.sender === 'Admin' ? 'Vous (Administration)' : 'Agence Partenaire'} • {new Date(entry.date).toLocaleDateString()} {new Date(entry.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -686,7 +686,7 @@ export function ApplicationManagement() {
                       onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                       className="bg-slate-50 text-xs h-10 rounded-xl"
                     />
-                    <Button onClick={handleSendMessage} className="bg-[#7B1B38] hover:bg-[#63142c] text-white shrink-0 h-10 px-4 rounded-xl">
+                    <Button onClick={handleSendMessage} className="bg-[#661915] hover:bg-[#4d120f] text-white shrink-0 h-10 px-4 rounded-xl">
                       <Send className="w-4 h-4" />
                     </Button>
                   </div>
@@ -698,7 +698,7 @@ export function ApplicationManagement() {
           </div>
         ) : (
           <div className="hidden lg:flex lg:col-span-7 flex-col items-center justify-center bg-white rounded-2xl border border-slate-200 shadow-sm text-center p-12">
-            <div className="w-20 h-20 bg-slate-50 rounded-2xl flex items-center justify-center mb-4 border border-slate-100 text-[#7B1B38]">
+            <div className="w-20 h-20 bg-slate-50 rounded-2xl flex items-center justify-center mb-4 border border-slate-100 text-[#661915]">
               <FileText className="w-10 h-10 opacity-40" />
             </div>
             <h3 className="text-lg font-black text-slate-800 mb-1">Sélectionnez un dossier à traiter</h3>

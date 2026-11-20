@@ -27,7 +27,10 @@ const ROUTE_CHUNK_LOADERS: Record<string, () => Promise<unknown>> = {
 /**
  * Précharge le chunk JS d'une route spécifique une seule fois (au survol/focus ou en idle).
  */
+const IS_DEV_MODE = Boolean((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV);
+
 export function prefetchRouteChunk(path: string): void {
+  if (IS_DEV_MODE) return;
   const normalized = path.split("?")[0];
   if (prefetchedPaths.has(normalized)) return;
 
@@ -41,7 +44,7 @@ export function prefetchRouteChunk(path: string): void {
 }
 
 function scheduleIdleBatch(paths: string[], delayMs = 250): void {
-  if (typeof window === "undefined") return;
+  if (IS_DEV_MODE || typeof window === "undefined") return;
 
   const win = window as Window & {
     requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;

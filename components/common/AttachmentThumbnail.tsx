@@ -129,7 +129,7 @@ export function AttachmentThumbnail({
       return (
         <div 
           onClick={() => onOpenPreview && onOpenPreview(resolvedSrc, attachment.category || attachment.name)}
-          className={`${sizeClasses} rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 hover:border-[#7B1B38]/50 shadow-sm transition-all ${onOpenPreview ? 'cursor-pointer hover:opacity-90' : ''}`}
+          className={`${sizeClasses} rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 hover:border-[#661915]/50 shadow-sm transition-all ${onOpenPreview ? 'cursor-pointer hover:opacity-90' : ''}`}
           title={attachment.name}
         >
           <img 

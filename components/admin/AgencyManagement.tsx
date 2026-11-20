@@ -393,7 +393,7 @@ export function AgencyManagement() {
       {/* ============================================================ */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold text-[#7B1B38] uppercase tracking-wider mb-1">
+          <div className="flex items-center gap-2 text-xs font-bold text-[#661915] uppercase tracking-wider mb-1">
             <Building2 className="w-4 h-4" />
             <span>{isEn ? "B2B Network Management" : "Gestion Réseau B2B"}</span>
           </div>
@@ -409,7 +409,7 @@ export function AgencyManagement() {
 
         <Button 
           onClick={() => setIsAddAgencyOpen(true)} 
-          className="bg-[#7B1B38] text-white hover:bg-[#63142c] shadow-sm shadow-[#7B1B38]/20 font-bold rounded-xl text-xs h-11 px-5 flex items-center gap-2"
+          className="bg-[#661915] text-white hover:bg-[#4d120f] shadow-sm shadow-[#661915]/20 font-bold rounded-xl text-xs h-11 px-5 flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           <span>{isEn ? "Create Agency" : "Créer une agence"}</span>
@@ -573,7 +573,7 @@ export function AgencyManagement() {
                           onClick={() => handleSelectAgency(agency, "juridique")}
                           className="h-8 px-2.5 text-xs font-bold text-slate-700 border-slate-200 hover:bg-slate-100 rounded-lg flex items-center gap-1 shadow-xs"
                         >
-                          <Eye className="w-3.5 h-3.5 text-[#7B1B38]" />
+                          <Eye className="w-3.5 h-3.5 text-[#661915]" />
                           <span>Profil 360°</span>
                         </Button>
 
@@ -650,7 +650,7 @@ export function AgencyManagement() {
           {selectedAgency && (
             <>
               {/* Header de la Fiche Profil */}
-              <div className="bg-[#7B1B38] text-white p-6 shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="bg-[#661915] text-white p-6 shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-mono text-[10px] font-bold bg-white/10 px-2 py-0.5 rounded text-white/90">
@@ -699,7 +699,7 @@ export function AgencyManagement() {
                   onClick={() => setActiveProfileTab("juridique")}
                   className={`py-3.5 px-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
                     activeProfileTab === "juridique"
-                      ? "border-[#7B1B38] text-[#7B1B38]"
+                      ? "border-[#661915] text-[#661915]"
                       : "border-transparent text-slate-500 hover:text-slate-800"
                   }`}
                 >
@@ -711,7 +711,7 @@ export function AgencyManagement() {
                   onClick={() => setActiveProfileTab("dossiers")}
                   className={`py-3.5 px-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
                     activeProfileTab === "dossiers"
-                      ? "border-[#7B1B38] text-[#7B1B38]"
+                      ? "border-[#661915] text-[#661915]"
                       : "border-transparent text-slate-500 hover:text-slate-800"
                   }`}
                 >
@@ -723,7 +723,7 @@ export function AgencyManagement() {
                   onClick={() => setActiveProfileTab("finances")}
                   className={`py-3.5 px-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
                     activeProfileTab === "finances"
-                      ? "border-[#7B1B38] text-[#7B1B38]"
+                      ? "border-[#661915] text-[#661915]"
                       : "border-transparent text-slate-500 hover:text-slate-800"
                   }`}
                 >
@@ -764,7 +764,7 @@ export function AgencyManagement() {
                         size="sm"
                         onClick={handleSaveAgencyProfile}
                         disabled={isSavingEdit}
-                        className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs rounded-xl h-9 px-4 flex items-center gap-1.5"
+                        className="bg-[#661915] hover:bg-[#4d120f] text-white font-bold text-xs rounded-xl h-9 px-4 flex items-center gap-1.5"
                       >
                         <Save className="w-3.5 h-3.5" />
                         <span>{isSavingEdit ? "Enregistrement..." : "Sauvegarder"}</span>
@@ -903,7 +903,7 @@ export function AgencyManagement() {
                         <TableBody className="text-xs divide-y divide-slate-100">
                           {agencyApplications.map((app) => (
                             <TableRow key={app.id}>
-                              <TableCell className="py-2.5 px-3 font-mono font-bold text-[#7B1B38]">
+                              <TableCell className="py-2.5 px-3 font-mono font-bold text-[#661915]">
                                 DOSS-{app.id.substring(0, 6).toUpperCase()}
                               </TableCell>
                               <TableCell className="py-2.5 px-3 font-bold text-slate-800">
@@ -1181,7 +1181,7 @@ export function AgencyManagement() {
       {/* ============================================================ */}
       <Dialog open={isAddAgencyOpen} onOpenChange={setIsAddAgencyOpen}>
         <DialogContent className="sm:max-w-xl p-0 overflow-hidden bg-white rounded-3xl border-0 shadow-2xl">
-          <div className="bg-[#7B1B38] text-white p-6">
+          <div className="bg-[#661915] text-white p-6">
             <h3 className="text-xl font-black">Ajouter une Nouvelle Agence B2B</h3>
             <p className="text-xs text-white/80 mt-1">Créez manuellement un compte partenaire opérationnel.</p>
           </div>
@@ -1350,7 +1350,7 @@ export function AgencyManagement() {
                     setIsAddingLoading(false);
                   }
                 }} 
-                className="h-10 px-6 bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs rounded-xl"
+                className="h-10 px-6 bg-[#661915] hover:bg-[#4d120f] text-white font-bold text-xs rounded-xl"
               >
                 {isAddingLoading ? "Création en cours..." : "Créer l'agence"}
               </Button>

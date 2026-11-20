@@ -99,7 +99,7 @@ export function AgencySettings() {
                </div>
                
                <div className="pt-2 flex justify-end">
-                  <Button className="bg-[#7B1B38] text-white hover:bg-[#63142c] rounded-xl px-6 h-12 font-bold transition-all shadow-md shadow-[#7B1B38]/20">
+                  <Button className="bg-[#661915] text-white hover:bg-[#4d120f] rounded-xl px-6 h-12 font-bold transition-all shadow-md shadow-[#661915]/20">
                     <Save className="w-4 h-4 mr-2" /> {isEn ? "Save Changes" : "Enregistrer les modifications"}
                   </Button>
                </div>
@@ -118,7 +118,7 @@ export function AgencySettings() {
                   {isEn ? "Add your travel agents so they can submit visa files from your balance." : "Ajoutez vos employés pour qu'ils puissent soumettre des demandes depuis votre compte."}
                 </p>
              </div>
-             <Button className="bg-[#7B1B38] text-white hover:bg-[#63142c] rounded-xl font-bold h-11 shrink-0 shadow-md shadow-[#7B1B38]/20">
+             <Button className="bg-[#661915] text-white hover:bg-[#4d120f] rounded-xl font-bold h-11 shrink-0 shadow-md shadow-[#661915]/20">
                <Plus className="w-4 h-4 mr-2" /> {isEn ? "Invite Member" : "Inviter un membre"}
              </Button>
           </div>
@@ -198,7 +198,7 @@ export function AgencySettings() {
                </div>
                
                <div className="pt-2 flex justify-end">
-                 <Button className="bg-[#7B1B38] text-white hover:bg-[#63142c] rounded-xl px-6 h-12 font-bold transition-all shadow-md shadow-[#7B1B38]/20">
+                 <Button className="bg-[#661915] text-white hover:bg-[#4d120f] rounded-xl px-6 h-12 font-bold transition-all shadow-md shadow-[#661915]/20">
                    <Save className="w-4 h-4 mr-2" /> {isEn ? "Apply White-label" : "Appliquer la marque blanche"}
                  </Button>
                </div>

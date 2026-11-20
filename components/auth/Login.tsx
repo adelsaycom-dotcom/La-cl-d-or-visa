@@ -82,9 +82,11 @@ export function Login() {
       if (!catalogService.getCachedCatalogSnapshot()) {
         void catalogService.getCountries(false);
       }
-      void import("@/components/agency/AgencyLayout");
-      void import("@/components/agency/Dashboard");
-      void import("@/components/agency/AgencyApplications");
+      if ((import.meta as unknown as { env?: { PROD?: boolean } }).env?.PROD) {
+        void import("@/components/agency/AgencyLayout");
+        void import("@/components/agency/Dashboard");
+        void import("@/components/agency/AgencyApplications");
+      }
     }, 150);
     return () => {
       cancelled = true;
@@ -307,7 +309,7 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 grid grid-cols-1 lg:grid-cols-12 overflow-x-hidden selection:bg-[#7B1B38]/20 selection:text-[#7B1B38]">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 grid grid-cols-1 lg:grid-cols-12 overflow-x-hidden selection:bg-[#661915]/20 selection:text-[#661915]">
       
       {/* ========================================================
           LEFT COLUMN: Brand, World Map & Global Network (7 cols)
@@ -322,7 +324,7 @@ export function Login() {
 
           <Link
             to="/"
-            className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-[#7B1B38] bg-white/80 backdrop-blur-sm border border-slate-200 px-3.5 py-1.5 rounded-full transition-all shadow-xs"
+            className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-[#661915] bg-white/80 backdrop-blur-sm border border-slate-200 px-3.5 py-1.5 rounded-full transition-all shadow-xs"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>{isEn ? "Home" : "Accueil"}</span>
@@ -331,20 +333,20 @@ export function Login() {
 
         {/* Middle: Headline & Key Stats */}
         <div className="relative z-20 my-auto py-8 max-w-xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B1B38]/10 text-[#7B1B38] text-xs font-bold tracking-wide uppercase mb-5 border border-[#7B1B38]/20">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#661915]/10 text-[#661915] text-xs font-bold tracking-wide uppercase mb-5 border border-[#661915]/20">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>{isEn ? "Accredited B2B Partner Portal" : "Portail Partenaire Agréé B2B"}</span>
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 leading-[1.15] tracking-tight mb-8">
             {isEn ? "Your Trusted Partner for Wholesale Visa Operations" : "Votre partenaire de confiance en traitement de visas"}{" "}
-            <span className="text-[#7B1B38] underline decoration-[#7B1B38]/30 underline-offset-4">B2B</span>
+            <span className="text-[#661915] underline decoration-[#661915]/30 underline-offset-4">B2B</span>
           </h1>
 
           {/* Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div className="bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 group">
-              <div className="w-9 h-9 rounded-lg bg-[#7B1B38]/10 flex items-center justify-center text-[#7B1B38] mb-2.5 group-hover:scale-110 transition-transform">
+              <div className="w-9 h-9 rounded-lg bg-[#661915]/10 flex items-center justify-center text-[#661915] mb-2.5 group-hover:scale-110 transition-transform">
                 <Zap className="w-5 h-5" />
               </div>
               <div className="font-bold text-slate-900 text-sm">
@@ -356,7 +358,7 @@ export function Login() {
             </div>
 
             <div className="bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 group">
-              <div className="w-9 h-9 rounded-lg bg-[#7B1B38]/10 flex items-center justify-center text-[#7B1B38] mb-2.5 group-hover:scale-110 transition-transform">
+              <div className="w-9 h-9 rounded-lg bg-[#661915]/10 flex items-center justify-center text-[#661915] mb-2.5 group-hover:scale-110 transition-transform">
                 <Headphones className="w-5 h-5" />
               </div>
               <div className="font-bold text-slate-900 text-sm">
@@ -368,7 +370,7 @@ export function Login() {
             </div>
 
             <div className="bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 group">
-              <div className="w-9 h-9 rounded-lg bg-[#7B1B38]/10 flex items-center justify-center text-[#7B1B38] mb-2.5 group-hover:scale-110 transition-transform">
+              <div className="w-9 h-9 rounded-lg bg-[#661915]/10 flex items-center justify-center text-[#661915] mb-2.5 group-hover:scale-110 transition-transform">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="font-bold text-slate-900 text-sm">
@@ -407,10 +409,10 @@ export function Login() {
                 {/* Center dot */}
                 <span className="relative flex h-3 w-3">
                   <span 
-                    className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B1B38] opacity-75"
+                    className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#661915] opacity-75"
                     style={{ animationDelay: hub.delay }}
                   />
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#7B1B38] border-2 border-white shadow-sm transition-transform duration-200 group-hover:scale-150" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#661915] border-2 border-white shadow-sm transition-transform duration-200 group-hover:scale-150" />
                 </span>
 
                 {/* Custom Tooltip */}
@@ -420,7 +422,7 @@ export function Login() {
                   }`}
                 >
                   <div className="flex items-center gap-1.5 font-bold text-white mb-1">
-                    <Plane className="w-3.5 h-3.5 text-[#7B1B38]" />
+                    <Plane className="w-3.5 h-3.5 text-[#661915]" />
                     <span>{hub.name}</span>
                   </div>
                   <div className="flex justify-between text-[11px] text-slate-300 border-t border-white/10 pt-1 mt-1">
@@ -464,7 +466,7 @@ export function Login() {
             <LanguageSwitcher variant="outline" />
             <Link 
               to="/" 
-              className="hidden lg:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#7B1B38] transition-colors"
+              className="hidden lg:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#661915] transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>{t("nav.backToHome")}</span>
@@ -509,7 +511,7 @@ export function Login() {
                   placeholder={isEn ? "contact@your-agency.com" : "contact@votre-agence.com"}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full h-12 px-4 pl-10 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#7B1B38] focus:ring-2 focus:ring-[#7B1B38]/15 transition-all shadow-2xs"
+                  className="w-full h-12 px-4 pl-10 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#661915] focus:ring-2 focus:ring-[#661915]/15 transition-all shadow-2xs"
                 />
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               </div>
@@ -529,7 +531,7 @@ export function Login() {
                     setResetError("");
                     setShowResetModal(true);
                   }}
-                  className="text-xs font-semibold text-[#7B1B38] hover:underline transition-colors"
+                  className="text-xs font-semibold text-[#661915] hover:underline transition-colors"
                 >
                   {t("auth.forgotPassword")}
                 </button>
@@ -544,7 +546,7 @@ export function Login() {
                   placeholder="••••••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-12 px-4 pl-10 pr-11 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#7B1B38] focus:ring-2 focus:ring-[#7B1B38]/15 transition-all shadow-2xs"
+                  className="w-full h-12 px-4 pl-10 pr-11 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#661915] focus:ring-2 focus:ring-[#661915]/15 transition-all shadow-2xs"
                 />
                 <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <button
@@ -565,7 +567,7 @@ export function Login() {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-[#7B1B38] focus:ring-[#7B1B38] accent-[#7B1B38] cursor-pointer"
+                className="h-4 w-4 rounded border-slate-300 text-[#661915] focus:ring-[#661915] accent-[#661915] cursor-pointer"
               />
               <label htmlFor="remember-me" className="ml-2 block text-xs font-medium text-slate-600 cursor-pointer">
                 {t("auth.rememberMe")}
@@ -577,7 +579,7 @@ export function Login() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-12 rounded-xl bg-[#7B1B38] hover:bg-[#63142c] active:scale-[0.99] text-white text-sm font-bold shadow-md shadow-[#7B1B38]/25 transition-all duration-200 flex items-center justify-center gap-2 group cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full h-12 rounded-xl bg-[#661915] hover:bg-[#4d120f] active:scale-[0.99] text-white text-sm font-bold shadow-md shadow-[#661915]/25 transition-all duration-200 flex items-center justify-center gap-2 group cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <>
@@ -600,7 +602,7 @@ export function Login() {
               {t("auth.noAccount")}{" "}
               <Link 
                 to="/register" 
-                className="font-bold text-[#7B1B38] hover:underline transition-colors"
+                className="font-bold text-[#661915] hover:underline transition-colors"
               >
                 {t("auth.registerLink")}
               </Link>
@@ -622,7 +624,7 @@ export function Login() {
             {isEn ? "Need assistance with your portal access?" : "Besoin d'aide pour vos accès ?"}{" "}
             <a 
               href="mailto:support@lacledortravel.com" 
-              className="text-[#7B1B38] hover:underline font-medium"
+              className="text-[#661915] hover:underline font-medium"
             >
               support@lacledortravel.com
             </a>
@@ -637,7 +639,7 @@ export function Login() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-[#7B1B38]/10 flex items-center justify-center text-[#7B1B38]">
+              <div className="w-10 h-10 rounded-xl bg-[#661915]/10 flex items-center justify-center text-[#661915]">
                 <KeyRound className="w-5 h-5" />
               </div>
               <div>
@@ -700,7 +702,7 @@ export function Login() {
                       onChange={(e) => setResetEmail(e.target.value)}
                       placeholder={isEn ? "contact@your-agency.com" : "contact@votre-agence.com"}
                       required
-                      className="w-full h-11 px-3.5 pl-9 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-[#7B1B38]"
+                      className="w-full h-11 px-3.5 pl-9 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-[#661915]"
                     />
                     <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   </div>
@@ -717,7 +719,7 @@ export function Login() {
                   <button
                     type="submit"
                     disabled={resetLoading}
-                    className="px-5 py-2.5 rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white text-xs font-bold shadow-md shadow-[#7B1B38]/20 transition-all disabled:opacity-60"
+                    className="px-5 py-2.5 rounded-xl bg-[#661915] hover:bg-[#4d120f] text-white text-xs font-bold shadow-md shadow-[#661915]/20 transition-all disabled:opacity-60"
                   >
                     {resetLoading ? (isEn ? "Sending..." : "Envoi en cours...") : (isEn ? "Send Reset Link" : "Envoyer le lien")}
                   </button>

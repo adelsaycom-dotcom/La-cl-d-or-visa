@@ -239,7 +239,7 @@ export function AdminSettings() {
                   : "Base active : Firebase Firestore"}
             </span>
           </div>
-          <Button className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold">
+          <Button className="bg-[#661915] hover:bg-[#4d120f] text-white font-bold">
             <Save className="w-4 h-4 mr-2" /> {isEn ? "Save Changes" : "Enregistrer"}
           </Button>
         </div>
@@ -354,7 +354,7 @@ export function AdminSettings() {
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#7B1B38]/10 text-[#7B1B38] flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-xl bg-[#661915]/10 text-[#661915] flex items-center justify-center shrink-0">
                   <Database className="w-6 h-6" />
                 </div>
                 <div>
@@ -387,7 +387,7 @@ export function AdminSettings() {
             {migrationStatus && (
               <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-2.5">
                 {isMigrating ? (
-                  <RefreshCw className="w-4 h-4 animate-spin text-[#7B1B38] shrink-0" />
+                  <RefreshCw className="w-4 h-4 animate-spin text-[#661915] shrink-0" />
                 ) : (
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 )}
@@ -418,7 +418,7 @@ export function AdminSettings() {
               <Button
                 onClick={handleMigrateFirestoreToMysql}
                 disabled={isMigrating || dbMode !== "mysql"}
-                className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold h-11 px-6 rounded-xl flex items-center gap-2 disabled:opacity-50"
+                className="bg-[#661915] hover:bg-[#4d120f] text-white font-bold h-11 px-6 rounded-xl flex items-center gap-2 disabled:opacity-50"
               >
                 {isMigrating ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />

@@ -51,7 +51,7 @@ function lazyWithRetry<T extends ComponentType<any>>(
   });
 }
 
-import { LandingPage } from "@/components/LandingPage";
+const LandingPage = lazyWithRetry(() => import("@/components/LandingPage").then(m => ({ default: m.LandingPage })));
 
 // Code Splitting & Lazy Loading avec reprise automatique sur Hostinger pour les autres routes
 const Login = lazyWithRetry(() => import("@/components/auth/Login").then(m => ({ default: m.Login })));
@@ -81,7 +81,7 @@ const StudyPrograms = lazyWithRetry(() => import("@/components/agency/StudyProgr
 
 const SuspenseFallback = () => (
   <div className="flex justify-center items-center h-full w-full p-8 text-gray-500 min-h-[400px]">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7B1B38]"></div>
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#661915]"></div>
   </div>
 );
 
@@ -157,7 +157,7 @@ function AdminLayout() {
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden backdrop-blur-sm"
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 lg:hidden"
           />
         )}
       </AnimatePresence>
@@ -166,12 +166,12 @@ function AdminLayout() {
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white text-slate-900 border-r border-slate-200/80 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:shrink-0 flex flex-col shadow-xl lg:shadow-xs ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         
         {/* Logo Area */}
-        <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100 shrink-0">
-          <Link to="/admin" className="flex items-center gap-3">
-             <Logo imageClassName="h-8 w-auto" />
-             <div className="flex flex-col">
-               <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none">{t("nav.administration")}</span>
-               <span className="text-[10px] text-[#7B1B38] font-bold uppercase tracking-wider mt-1">{isEn ? "Admin Console" : "Console Centrale"}</span>
+        <div className="h-20 flex items-center justify-between px-4 border-b border-slate-100 shrink-0 overflow-hidden">
+          <Link to="/admin" className="flex items-center gap-2.5 min-w-0">
+             <Logo imageClassName="h-16 w-auto" />
+             <div className="flex flex-col min-w-0">
+               <span className="font-extrabold text-sm tracking-tight text-slate-900 leading-none truncate">{t("nav.administration")}</span>
+               <span className="text-[10px] text-[#661915] font-bold uppercase tracking-wider mt-1 truncate">{isEn ? "Admin Console" : "Console Centrale"}</span>
              </div>
           </Link>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-800 p-1 rounded-lg">
@@ -191,7 +191,7 @@ function AdminLayout() {
                 onFocus={() => prefetchRouteChunk(item.path)}
                 className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-150 group ${
                   isActive 
-                    ? 'bg-[#7B1B38] text-white shadow-sm shadow-[#7B1B38]/25 font-bold' 
+                    ? 'bg-[#661915] text-white shadow-sm shadow-[#661915]/25 font-bold' 
                     : item.highlight
                       ? 'bg-amber-50 text-amber-900 border border-amber-200/80 hover:bg-amber-100/70 font-semibold'
                       : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950 font-medium'
@@ -244,8 +244,8 @@ function AdminLayout() {
                 <Bell className="w-5 h-5" />
                 {adminNotifsCount > 0 && (
                   <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B1B38] opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#7B1B38] border-2 border-white"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#661915] opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#661915] ring-2 ring-white"></span>
                   </span>
                 )}
               </DropdownMenuTrigger>
@@ -253,7 +253,7 @@ function AdminLayout() {
                 <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
                   <span className="font-bold text-slate-800">{isEn ? "Admin Alerts" : "Alertes Admin"}</span>
                   {adminNotifsCount > 0 && (
-                    <span className="bg-[#7B1B38]/10 text-[#7B1B38] px-2 py-0.5 rounded-full text-xs font-bold">{adminNotifsCount}</span>
+                    <span className="bg-[#661915]/10 text-[#661915] px-2 py-0.5 rounded-full text-xs font-bold">{adminNotifsCount}</span>
                   )}
                 </div>
                 <div className="max-h-[300px] overflow-y-auto">
@@ -275,7 +275,7 @@ function AdminLayout() {
                 </div>
                 {adminNotifsCount > 0 && (
                   <div className="p-2 border-t border-slate-100 bg-white">
-                    <button className="w-full py-2 text-xs font-bold text-[#7B1B38] hover:bg-[#7B1B38]/10 rounded-lg transition-colors" onClick={handleMarkAllRead}>
+                    <button className="w-full py-2 text-xs font-bold text-[#661915] hover:bg-[#661915]/10 rounded-lg transition-colors" onClick={handleMarkAllRead}>
                       {isEn ? "Mark all as read" : "Tout marquer comme lu"}
                     </button>
                   </div>
@@ -283,7 +283,7 @@ function AdminLayout() {
               </DropdownMenuContent>
             </DropdownMenu>
             
-            <div className="w-9 h-9 rounded-full bg-[#7B1B38] flex items-center justify-center text-white shadow-md shadow-[#7B1B38]/20">
+            <div className="w-9 h-9 rounded-full bg-[#661915] flex items-center justify-center text-white shadow-md shadow-[#661915]/20">
               <span className="font-bold text-sm">AD</span>
             </div>
           </div>
@@ -314,9 +314,9 @@ export default function App() {
       <LanguageProvider>
         <ToastProvider>
           {databaseMode !== 'mysql' && quotaExceeded && (
-            <div className="bg-amber-500/15 border-b border-amber-500/30 text-amber-950 px-4 py-2 text-xs flex items-center justify-between gap-3 sticky top-0 z-[999] backdrop-blur-md">
+            <div className="bg-amber-50 border-b border-amber-200 text-amber-950 px-4 py-2 text-xs flex items-center justify-between gap-3 sticky top-0 z-[999]">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                 <span className="font-semibold truncate">
                   Quota journalier gratuit Firestore (Spark) atteint. Les données restent accessibles en cache local et le quota sera réinitialisé demain.
                 </span>

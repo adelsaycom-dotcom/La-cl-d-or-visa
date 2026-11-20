@@ -275,7 +275,7 @@ export function SupportManagement() {
             {filteredTickets.length === 0 ? (
               mysqlSecondaryLoading && !mysqlSecondaryLoaded && rawTickets.length === 0 ? (
                 <div className="p-10 text-center text-slate-500 flex flex-col items-center">
-                  <Loader2 className="w-8 h-8 text-[#7B1B38] animate-spin mb-3" />
+                  <Loader2 className="w-8 h-8 text-[#661915] animate-spin mb-3" />
                   <p className="text-xs font-bold text-slate-700">{isEn ? "Loading tickets..." : "Chargement des tickets..."}</p>
                 </div>
               ) : (

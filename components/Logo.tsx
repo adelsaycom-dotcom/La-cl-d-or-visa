@@ -6,36 +6,36 @@ interface LogoProps {
 }
 
 export function Logo({ className = "", imageClassName = "" }: LogoProps) {
+  const mappedSize = imageClassName
+    ? imageClassName.replace(/\bh-8\b/g, "h-14").replace(/\bh-10\b/g, "h-16").trim()
+    : "h-20 sm:h-24 -my-4 sm:-my-5";
+  const hasWidthClass = /\bw-\S+/.test(mappedSize);
+  const sizeClasses = hasWidthClass ? mappedSize : `${mappedSize} w-auto`;
+
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      {/* 
-        Logo officiel La Clé d'Or Visa ("IMG_0787.PNG" dans le dossier "public")
-      */}
-      <picture className="inline-flex items-center">
-        <source srcSet="/logo-nav.webp" type="image/webp" />
-        <img 
-          src="/IMG_0787-1.PNG" 
-          alt="La Clé d'Or Visa" 
-          width={256}
-          height={144}
-          decoding="async"
-          className={`h-10 sm:h-12 w-auto object-contain ${imageClassName}`}
-          onError={(e) => {
-            if (e.currentTarget.src.includes('IMG_0787-1.PNG')) {
-              e.currentTarget.src = '/IMG_0787.PNG';
-              return;
-            }
-            e.currentTarget.style.display = 'none';
-            const fallback = e.currentTarget.parentElement?.nextElementSibling as HTMLElement | null;
-            if (fallback) {
-              fallback.style.display = 'flex';
-            }
-          }}
-        />
-      </picture>
-      {/* Fallback Text Logo (hidden by default unless image fails to load) */}
+    <div className={`flex items-center gap-2 shrink-0 ${className}`}>
+      {/* Logo officiel complet B2B Platform by La Clé d'Or Travel (sans rognage) */}
+      <img
+        src="/assets/aistudio/lacledor-01_9b986684.svg"
+        alt="B2B Platform by La Clé d'Or Travel"
+        width={709}
+        height={499}
+        decoding="async"
+        className={`object-contain shrink-0 ${sizeClasses}`}
+        onError={(e) => {
+          e.currentTarget.style.display = "none";
+          const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+          if (fallback) {
+            fallback.style.display = "flex";
+          }
+        }}
+      />
+
+      {/* Fallback texte si l'image ne charge pas */}
       <div className="hidden items-center gap-2">
-        <span className="text-2xl font-bold tracking-tight text-text-dark">La Clé d'Or <span className="text-amber-500">Visa</span></span>
+        <span className="text-lg font-extrabold tracking-tight text-[#111111]">
+          B2B Platform <span className="text-[#661915]">by La Clé d&apos;Or</span>
+        </span>
       </div>
     </div>
   );

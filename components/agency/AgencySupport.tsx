@@ -330,13 +330,13 @@ export function AgencySupport() {
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-xl font-black tracking-tight text-slate-900">{isEn ? "Dedicated Support" : "Support Dédié"}</h2>
-                  <span className="px-2 py-0.5 text-[10px] font-bold bg-[#7B1B38]/10 text-[#7B1B38] rounded-full">B2B Pro</span>
+                  <span className="px-2 py-0.5 text-[10px] font-bold bg-[#661915]/10 text-[#661915] rounded-full">B2B Pro</span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">{isEn ? "Priority consular and technical desk assistance" : "Assistance consulaire et technique prioritaire"}</p>
               </div>
               <Button
                 onClick={() => setIsNewTicketOpen(true)}
-                className="bg-[#7B1B38] hover:bg-[#63142c] text-white rounded-xl h-10 px-3.5 shadow-sm shadow-[#7B1B38]/20 font-bold text-xs flex items-center gap-1.5 transition-all"
+                className="bg-[#661915] hover:bg-[#4d120f] text-white rounded-xl h-10 px-3.5 shadow-sm shadow-[#661915]/20 font-bold text-xs flex items-center gap-1.5 transition-all"
               >
                 <Plus className="w-4 h-4" />
                 <span>{isEn ? "New Ticket" : "Nouveau ticket"}</span>
@@ -393,7 +393,7 @@ export function AgencySupport() {
             {filteredTickets.length === 0 ? (
               mysqlSecondaryLoading && !mysqlSecondaryLoaded && supportTickets.length === 0 ? (
                 <div className="p-10 text-center text-slate-500 flex flex-col items-center">
-                  <Loader2 className="w-8 h-8 text-[#7B1B38] animate-spin mb-3" />
+                  <Loader2 className="w-8 h-8 text-[#661915] animate-spin mb-3" />
                   <p className="text-xs font-bold text-slate-700">{isEn ? "Loading conversations..." : "Chargement des discussions..."}</p>
                 </div>
               ) : (
@@ -425,11 +425,11 @@ export function AgencySupport() {
                     onClick={() => setSelectedTicketId(ticket.id)}
                     className={`w-full text-left p-4 transition-all hover:bg-white focus:outline-none relative group ${isSelected ? "bg-white shadow-sm ring-1 ring-slate-900/5" : ""}`}
                   >
-                    <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-r transition-colors ${isSelected ? "bg-[#7B1B38]" : ticket.isUrgent ? "bg-red-500" : "bg-transparent"}`} />
+                    <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-r transition-colors ${isSelected ? "bg-[#661915]" : ticket.isUrgent ? "bg-red-500" : "bg-transparent"}`} />
 
                     <div className="pl-1">
                       <div className="flex justify-between items-start gap-2 mb-1.5">
-                        <span className="font-bold text-xs text-slate-900 line-clamp-1 group-hover:text-[#7B1B38] transition-colors">
+                        <span className="font-bold text-xs text-slate-900 line-clamp-1 group-hover:text-[#661915] transition-colors">
                           {ticket.subject}
                         </span>
                         <span className="shrink-0">{getStatusBadge(ticket.status)}</span>
@@ -495,7 +495,7 @@ export function AgencySupport() {
         <div className={`flex-1 flex-col bg-white overflow-hidden ${!selectedTicketId ? "hidden lg:flex" : "flex w-full"}`}>
           {!selectedTicket ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 p-6 text-center">
-              <div className="w-16 h-16 bg-white border border-slate-200 shadow-sm rounded-2xl flex items-center justify-center mb-4 text-[#7B1B38]">
+              <div className="w-16 h-16 bg-white border border-slate-200 shadow-sm rounded-2xl flex items-center justify-center mb-4 text-[#661915]">
                 <MessageSquare className="w-8 h-8" />
               </div>
               <h3 className="font-bold text-slate-800 text-base">Aucun ticket sélectionné</h3>
@@ -504,7 +504,7 @@ export function AgencySupport() {
               </p>
               <Button
                 onClick={() => setIsNewTicketOpen(true)}
-                className="mt-5 bg-[#7B1B38] hover:bg-[#63142c] text-white rounded-xl text-xs font-bold px-5"
+                className="mt-5 bg-[#661915] hover:bg-[#4d120f] text-white rounded-xl text-xs font-bold px-5"
               >
                 <Plus className="w-4 h-4 mr-1.5" /> Créer un ticket
               </Button>
@@ -595,14 +595,14 @@ export function AgencySupport() {
                 {/* Message initial (La demande) */}
                 <div className="flex flex-col items-end max-w-[90%] lg:max-w-[78%] ml-auto">
                   <div className="flex items-center gap-2 mb-1 mr-1 flex-row-reverse text-xs">
-                    <div className="w-6 h-6 rounded-full bg-[#7B1B38] text-white flex items-center justify-center text-[10px] font-black shrink-0 shadow-xs">
+                    <div className="w-6 h-6 rounded-full bg-[#661915] text-white flex items-center justify-center text-[10px] font-black shrink-0 shadow-xs">
                       AG
                     </div>
                     <span className="font-bold text-slate-700">Votre Agence</span>
                     <span className="text-[10px] text-slate-400">{new Date(selectedTicket.createdAt || selectedTicket.date || 0).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                   </div>
 
-                  <div className="bg-[#7B1B38] text-white rounded-2xl rounded-tr-none p-4 shadow-sm text-xs sm:text-sm leading-relaxed whitespace-pre-wrap text-left w-full">
+                  <div className="bg-[#661915] text-white rounded-2xl rounded-tr-none p-4 shadow-sm text-xs sm:text-sm leading-relaxed whitespace-pre-wrap text-left w-full">
                     {selectedTicket.description}
 
                     {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
@@ -638,7 +638,7 @@ export function AgencySupport() {
                   return (
                     <div key={msg.id || idx} className={`flex flex-col ${isAdmin ? "items-start max-w-[90%] lg:max-w-[78%]" : "items-end max-w-[90%] lg:max-w-[78%] ml-auto"}`}>
                       <div className={`flex items-center gap-2 mb-1 ${isAdmin ? "ml-1" : "mr-1 flex-row-reverse"} text-xs`}>
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 shadow-xs uppercase ${isAdmin ? "bg-slate-900 text-white" : "bg-[#7B1B38] text-white"}`}>
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 shadow-xs uppercase ${isAdmin ? "bg-slate-900 text-white" : "bg-[#661915] text-white"}`}>
                           {isAdmin ? "AD" : "AG"}
                         </div>
                         <span className="font-bold text-slate-700">{isAdmin ? "Support Plateforme" : "Votre Agence"}</span>
@@ -648,7 +648,7 @@ export function AgencySupport() {
                       <div className={`rounded-2xl p-4 shadow-xs text-xs sm:text-sm leading-relaxed whitespace-pre-wrap text-left w-full ${
                         isAdmin
                           ? "bg-white border border-slate-200/90 text-slate-800 rounded-tl-none"
-                          : "bg-[#7B1B38] text-white rounded-tr-none"
+                          : "bg-[#661915] text-white rounded-tr-none"
                       }`}>
                         {msg.text}
 
@@ -714,7 +714,7 @@ export function AgencySupport() {
                     </div>
                   )}
 
-                  <div className="flex items-end gap-2 bg-slate-50 rounded-2xl border border-slate-200 p-2 focus-within:ring-2 focus-within:ring-[#7B1B38] focus-within:border-[#7B1B38] transition-all">
+                  <div className="flex items-end gap-2 bg-slate-50 rounded-2xl border border-slate-200 p-2 focus-within:ring-2 focus-within:ring-[#661915] focus-within:border-[#661915] transition-all">
                     <input
                       type="file"
                       ref={replyFileInputRef}
@@ -750,7 +750,7 @@ export function AgencySupport() {
                     <button
                       onClick={handleReply}
                       disabled={(!replyText.trim() && replyAttachments.length === 0) || isReplyingUploading}
-                      className="w-10 h-10 rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm shadow-[#7B1B38]/20"
+                      className="w-10 h-10 rounded-xl bg-[#661915] hover:bg-[#4d120f] text-white flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm shadow-[#661915]/20"
                     >
                       <Send className="w-4 h-4 ml-0.5" />
                     </button>
@@ -758,7 +758,7 @@ export function AgencySupport() {
 
                   <div className="flex justify-between items-center text-[10px] text-slate-400 px-1">
                     <span>Appuyez sur <kbd className="px-1 py-0.5 bg-slate-100 rounded border font-mono">Entrée</kbd> pour envoyer</span>
-                    {isReplyingUploading && <span className="text-[#7B1B38] font-bold">Téléversement en cours...</span>}
+                    {isReplyingUploading && <span className="text-[#661915] font-bold">Téléversement en cours...</span>}
                   </div>
                 </div>
               ) : (
@@ -777,9 +777,8 @@ export function AgencySupport() {
       {/* ============================================================ */}
       <Dialog open={isNewTicketOpen} onOpenChange={setIsNewTicketOpen}>
         <DialogContent className="sm:max-w-xl p-0 overflow-hidden sm:rounded-3xl border-0 shadow-2xl max-h-[92vh] flex flex-col">
-          <div className="bg-[#7B1B38] p-6 text-white shrink-0">
-            <div className="flex items-center gap-2 text-white/80 text-xs font-bold uppercase tracking-wider mb-1">
-              <Sparkles className="w-3.5 h-3.5" />
+          <div className="bg-[#661915] p-6 text-white shrink-0">
+            <div className="text-white/80 text-xs font-bold uppercase tracking-[0.12em] mb-1">
               <span>Assistance Prioritaire B2B</span>
             </div>
             <h3 className="text-xl sm:text-2xl font-black">Ouvrir un Ticket de Support</h3>
@@ -793,7 +792,7 @@ export function AgencySupport() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-[#7B1B38]" />
+                  <FileText className="w-3.5 h-3.5 text-[#661915]" />
                   <span>Lier à un dossier / demande (Recommandé)</span>
                 </label>
                 <span className="text-[10px] text-slate-400">Optionnel</span>
@@ -811,7 +810,7 @@ export function AgencySupport() {
                   }
                 }}
               >
-                <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200 text-xs h-11 focus:ring-[#7B1B38]">
+                <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200 text-xs h-11 focus:ring-[#661915]">
                   <SelectValue placeholder="Sélectionnez un dossier de votre agence..." />
                 </SelectTrigger>
                 <SelectContent className="max-h-60">
@@ -821,7 +820,7 @@ export function AgencySupport() {
                   {myApplications.map((app) => (
                     <SelectItem key={app.id} value={app.id} className="text-xs py-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-[#7B1B38]">DOSS-{app.id.substring(0, 6).toUpperCase()}</span>
+                        <span className="font-mono font-bold text-[#661915]">DOSS-{app.id.substring(0, 6).toUpperCase()}</span>
                         <span className="font-bold text-slate-800">{app.travelerName}</span>
                         <span className="text-slate-400">• {app.country} ({app.serviceType})</span>
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 font-bold ml-auto">{app.status}</span>
@@ -914,7 +913,7 @@ export function AgencySupport() {
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-900 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
-                  <ImageIcon className="w-3.5 h-3.5 text-[#7B1B38]" />
+                  <ImageIcon className="w-3.5 h-3.5 text-[#661915]" />
                   <span>Captures d'écran & Justificatifs (Images, PDF)</span>
                 </span>
                 <span className="text-[10px] text-slate-400">Max 5 Mo / fichier</span>
@@ -930,10 +929,10 @@ export function AgencySupport() {
               />
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-200 hover:border-[#7B1B38]/50 rounded-2xl p-4 text-center cursor-pointer bg-slate-50/50 hover:bg-slate-50 transition-colors"
+                className="border-2 border-dashed border-slate-200 hover:border-[#661915]/50 rounded-2xl p-4 text-center cursor-pointer bg-slate-50/50 hover:bg-slate-50 transition-colors"
               >
                 <div className="flex flex-col items-center justify-center gap-1">
-                  <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-[#7B1B38] shadow-xs">
+                  <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-[#661915] shadow-xs">
                     <Paperclip className="w-4 h-4" />
                   </div>
                   <p className="text-xs font-bold text-slate-800 mt-1">Cliquer pour joindre des captures ou documents</p>
@@ -996,7 +995,7 @@ export function AgencySupport() {
                 Annuler
               </Button>
               <Button
-                className="bg-[#7B1B38] hover:bg-[#63142c] text-white rounded-xl h-11 px-7 font-bold text-xs shadow-sm shadow-[#7B1B38]/20"
+                className="bg-[#661915] hover:bg-[#4d120f] text-white rounded-xl h-11 px-7 font-bold text-xs shadow-sm shadow-[#661915]/20"
                 disabled={!subject.trim() || !description.trim() || isUploading}
                 onClick={handleSubmit}
               >
@@ -1049,7 +1048,7 @@ export function AgencySupport() {
                 {viewDossierModal.timeline && viewDossierModal.timeline.length > 0 && (
                   <div className="space-y-2">
                     <span className="font-bold text-slate-900 block">Dernières étapes :</span>
-                    <div className="border-l-2 border-[#7B1B38]/30 pl-3 space-y-2">
+                    <div className="border-l-2 border-[#661915]/30 pl-3 space-y-2">
                       {viewDossierModal.timeline.slice(-3).map((item, idx) => (
                         <div key={item.id || idx} className="space-y-0.5">
                           <p className="font-bold text-slate-800 text-[11px]">{item.title}</p>

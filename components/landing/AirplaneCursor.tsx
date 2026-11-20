@@ -1,150 +1,172 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-interface TrailPoint {
+const TRAIL_POOL_SIZE = 10;
+
+interface TrailItem {
   x: number;
   y: number;
-  id: string;
   opacity: number;
   scale: number;
 }
 
 export function AirplaneCursor() {
-  const [isVisible, setIsVisible] = useState(false);
-  const [planePos, setPlanePos] = useState({ x: -100, y: -100, angle: 45 });
-  const [trail, setTrail] = useState<TrailPoint[]>([]);
+  const [enabled, setEnabled] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const planeRef = useRef<HTMLDivElement>(null);
+  const trailRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const posRef = useRef({ x: -100, y: -100 });
-  const targetRef = useRef({ x: -100, y: -100 });
+  const posRef = useRef({ x: -120, y: -120 });
+  const targetRef = useRef({ x: -120, y: -120 });
   const angleRef = useRef(45);
-  const trailCounterRef = useRef(0);
-  const animFrameRef = useRef<number | null>(null);
+  const trailRef = useRef<TrailItem[]>(
+    Array.from({ length: TRAIL_POOL_SIZE }, () => ({ x: -120, y: -120, opacity: 0, scale: 1 }))
+  );
+  const trailHeadRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
+  const visibleRef = useRef(false);
 
   useEffect(() => {
-    // Only enable on desktop pointer devices
-    if (typeof window === "undefined" || !window.matchMedia("(pointer: fine)").matches) {
+    if (
+      typeof window === "undefined" ||
+      !window.matchMedia("(pointer: fine)").matches ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       return;
     }
 
+    setEnabled(true);
+    let lastTrailTime = 0;
+
+    const setContainerVisibility = (visible: boolean) => {
+      visibleRef.current = visible;
+      if (containerRef.current) {
+        containerRef.current.style.opacity = visible ? "1" : "0";
+      }
+    };
+
+    const tick = (time: number) => {
+      const target = targetRef.current;
+      const current = posRef.current;
+
+      const dx = target.x - current.x;
+      const dy = target.y - current.y;
+      const dist = Math.hypot(dx, dy);
+
+      current.x += dx * 0.24;
+      current.y += dy * 0.24;
+
+      if (dist > 1.2) {
+        const rawAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+        const diff = ((rawAngle - angleRef.current + 180) % 360) - 180;
+        angleRef.current += diff * 0.25;
+      }
+
+      if (planeRef.current) {
+        planeRef.current.style.transform = `translate3d(${current.x}px, ${current.y}px, 0) translate(-50%, -50%) rotate(${angleRef.current + 45}deg)`;
+      }
+
+      if (dist > 2.2 && time - lastTrailTime > 32) {
+        lastTrailTime = time;
+        const idx = trailHeadRef.current % TRAIL_POOL_SIZE;
+        trailHeadRef.current += 1;
+        trailRef.current[idx] = {
+          x: current.x,
+          y: current.y,
+          opacity: 0.55,
+          scale: 1,
+        };
+      }
+
+      let hasActiveTrail = false;
+      for (let i = 0; i < TRAIL_POOL_SIZE; i += 1) {
+        const pt = trailRef.current[i];
+        const el = trailRefs.current[i];
+        if (pt.opacity > 0.02) {
+          pt.opacity = Math.max(0, pt.opacity - 0.04);
+          pt.scale += 0.08;
+          hasActiveTrail = true;
+          if (el) {
+            el.style.opacity = String(pt.opacity);
+            el.style.transform = `translate3d(${pt.x}px, ${pt.y}px, 0) translate(-50%, -50%) scale(${pt.scale})`;
+          }
+        } else if (el && el.style.opacity !== "0") {
+          el.style.opacity = "0";
+        }
+      }
+
+      if (visibleRef.current && (dist > 0.35 || hasActiveTrail)) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        rafRef.current = null;
+      }
+    };
+
+    const startLoop = () => {
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    };
+
     const handleMouseMove = (e: MouseEvent) => {
+      if (!visibleRef.current) {
+        posRef.current = { x: e.clientX, y: e.clientY };
+        setContainerVisibility(true);
+      }
       targetRef.current = { x: e.clientX, y: e.clientY };
-      setIsVisible(true);
+      startLoop();
     };
 
     const handleMouseLeave = () => {
-      setIsVisible(false);
-      setTrail([]);
+      setContainerVisibility(false);
     };
 
     const handleMouseEnter = () => {
-      setIsVisible(true);
+      setContainerVisibility(true);
+      startLoop();
     };
 
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
     document.addEventListener("mouseleave", handleMouseLeave);
     document.addEventListener("mouseenter", handleMouseEnter);
 
-    let lastTrailTime = 0;
-
-    // Smooth animation loop
-    const updatePlane = (time: number) => {
-      const target = targetRef.current;
-      const current = posRef.current;
-
-      // Smooth interpolation (lerp)
-      const ease = 0.22;
-      const dx = target.x - current.x;
-      const dy = target.y - current.y;
-
-      current.x += dx * ease;
-      current.y += dy * ease;
-
-      // Calculate direction angle when moving
-      const dist = Math.hypot(dx, dy);
-      if (dist > 1.5) {
-        // SVG plane is oriented pointing towards top-right (45 deg) by default
-        const rawAngle = Math.atan2(dy, dx) * (180 / Math.PI);
-        // Smoothly rotate
-        const diff = ((rawAngle - angleRef.current + 180) % 360) - 180;
-        angleRef.current += diff * 0.25;
-      }
-
-      setPlanePos({ x: current.x, y: current.y, angle: angleRef.current + 45 });
-
-      // Determine if a new trail point should be spawned
-      const shouldSpawnTrail = dist > 2 && time - lastTrailTime > 35;
-      if (shouldSpawnTrail) {
-        lastTrailTime = time;
-      }
-
-      // Single atomic trail update to avoid multiple re-renders and duplicate key collisions
-      setTrail((prev) => {
-        const aged = prev
-          .map((pt) => ({
-            ...pt,
-            opacity: pt.opacity - 0.04,
-            scale: pt.scale + 0.1,
-          }))
-          .filter((pt) => pt.opacity > 0.05);
-
-        if (shouldSpawnTrail) {
-          trailCounterRef.current += 1;
-          aged.push({
-            x: current.x,
-            y: current.y,
-            id: `trail_${trailCounterRef.current}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-            opacity: 0.6,
-            scale: 1,
-          });
-        }
-
-        return aged.slice(-12);
-      });
-
-      animFrameRef.current = requestAnimationFrame(updatePlane);
-    };
-
-    animFrameRef.current = requestAnimationFrame(updatePlane);
-
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseleave", handleMouseLeave);
       document.removeEventListener("mouseenter", handleMouseEnter);
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
   }, []);
 
-  if (!isVisible) return null;
+  if (!enabled) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[9999] overflow-hidden select-none">
-      {/* Contrail / Vapor trail behind plane */}
-      {trail.map((pt) => (
+    <div
+      ref={containerRef}
+      style={{ opacity: 0 }}
+      className="pointer-events-none fixed inset-0 z-[9999] overflow-hidden select-none transition-opacity duration-200"
+      aria-hidden="true"
+    >
+      {/* Pool fixe GPU-accéléré pour la traînée (0 re-render React) */}
+      {Array.from({ length: TRAIL_POOL_SIZE }).map((_, i) => (
         <div
-          key={pt.id}
-          className="absolute rounded-full pointer-events-none blur-[0.5px]"
+          key={i}
+          ref={(el) => {
+            trailRefs.current[i] = el;
+          }}
+          className="absolute top-0 left-0 w-[5px] h-[5px] rounded-full pointer-events-none will-change-transform"
           style={{
-            left: `${pt.x}px`,
-            top: `${pt.y}px`,
-            width: "5px",
-            height: "5px",
-            transform: `translate(-50%, -50%) scale(${pt.scale})`,
-            backgroundColor: "#7B1B38",
-            opacity: pt.opacity,
-            boxShadow: "0 0 6px rgba(123, 27, 56, 0.4)",
-            transition: "opacity 0.1s ease-out",
+            opacity: 0,
+            backgroundColor: "#661915",
+            boxShadow: "0 0 6px rgba(102, 25, 21, 0.38)",
           }}
         />
       ))}
 
-      {/* Modern Jet Airplane Follower */}
+      {/* Avion GPU-accéléré via translate3d */}
       <div
-        className="absolute pointer-events-none"
-        style={{
-          left: `${planePos.x}px`,
-          top: `${planePos.y}px`,
-          transform: `translate(-50%, -50%) rotate(${planePos.angle}deg)`,
-          transition: "transform 0.05s ease-out",
-        }}
+        ref={planeRef}
+        className="absolute top-0 left-0 pointer-events-none will-change-transform"
+        style={{ transform: "translate3d(-120px, -120px, 0)" }}
       >
         <svg
           width="28"
@@ -152,17 +174,15 @@ export function AirplaneCursor() {
           viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
-          className="drop-shadow-md filter drop-shadow-[0_2px_4px_rgba(123,27,56,0.35)]"
+          className="drop-shadow-[0_2px_4px_rgba(102,25,21,0.35)]"
         >
-          {/* Jet Fuselage & Wings */}
           <path
             d="M21 16V14L13 9V3.5C13 2.67 12.33 2 11.5 2C10.67 2 10 2.67 10 3.5V9L2 14V16L10 13.5V19L8 20.5V22L11.5 21L15 22V20.5L13 19V13.5L21 16Z"
-            fill="#7B1B38"
+            fill="#661915"
             stroke="#ffffff"
             strokeWidth="1.2"
             strokeLinejoin="round"
           />
-          {/* Cockpit detail */}
           <circle cx="11.5" cy="5" r="0.8" fill="#ffffff" />
         </svg>
       </div>

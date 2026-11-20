@@ -185,7 +185,7 @@ export function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 grid grid-cols-1 lg:grid-cols-12 overflow-x-hidden selection:bg-[#7B1B38]/20 selection:text-[#7B1B38]">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 grid grid-cols-1 lg:grid-cols-12 overflow-x-hidden selection:bg-[#661915]/20 selection:text-[#661915]">
       
       {/* ========================================================
           LEFT COLUMN: Brand, World Map & B2B Values (6 cols)
@@ -205,14 +205,14 @@ export function Register() {
 
         {/* Middle: Headline & Value Proposition */}
         <div className="relative z-20 my-auto py-8 max-w-lg">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B1B38]/10 text-[#7B1B38] text-xs font-bold tracking-wide uppercase mb-4 border border-[#7B1B38]/20">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#661915]/10 text-[#661915] text-xs font-bold tracking-wide uppercase mb-4 border border-[#661915]/20">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>{isEn ? "Dedicated Tourism Professional Portal" : "Portail Professionnel Dédié au Tourisme"}</span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 leading-[1.2] tracking-tight mb-4">
             {isEn ? "Join Algeria's #1 B2B Visa Processing Platform" : "Rejoignez la première plateforme B2B de traitement de visas"}{" "}
-            <span className="text-[#7B1B38] underline decoration-[#7B1B38]/30 underline-offset-4">
+            <span className="text-[#661915] underline decoration-[#661915]/30 underline-offset-4">
               {isEn ? "for Travel Agencies" : "en Algérie"}
             </span>
           </h1>
@@ -226,7 +226,7 @@ export function Register() {
           {/* Quick Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-xl p-3.5 shadow-sm hover:shadow-md transition-all group">
-              <div className="w-8 h-8 rounded-lg bg-[#7B1B38]/10 flex items-center justify-center text-[#7B1B38] mb-2 group-hover:scale-110 transition-transform">
+              <div className="w-8 h-8 rounded-lg bg-[#661915]/10 flex items-center justify-center text-[#661915] mb-2 group-hover:scale-110 transition-transform">
                 <Zap className="w-4 h-4" />
               </div>
               <div className="font-bold text-slate-900 text-xs sm:text-sm">
@@ -238,7 +238,7 @@ export function Register() {
             </div>
 
             <div className="bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-xl p-3.5 shadow-sm hover:shadow-md transition-all group">
-              <div className="w-8 h-8 rounded-lg bg-[#7B1B38]/10 flex items-center justify-center text-[#7B1B38] mb-2 group-hover:scale-110 transition-transform">
+              <div className="w-8 h-8 rounded-lg bg-[#661915]/10 flex items-center justify-center text-[#661915] mb-2 group-hover:scale-110 transition-transform">
                 <Headphones className="w-4 h-4" />
               </div>
               <div className="font-bold text-slate-900 text-xs sm:text-sm">
@@ -250,7 +250,7 @@ export function Register() {
             </div>
 
             <div className="bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-xl p-3.5 shadow-sm hover:shadow-md transition-all group">
-              <div className="w-8 h-8 rounded-lg bg-[#7B1B38]/10 flex items-center justify-center text-[#7B1B38] mb-2 group-hover:scale-110 transition-transform">
+              <div className="w-8 h-8 rounded-lg bg-[#661915]/10 flex items-center justify-center text-[#661915] mb-2 group-hover:scale-110 transition-transform">
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <div className="font-bold text-slate-900 text-xs sm:text-sm">
@@ -288,10 +288,10 @@ export function Register() {
               >
                 <span className="relative flex h-2.5 w-2.5">
                   <span 
-                    className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B1B38] opacity-75"
+                    className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#661915] opacity-75"
                     style={{ animationDelay: hub.delay }}
                   />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#7B1B38] border-2 border-white shadow-sm transition-transform duration-200 group-hover:scale-150" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#661915] border-2 border-white shadow-sm transition-transform duration-200 group-hover:scale-150" />
                 </span>
 
                 {/* Custom Tooltip */}
@@ -301,7 +301,7 @@ export function Register() {
                   }`}
                 >
                   <div className="flex items-center gap-1 font-bold text-white mb-0.5">
-                    <Plane className="w-3 h-3 text-[#7B1B38]" />
+                    <Plane className="w-3 h-3 text-[#661915]" />
                     <span>{hub.name}</span>
                   </div>
                   <div className="flex justify-between text-[10px] text-slate-300 border-t border-white/10 pt-1 mt-1">
@@ -332,8 +332,8 @@ export function Register() {
         
         {/* Top Status & Back button + Language Switcher */}
         <div className="w-full max-w-xl flex justify-between items-center mb-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B1B38]/10 border border-[#7B1B38]/20 text-[#7B1B38] text-xs font-semibold">
-            <span className="w-2 h-2 rounded-full bg-[#7B1B38] animate-pulse" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#661915]/10 border border-[#661915]/20 text-[#661915] text-xs font-semibold">
+            <span className="w-2 h-2 rounded-full bg-[#661915] animate-pulse" />
             <span>{isEn ? "Agency B2B Access Application" : "Demande d'Accès Agence B2B"}</span>
           </div>
 
@@ -341,7 +341,7 @@ export function Register() {
             <LanguageSwitcher variant="outline" />
             <Link 
               to="/" 
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#7B1B38] transition-colors"
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#661915] transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>{isEn ? "Back to Home" : "Retour accueil"}</span>
@@ -382,7 +382,7 @@ export function Register() {
               <div className="pt-2">
                 <Link
                   to="/login"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-sm shadow-lg shadow-[#7B1B38]/25 transition-all"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#661915] hover:bg-[#4d120f] text-white font-bold text-sm shadow-lg shadow-[#661915]/25 transition-all"
                 >
                   <span>{isEn ? "Proceed to Sign In" : "Aller à la page de Connexion"}</span>
                   <ArrowRight className="w-4 h-4" />
@@ -405,14 +405,14 @@ export function Register() {
                 {/* Section 1: Informations de l'Agence */}
                 <div className="space-y-3.5 p-4 sm:p-5 rounded-2xl bg-slate-50/80 border border-slate-200/80">
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-200 text-slate-900 font-bold text-xs uppercase tracking-wider">
-                    <Building2 className="w-4 h-4 text-[#7B1B38]" />
+                    <Building2 className="w-4 h-4 text-[#661915]" />
                     <span>{isEn ? "1. Agency Corporate Details" : "1. Informations de l'Agence"}</span>
                   </div>
 
                   {/* Nom Agence */}
                   <div className="space-y-1">
                     <label className="block text-xs font-bold text-slate-700">
-                      {isEn ? "Agency Name" : "Nom de l'Agence"} <span className="text-[#7B1B38]">*</span>
+                      {isEn ? "Agency Name" : "Nom de l'Agence"} <span className="text-[#661915]">*</span>
                     </label>
                     <input
                       type="text"
@@ -420,7 +420,7 @@ export function Register() {
                       placeholder={isEn ? "e.g., Golden Key Travel Agency" : "Ex : Voyages Etoile d'Or"}
                       value={formData.agencyName}
                       onChange={(e) => update("agencyName", e.target.value)}
-                      className="w-full h-11 px-3.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#7B1B38] focus:ring-2 focus:ring-[#7B1B38]/15 transition-all"
+                      className="w-full h-11 px-3.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#661915] focus:ring-2 focus:ring-[#661915]/15 transition-all"
                     />
                   </div>
 
@@ -437,7 +437,7 @@ export function Register() {
                         placeholder="Ex : 16/00-1234567B19"
                         value={formData.rcNumber}
                         onChange={(e) => update("rcNumber", e.target.value)}
-                        className="w-full h-11 px-3.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#7B1B38] focus:ring-2 focus:ring-[#7B1B38]/15 transition-all"
+                        className="w-full h-11 px-3.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#661915] focus:ring-2 focus:ring-[#661915]/15 transition-all"
                       />
                     </div>
                     <div className="space-y-1">
@@ -451,7 +451,7 @@ export function Register() {
                         placeholder="Ex : 001916001234567"
                         value={formData.nifNumber}
                         onChange={(e) => update("nifNumber", e.target.value)}
-                        className="w-full h-11 px-3.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#7B1B38] focus:ring-2 focus:ring-[#7B1B38]/15 transition-all"
+                        className="w-full h-11 px-3.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#661915] focus:ring-2 focus:ring-[#661915]/15 transition-all"
                       />
                     </div>
                   </div>
@@ -460,7 +460,7 @@ export function Register() {
                 {/* Section 2: Coordonnées du Responsable */}
                 <div className="space-y-3.5 p-4 sm:p-5 rounded-2xl bg-slate-50/80 border border-slate-200/80">
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-200 text-slate-900 font-bold text-xs uppercase tracking-wider">
-                    <User className="w-4 h-4 text-[#7B1B38]" />
+                    <User className="w-4 h-4 text-[#661915]" />
                     <span>{isEn ? "2. Managing Director Details" : "2. Coordonnées du Gérant"}</span>
                   </div>
 
@@ -475,7 +475,7 @@ export function Register() {
                         placeholder={isEn ? "e.g., Benali" : "Ex : Benali"}
                         value={formData.managerLastName}
                         onChange={(e) => update("managerLastName", e.target.value)}
-                        className="w-full h-11 px-3.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#7B1B38] focus:ring-2 focus:ring-[#7B1B38]/15 transition-all"
+                        className="w-full h-11 px-3.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#661915] focus:ring-2 focus:ring-[#661915]/15 transition-all"
                       />
                     </div>
                     <div className="space-y-1">
@@ -488,7 +488,7 @@ export function Register() {
                         placeholder={isEn ? "e.g., Karim" : "Ex : Karim"}
                         value={formData.managerFirstName}
                         onChange={(e) => update("managerFirstName", e.target.value)}
-                        className="w-full h-11 px-3.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#7B1B38] focus:ring-2 focus:ring-[#7B1B38]/15 transition-all"
+                        className="w-full h-11 px-3.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#661915] focus:ring-2 focus:ring-[#661915]/15 transition-all"
                       />
                     </div>
                   </div>
@@ -497,7 +497,7 @@ export function Register() {
                 {/* Section 3: Identifiants & Contact */}
                 <div className="space-y-3.5 p-4 sm:p-5 rounded-2xl bg-slate-50/80 border border-slate-200/80">
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-200 text-slate-900 font-bold text-xs uppercase tracking-wider">
-                    <Mail className="w-4 h-4 text-[#7B1B38]" />
+                    <Mail className="w-4 h-4 text-[#661915]" />
                     <span>{isEn ? "3. B2B Account Credentials" : "3. Accès & Coordonnées B2B"}</span>
                   </div>
 
@@ -514,7 +514,7 @@ export function Register() {
                           placeholder={isEn ? "direction@your-agency.com" : "direction@votre-agence.com"}
                           value={formData.email}
                           onChange={(e) => update("email", e.target.value)}
-                          className="w-full h-11 px-3.5 pl-9 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#7B1B38] focus:ring-2 focus:ring-[#7B1B38]/15 transition-all"
+                          className="w-full h-11 px-3.5 pl-9 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#661915] focus:ring-2 focus:ring-[#661915]/15 transition-all"
                         />
                         <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       </div>
@@ -532,7 +532,7 @@ export function Register() {
                           placeholder="05 XX XX XX XX"
                           value={formData.phone}
                           onChange={(e) => update("phone", e.target.value)}
-                          className="w-full h-11 px-3.5 pl-9 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#7B1B38] focus:ring-2 focus:ring-[#7B1B38]/15 transition-all"
+                          className="w-full h-11 px-3.5 pl-9 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#661915] focus:ring-2 focus:ring-[#661915]/15 transition-all"
                         />
                         <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       </div>
@@ -552,7 +552,7 @@ export function Register() {
                         placeholder={isEn ? "Minimum 6 characters" : "Minimum 6 caractères"}
                         value={formData.password}
                         onChange={(e) => update("password", e.target.value)}
-                        className="w-full h-11 px-3.5 pr-10 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#7B1B38] focus:ring-2 focus:ring-[#7B1B38]/15 transition-all"
+                        className="w-full h-11 px-3.5 pr-10 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#661915] focus:ring-2 focus:ring-[#661915]/15 transition-all"
                       />
                       <button
                         type="button"
@@ -567,12 +567,12 @@ export function Register() {
                   </div>
                 </div>
 
-                {/* Submit button in #7B1B38 */}
+                {/* Submit button in #661915 */}
                 <div className="pt-2">
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full h-12 px-6 rounded-xl bg-[#7B1B38] hover:bg-[#63142c] active:scale-[0.99] text-white font-bold text-sm tracking-wide shadow-lg shadow-[#7B1B38]/25 hover:shadow-xl hover:shadow-[#7B1B38]/30 transition-all flex items-center justify-center gap-2 group disabled:opacity-70 disabled:pointer-events-none"
+                    className="w-full h-12 px-6 rounded-xl bg-[#661915] hover:bg-[#4d120f] active:scale-[0.99] text-white font-bold text-sm tracking-wide shadow-lg shadow-[#661915]/25 hover:shadow-xl hover:shadow-[#661915]/30 transition-all flex items-center justify-center gap-2 group disabled:opacity-70 disabled:pointer-events-none"
                   >
                     {isLoading ? (
                       <>
@@ -595,7 +595,7 @@ export function Register() {
                 {isEn ? "Already an accredited partner agency?" : "Votre agence a déjà un compte partenaire ?"}{" "}
                 <Link 
                   to="/login" 
-                  className="font-bold text-[#7B1B38] hover:underline transition-colors"
+                  className="font-bold text-[#661915] hover:underline transition-colors"
                 >
                   {isEn ? "Sign In to Pro Portal" : "Se connecter"}
                 </Link>

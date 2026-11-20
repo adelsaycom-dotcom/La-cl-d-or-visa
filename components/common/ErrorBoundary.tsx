@@ -76,7 +76,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="flex-1 h-11 bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs rounded-xl transition-all shadow-md cursor-pointer"
+                className="flex-1 h-11 bg-[#661915] hover:bg-[#4d120f] text-white font-bold text-xs rounded-xl transition-all shadow-md cursor-pointer"
               >
                 Recharger la page
               </button>

@@ -8,13 +8,14 @@ import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 export function LandingNav() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const isEn = language === "en";
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
     };
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -27,45 +28,44 @@ export function LandingNav() {
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
-          
+        <div className="flex items-center justify-between gap-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3 shrink-0 whitespace-nowrap">
             <Logo />
           </Link>
 
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-7 text-sm font-bold text-slate-700">
-            <a href="#processus" className="hover:text-[#7B1B38] transition-colors">
+            <a href="#processus" className="whitespace-nowrap hover:text-[#661915] transition-colors">
               {t("landing.nav.process")}
             </a>
-            <a href="#avantages" className="hover:text-[#7B1B38] transition-colors">
+            <a href="#avantages" className="whitespace-nowrap hover:text-[#661915] transition-colors">
               {t("landing.nav.features")}
             </a>
-            <a href="#localisation" className="hover:text-[#7B1B38] transition-colors flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-[#7B1B38]" />
+            <a href="#localisation" className="whitespace-nowrap hover:text-[#661915] transition-colors flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-[#661915]" />
               <span>{t("landing.nav.location")}</span>
             </a>
-            <a href="#faq" className="hover:text-[#7B1B38] transition-colors">
+            <a href="#faq" className="whitespace-nowrap hover:text-[#661915] transition-colors">
               {t("landing.nav.faq")}
             </a>
           </nav>
 
           {/* Action Buttons & Language Switcher */}
-          <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3 shrink-0">
             <LanguageSwitcher variant="outline" />
 
             <Link
               to="/login"
-              className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-800 hover:text-[#7B1B38] bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all flex items-center gap-1.5"
+              className="whitespace-nowrap shrink-0 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-800 hover:text-[#661915] bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all flex items-center gap-1.5"
             >
-              <LogIn className="w-4 h-4 text-[#7B1B38]" />
+              <LogIn className="w-4 h-4 text-[#661915]" />
               <span>{t("landing.nav.login")}</span>
             </Link>
 
             <Link
               to="/register"
-              className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-[#7B1B38] hover:bg-[#63142c] transition-all shadow-md shadow-[#7B1B38]/25 flex items-center gap-1.5"
+              className="whitespace-nowrap shrink-0 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-[#661915] hover:bg-[#4d120f] transition-all shadow-md shadow-[#661915]/25 flex items-center gap-1.5"
             >
               <UserPlus className="w-4 h-4" />
               <span>{t("landing.nav.register")}</span>
@@ -73,15 +73,16 @@ export function LandingNav() {
           </div>
 
           {/* Mobile actions & hamburger button */}
-          <div className="flex sm:hidden items-center gap-1.5">
+          <div className="flex sm:hidden items-center gap-1.5 shrink-0">
             <LanguageSwitcher variant="outline" className="scale-90 origin-right" />
             <Link
               to="/login"
-              className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-800 bg-slate-100 border border-slate-200"
+              className="whitespace-nowrap px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-800 bg-slate-100 border border-slate-200"
             >
-              {t("common.status") === "Statut" ? "Connexion" : "Sign In"}
+              {isEn ? "Sign In" : "Connexion"}
             </Link>
             <button
+              type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-1.5 rounded-lg bg-slate-100 text-slate-700 hover:text-slate-900"
               aria-label="Menu"
@@ -89,7 +90,6 @@ export function LandingNav() {
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
-
         </div>
 
         {/* Mobile menu dropdown */}
@@ -98,28 +98,28 @@ export function LandingNav() {
             <a
               href="#processus"
               onClick={() => setMobileMenuOpen(false)}
-              className="block text-sm font-semibold text-slate-700 hover:text-[#7B1B38] py-1"
+              className="block text-sm font-semibold text-slate-700 hover:text-[#661915] py-1"
             >
               {t("landing.nav.process")}
             </a>
             <a
               href="#avantages"
               onClick={() => setMobileMenuOpen(false)}
-              className="block text-sm font-semibold text-slate-700 hover:text-[#7B1B38] py-1"
+              className="block text-sm font-semibold text-slate-700 hover:text-[#661915] py-1"
             >
               {t("landing.nav.features")}
             </a>
             <a
               href="#localisation"
               onClick={() => setMobileMenuOpen(false)}
-              className="block text-sm font-semibold text-slate-700 hover:text-[#7B1B38] py-1"
+              className="block text-sm font-semibold text-slate-700 hover:text-[#661915] py-1"
             >
               {t("landing.nav.location")}
             </a>
             <a
               href="#faq"
               onClick={() => setMobileMenuOpen(false)}
-              className="block text-sm font-semibold text-slate-700 hover:text-[#7B1B38] py-1"
+              className="block text-sm font-semibold text-slate-700 hover:text-[#661915] py-1"
             >
               {t("landing.nav.faq")}
             </a>
@@ -127,7 +127,7 @@ export function LandingNav() {
               <Link
                 to="/register"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full py-2.5 rounded-xl text-center text-xs font-bold text-white bg-[#7B1B38] shadow-sm flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 rounded-xl text-center text-xs font-bold text-white bg-[#661915] shadow-sm flex items-center justify-center gap-1.5"
               >
                 <UserPlus className="w-3.5 h-3.5" />
                 <span>{t("landing.nav.register")}</span>

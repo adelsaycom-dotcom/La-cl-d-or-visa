@@ -1,7 +1,7 @@
 import {
   ChevronRight, ChevronLeft, MapPin, Clock,
   FileText, CheckCircle2, AlertCircle, Upload, User,
-  Sparkles, Loader2, Trash2, Calendar, ShieldCheck,
+  ScanLine, Loader2, Trash2, Calendar, ShieldCheck,
   Phone, Mail, FileCheck, ArrowRight, Car, Eye, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -84,7 +84,7 @@ export function VisaWizard() {
     >
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
         <div className="relative z-10 max-w-2xl">
-          <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider mb-3">
+          <Badge className="bg-[#661915]/10 text-[#661915] font-bold text-xs uppercase tracking-wider mb-3">
             {isEn ? "B2B Multi-Service Catalog • La Clé d'Or" : "Catalogue B2B Multi-Services • La Clé d'Or"}
           </Badge>
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-2">
@@ -151,7 +151,7 @@ export function VisaWizard() {
                   </Badge>
                 </div>
 
-                <h3 className="text-base font-black text-slate-900 group-hover:text-[#7B1B38] transition-colors mb-1.5 leading-tight">
+                <h3 className="text-base font-black text-slate-900 group-hover:text-[#661915] transition-colors mb-1.5 leading-tight">
                   {isEn ? srv.nameEn || srv.name : srv.name}
                 </h3>
                 <p className="text-xs text-slate-500 font-medium leading-relaxed mb-3 line-clamp-2">
@@ -173,7 +173,7 @@ export function VisaWizard() {
                     ? "Browse countries"
                     : "Consulter pays"}
                 </span>
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-[#7B1B38] group-hover:translate-x-1 transition-transform">
+                <span className="inline-flex items-center gap-1 text-xs font-bold text-[#661915] group-hover:translate-x-1 transition-transform">
                   {isEn ? "Open" : "Ouvrir"} <ArrowRight className="w-3.5 h-3.5" />
                 </span>
               </div>
@@ -214,7 +214,7 @@ export function VisaWizard() {
             >
               <ChevronLeft className="w-4 h-4" /> {isEn ? "All services" : "Toutes les prestations"}
             </Button>
-            <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider">
+            <Badge className="bg-[#661915]/10 text-[#661915] font-bold text-xs uppercase tracking-wider">
               {currentFamilyTitle}
             </Badge>
           </div>
@@ -249,7 +249,7 @@ export function VisaWizard() {
         {!selectedCountry ? (
           <div>
             <div className="text-center mb-8">
-              <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider mb-2">
+              <Badge className="bg-[#661915]/10 text-[#661915] font-bold text-xs uppercase tracking-wider mb-2">
                 {isEn ? "Step 1 of 3 • Destination" : "Étape 1 sur 3 • Destination"}
               </Badge>
               <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">
@@ -259,13 +259,13 @@ export function VisaWizard() {
                 {isEn
                   ? "Select destination country for requests of type "
                   : "Sélectionnez le pays de destination pour les demandes de type "}
-                <strong className="text-[#7B1B38]">{currentFamilyTitle}</strong>.
+                <strong className="text-[#661915]">{currentFamilyTitle}</strong>.
               </p>
             </div>
 
             {catalogLoading && !catalogLoaded && availableCountries.length === 0 ? (
               <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center text-slate-500">
-                <Loader2 className="w-10 h-10 mx-auto mb-3 text-[#7B1B38] animate-spin" />
+                <Loader2 className="w-10 h-10 mx-auto mb-3 text-[#661915] animate-spin" />
                 <p className="font-bold text-base text-slate-800">
                   {isEn ? "Loading destinations..." : "Chargement des destinations..."}
                 </p>
@@ -286,7 +286,7 @@ export function VisaWizard() {
                 </p>
                 <Button
                   onClick={handleResetToHub}
-                  className="mt-6 bg-[#7B1B38] hover:bg-[#63142c] text-white rounded-xl text-xs font-bold cursor-pointer"
+                  className="mt-6 bg-[#661915] hover:bg-[#4d120f] text-white rounded-xl text-xs font-bold cursor-pointer"
                 >
                   {isEn ? "View other available services" : "Voir les autres services disponibles"}
                 </Button>
@@ -298,12 +298,12 @@ export function VisaWizard() {
                     key={country}
                     type="button"
                     onClick={() => setSelectedCountry(country)}
-                    className="group flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-2xl hover:border-[#7B1B38] hover:shadow-xl hover:shadow-[#7B1B38]/10 hover:-translate-y-1 transition-all text-center relative overflow-hidden cursor-pointer"
+                    className="group flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-2xl hover:border-[#661915] hover:shadow-xl hover:shadow-[#661915]/10 hover:-translate-y-1 transition-all text-center relative overflow-hidden cursor-pointer"
                   >
-                    <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-[#7B1B38]/10 transition-all shadow-sm">
+                    <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-[#661915]/10 transition-all shadow-sm">
                       <CountryFlag country={country} size="xl" />
                     </div>
-                    <span className="font-black text-slate-900 text-lg group-hover:text-[#7B1B38] transition-colors">
+                    <span className="font-black text-slate-900 text-lg group-hover:text-[#661915] transition-colors">
                       {country}
                     </span>
                     <span className="text-xs text-slate-400 font-medium mt-1">
@@ -327,7 +327,7 @@ export function VisaWizard() {
                   <ChevronLeft className="w-5 h-5 text-slate-700" />
                 </Button>
                 <div>
-                  <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider mb-1">
+                  <Badge className="bg-[#661915]/10 text-[#661915] font-bold text-xs uppercase tracking-wider mb-1">
                     {isEn ? `Destination: ${selectedCountry}` : `Destination : ${selectedCountry}`}
                   </Badge>
                   <h2 className="text-2xl font-black text-slate-900 tracking-tight">
@@ -339,7 +339,7 @@ export function VisaWizard() {
               <Button
                 variant="ghost"
                 onClick={() => setSelectedCountry("")}
-                className="text-xs text-slate-500 hover:text-[#7B1B38] cursor-pointer"
+                className="text-xs text-slate-500 hover:text-[#661915] cursor-pointer"
               >
                 {isEn ? "Change country" : "Changer de pays"}
               </Button>
@@ -356,12 +356,12 @@ export function VisaWizard() {
                     key={opt.id}
                     className={`bg-white border-2 rounded-3xl p-6 flex flex-col transition-all shadow-sm relative ${
                       isSelected
-                        ? "border-[#7B1B38] ring-4 ring-[#7B1B38]/10 shadow-lg"
+                        ? "border-[#661915] ring-4 ring-[#661915]/10 shadow-lg"
                         : "border-slate-200 hover:border-slate-300"
                     }`}
                   >
                     <div className="flex justify-between items-start mb-4">
-                      <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold">
+                      <Badge className="bg-[#661915]/10 text-[#661915] font-bold">
                         {opt.type}
                       </Badge>
                       <div className="text-right">
@@ -379,7 +379,7 @@ export function VisaWizard() {
                             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                               {isEn ? "B2B Rate" : "Tarif B2B"}
                             </span>
-                            <div className="text-2xl font-black text-[#7B1B38] font-mono mt-1">
+                            <div className="text-2xl font-black text-[#661915] font-mono mt-1">
                               {Number(opt.price || 0).toLocaleString()} <span className="text-xs">DZD</span>
                             </div>
                           </>
@@ -443,7 +443,7 @@ export function VisaWizard() {
                           setSelectedOption(opt);
                           setStep(2);
                         }}
-                        className="h-12 text-xs font-black rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white shadow-md shadow-[#7B1B38]/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="h-12 text-xs font-black rounded-xl bg-[#661915] hover:bg-[#4d120f] text-white shadow-md shadow-[#661915]/20 flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <span>{isEn ? "Select" : "Choisir"}</span>
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -462,7 +462,7 @@ export function VisaWizard() {
             {detailedServiceOption && (
               <div className="flex flex-col h-full overflow-hidden">
                 {/* En-tête */}
-                <div className="bg-[#7B1B38] text-white p-6 shrink-0 relative">
+                <div className="bg-[#661915] text-white p-6 shrink-0 relative">
                   <button
                     type="button"
                     onClick={() => setIsDetailModalOpen(false)}
@@ -493,7 +493,7 @@ export function VisaWizard() {
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                         {isEn ? "B2B Rate" : "Tarif B2B Débité"}
                       </span>
-                      <div className="text-2xl font-black font-mono text-[#7B1B38] mt-0.5">
+                      <div className="text-2xl font-black font-mono text-[#661915] mt-0.5">
                         {Number(detailedServiceOption.price || 0).toLocaleString()}{" "}
                         <span className="text-xs font-bold text-slate-500">DZD</span>
                       </div>
@@ -504,7 +504,7 @@ export function VisaWizard() {
                         {isEn ? "Processing Time" : "Délai Consulaire"}
                       </span>
                       <div className="text-sm font-black text-slate-800 mt-1 flex items-center gap-1.5">
-                        <Clock className="w-4 h-4 text-[#7B1B38]" />
+                        <Clock className="w-4 h-4 text-[#661915]" />
                         <span>{detailedServiceOption.processingTime || "24h à 48h"}</span>
                       </div>
                     </div>
@@ -621,7 +621,7 @@ export function VisaWizard() {
                       setSelectedOption(detailedServiceOption);
                       setStep(2);
                     }}
-                    className="h-11 px-6 bg-[#7B1B38] hover:bg-[#63142c] text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 cursor-pointer"
+                    className="h-11 px-6 bg-[#661915] hover:bg-[#4d120f] text-white font-black text-xs rounded-xl shadow-md flex items-center gap-2 cursor-pointer"
                   >
                     <span>{isEn ? "Choose This Package" : "Choisir cette formule"}</span>
                     <ArrowRight className="w-4 h-4" />
@@ -657,7 +657,7 @@ export function VisaWizard() {
             <ChevronLeft className="w-5 h-5 text-slate-700" />
           </Button>
           <div>
-            <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider mb-1">
+            <Badge className="bg-[#661915]/10 text-[#661915] font-bold text-xs uppercase tracking-wider mb-1">
               {isEn ? "Step 2 of 3 • Smart Processing" : "Étape 2 sur 3 • Analyse Intelligente"}
             </Badge>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">
@@ -689,14 +689,13 @@ export function VisaWizard() {
         </div>
       )}
 
-      {/* Zone de Dépôt Intelligent du Passeport / Permis */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 text-white rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-xl border border-slate-800">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-[#7B1B38]/20 rounded-full blur-3xl pointer-events-none"></div>
-
+      {/* Zone de Dépôt Passeport / Permis */}
+      <div className="bg-slate-900 text-white rounded-3xl p-6 md:p-8 relative overflow-hidden border border-slate-800 shadow-xl">
+        <div className="absolute -top-24 -right-24 w-72 h-72 bg-[#661915]/30 rounded-full blur-3xl pointer-events-none" />
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6 relative z-10">
           <div>
-            <div className="inline-flex items-center gap-2 bg-[#7B1B38] text-white px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase mb-2 shadow-sm">
-              <Sparkles className="w-3.5 h-3.5" />
+            <p className="inline-flex items-center gap-1.5 text-rose-300 text-xs font-bold tracking-[0.12em] uppercase mb-2">
+              <ScanLine className="w-3.5 h-3.5 animate-pulse" />
               {isPermisService
                 ? isEn
                   ? "Secure Registration & Driving License Scan"
@@ -704,7 +703,7 @@ export function VisaWizard() {
                 : isEn
                 ? "Secure Registration & Passport Data"
                 : "Enregistrement Sécurisé & Données Passeport"}
-            </div>
+            </p>
             <h3 className="text-xl md:text-2xl font-black">
               {isPermisService
                 ? isEn
@@ -743,8 +742,8 @@ export function VisaWizard() {
               onChange={handlePassportUpload}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
             />
-            <div className="border-2 border-dashed border-slate-700 hover:border-[#7B1B38] bg-slate-800/60 hover:bg-slate-800/90 rounded-2xl p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center min-h-[180px]">
-              <div className="w-16 h-16 bg-[#7B1B38]/20 text-[#7B1B38] rounded-2xl flex items-center justify-center mb-4">
+            <div className="border-2 border-dashed border-slate-700 hover:border-[#661915] bg-slate-800/60 hover:bg-slate-800/90 rounded-2xl p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center min-h-[180px]">
+              <div className="w-16 h-16 bg-[#661915]/20 text-[#661915] rounded-2xl flex items-center justify-center mb-4">
                 {isPermisService ? <Car className="w-8 h-8" /> : <Upload className="w-8 h-8" />}
               </div>
               <p className="font-bold text-base text-white">
@@ -768,8 +767,8 @@ export function VisaWizard() {
             {isScanning ? (
               <div className="py-6 flex flex-col items-center justify-center text-center max-w-md mx-auto">
                 <div className="relative mb-4">
-                  <div className="w-14 h-14 rounded-full border-4 border-[#7B1B38]/30 border-t-[#7B1B38] animate-spin flex items-center justify-center"></div>
-                  <Sparkles className="w-6 h-6 text-[#7B1B38] absolute inset-0 m-auto animate-pulse" />
+                  <div className="w-14 h-14 rounded-full border-4 border-[#661915]/30 border-t-[#661915] animate-spin flex items-center justify-center"></div>
+                  <ScanLine className="w-5 h-5 text-rose-400 absolute inset-0 m-auto" />
                 </div>
                 <h4 className="font-bold text-base text-white">
                   {isPermisService
@@ -789,7 +788,7 @@ export function VisaWizard() {
 
                 <div className="w-full bg-slate-700/60 rounded-full h-2 mt-4 overflow-hidden border border-slate-600">
                   <div
-                    className="bg-gradient-to-r from-[#7B1B38] to-emerald-500 h-full transition-all duration-300 ease-out"
+                    className="bg-gradient-to-r from-[#661915] to-emerald-500 h-full transition-all duration-300 ease-out"
                     style={{ width: `${Math.max(10, Math.min(100, scanProgress))}%` }}
                   />
                 </div>
@@ -801,7 +800,7 @@ export function VisaWizard() {
             ) : (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-4 w-full sm:w-auto">
-                  <div className="w-14 h-14 bg-[#7B1B38]/20 text-emerald-400 rounded-xl flex items-center justify-center shrink-0 border border-emerald-500/30 overflow-hidden">
+                  <div className="w-14 h-14 bg-[#661915]/20 text-emerald-400 rounded-xl flex items-center justify-center shrink-0 border border-emerald-500/30 overflow-hidden">
                     {passportFile.type.includes("pdf") ? (
                       <FileText className="w-7 h-7 text-rose-400" />
                     ) : (
@@ -916,7 +915,7 @@ export function VisaWizard() {
       <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-            <User className="w-5 h-5 text-[#7B1B38]" />{" "}
+            <User className="w-5 h-5 text-[#661915]" />{" "}
             {isEn ? "Traveler personal information" : "Informations personnelles du voyageur"}
           </h3>
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
@@ -934,7 +933,7 @@ export function VisaWizard() {
               onChange={(e) =>
                 setApplicant({ ...applicant, lastName: e.target.value.toUpperCase() })
               }
-              className="h-11 rounded-xl uppercase font-bold text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]"
+              className="h-11 rounded-xl uppercase font-bold text-slate-800 border-slate-200 focus-visible:ring-[#661915]"
               placeholder="Ex: BENALI"
             />
           </div>
@@ -946,7 +945,7 @@ export function VisaWizard() {
             <Input
               value={applicant.firstName}
               onChange={(e) => setApplicant({ ...applicant, firstName: e.target.value })}
-              className="h-11 rounded-xl font-bold text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]"
+              className="h-11 rounded-xl font-bold text-slate-800 border-slate-200 focus-visible:ring-[#661915]"
               placeholder="Ex: Mohamed Amine"
             />
           </div>
@@ -970,7 +969,7 @@ export function VisaWizard() {
                   passportNumber: e.target.value.toUpperCase().replace(/\s+/g, "")
                 })
               }
-              className="h-11 rounded-xl uppercase font-mono font-black text-slate-900 border-slate-200 tracking-wider focus-visible:ring-[#7B1B38]"
+              className="h-11 rounded-xl uppercase font-mono font-black text-slate-900 border-slate-200 tracking-wider focus-visible:ring-[#661915]"
               placeholder={isPermisService ? "Ex: 191245678" : "Ex: 214589632"}
             />
           </div>
@@ -984,7 +983,7 @@ export function VisaWizard() {
               type="date"
               value={applicant.dateOfBirth}
               onChange={(e) => setApplicant({ ...applicant, dateOfBirth: e.target.value })}
-              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]"
+              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#661915]"
             />
           </div>
 
@@ -1003,7 +1002,7 @@ export function VisaWizard() {
               type="date"
               value={applicant.expiryDate}
               onChange={(e) => setApplicant({ ...applicant, expiryDate: e.target.value })}
-              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]"
+              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#661915]"
             />
           </div>
 
@@ -1017,7 +1016,7 @@ export function VisaWizard() {
                 onClick={() => setApplicant({ ...applicant, gender: "M" })}
                 className={`h-11 rounded-xl font-bold text-xs border transition-all cursor-pointer ${
                   applicant.gender === "M"
-                    ? "bg-[#7B1B38] text-white border-[#7B1B38] shadow-sm"
+                    ? "bg-[#661915] text-white border-[#661915] shadow-sm"
                     : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
                 }`}
               >
@@ -1028,7 +1027,7 @@ export function VisaWizard() {
                 onClick={() => setApplicant({ ...applicant, gender: "F" })}
                 className={`h-11 rounded-xl font-bold text-xs border transition-all cursor-pointer ${
                   applicant.gender === "F"
-                    ? "bg-[#7B1B38] text-white border-[#7B1B38] shadow-sm"
+                    ? "bg-[#661915] text-white border-[#661915] shadow-sm"
                     : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
                 }`}
               >
@@ -1044,7 +1043,7 @@ export function VisaWizard() {
             <Input
               value={applicant.nationality}
               onChange={(e) => setApplicant({ ...applicant, nationality: e.target.value })}
-              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]"
+              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#661915]"
               placeholder={isEn ? "Ex: Algerian" : "Ex: Algérienne"}
             />
           </div>
@@ -1056,7 +1055,7 @@ export function VisaWizard() {
             <Input
               value={applicant.placeOfBirth}
               onChange={(e) => setApplicant({ ...applicant, placeOfBirth: e.target.value })}
-              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]"
+              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#661915]"
               placeholder="Ex: Alger"
             />
           </div>
@@ -1069,7 +1068,7 @@ export function VisaWizard() {
             <Input
               value={applicant.phone}
               onChange={(e) => setApplicant({ ...applicant, phone: e.target.value })}
-              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]"
+              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#661915]"
               placeholder="Ex: 0550 12 34 56"
             />
           </div>
@@ -1083,7 +1082,7 @@ export function VisaWizard() {
               type="email"
               value={applicant.email}
               onChange={(e) => setApplicant({ ...applicant, email: e.target.value })}
-              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]"
+              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#661915]"
               placeholder="client@domaine.com"
             />
           </div>
@@ -1095,7 +1094,7 @@ export function VisaWizard() {
             <Input
               value={applicant.address}
               onChange={(e) => setApplicant({ ...applicant, address: e.target.value })}
-              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#7B1B38]"
+              className="h-11 rounded-xl text-slate-800 border-slate-200 focus-visible:ring-[#661915]"
               placeholder="Ex: Bab El Oued, Alger"
             />
           </div>
@@ -1114,7 +1113,7 @@ export function VisaWizard() {
           <Button
             disabled={!isStep2Valid}
             onClick={() => setStep(3)}
-            className="h-12 px-8 bg-[#7B1B38] hover:bg-[#63142c] text-white font-black text-sm rounded-xl shadow-md shadow-[#7B1B38]/20 flex items-center gap-2 cursor-pointer"
+            className="h-12 px-8 bg-[#661915] hover:bg-[#4d120f] text-white font-black text-sm rounded-xl shadow-md shadow-[#661915]/20 flex items-center gap-2 cursor-pointer"
           >
             {isEn ? "Continue to Attachments" : "Continuer vers les Pièces Jointes"}{" "}
             <ChevronRight className="w-4 h-4" />
@@ -1151,7 +1150,7 @@ export function VisaWizard() {
               <ChevronLeft className="w-5 h-5 text-slate-700" />
             </Button>
             <div>
-              <Badge className="bg-[#7B1B38]/10 text-[#7B1B38] font-bold text-xs uppercase tracking-wider mb-1">
+              <Badge className="bg-[#661915]/10 text-[#661915] font-bold text-xs uppercase tracking-wider mb-1">
                 {isEn
                   ? "Step 3 of 3 • Attachments & Confirmation"
                   : "Étape 3 sur 3 • Pièces Jointes & Confirmation"}
@@ -1187,7 +1186,7 @@ export function VisaWizard() {
             <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
               <div>
                 <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                  <FileCheck className="w-5 h-5 text-[#7B1B38]" />{" "}
+                  <FileCheck className="w-5 h-5 text-[#661915]" />{" "}
                   {isEn ? "Supporting documents to attach" : "Documents justificatifs à joindre"}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
@@ -1223,7 +1222,7 @@ export function VisaWizard() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setStep(2)}
-                  className="text-xs text-[#7B1B38] hover:bg-[#7B1B38]/10 cursor-pointer"
+                  className="text-xs text-[#661915] hover:bg-[#661915]/10 cursor-pointer"
                 >
                   {isEn ? "Edit" : "Modifier"}
                 </Button>
@@ -1303,7 +1302,7 @@ export function VisaWizard() {
                               onChange={(e) => handleAdditionalFileUpload(req, e)}
                               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                             />
-                            <div className="flex items-center justify-between p-3.5 border-2 border-dashed border-slate-300 hover:border-[#7B1B38] bg-white rounded-xl transition-all cursor-pointer">
+                            <div className="flex items-center justify-between p-3.5 border-2 border-dashed border-slate-300 hover:border-[#661915] bg-white rounded-xl transition-all cursor-pointer">
                               <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center">
                                   <Upload className="w-4 h-4" />
@@ -1365,10 +1364,10 @@ export function VisaWizard() {
           {/* Colonne droite (1/3) : Récapitulatif financier & Débit */}
           <div className="space-y-6">
             <div className="bg-slate-900 text-white p-6 md:p-8 rounded-3xl shadow-xl relative overflow-hidden border border-slate-800">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-[#7B1B38]/30 rounded-full blur-2xl pointer-events-none"></div>
+              <div className="absolute top-0 right-0 w-48 h-48 bg-[#661915]/30 rounded-full blur-2xl pointer-events-none"></div>
 
               <h3 className="text-lg font-black mb-6 border-b border-slate-800 pb-4 flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-[#7B1B38]" />{" "}
+                <ShieldCheck className="w-5 h-5 text-[#661915]" />{" "}
                 {isEn ? "Order Summary" : "Récapitulatif Commande"}
               </h3>
 
@@ -1472,7 +1471,7 @@ export function VisaWizard() {
               <Button
                 disabled={isSubmitting || agencyBalance < (selectedOption?.price || 0)}
                 onClick={handleSubmit}
-                className="w-full h-14 bg-[#7B1B38] hover:bg-[#63142c] text-white font-black text-base rounded-2xl shadow-lg shadow-[#7B1B38]/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full h-14 bg-[#661915] hover:bg-[#4d120f] text-white font-black text-base rounded-2xl shadow-lg shadow-[#661915]/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
                 {isSubmitting ? (
                   <>
@@ -1541,7 +1540,7 @@ export function VisaWizard() {
           <span className="text-slate-400 block font-semibold">
             {isEn ? "New Balance" : "Nouveau Solde"}
           </span>
-          <strong className="text-[#7B1B38] font-mono text-sm">
+          <strong className="text-[#661915] font-mono text-sm">
             {Number(agencyBalance || 0).toLocaleString()} DZD
           </strong>
         </div>
@@ -1557,7 +1556,7 @@ export function VisaWizard() {
         </Button>
         <Button
           onClick={handleCreateAnother}
-          className="h-12 px-6 bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold rounded-xl shadow-md shadow-[#7B1B38]/20 cursor-pointer"
+          className="h-12 px-6 bg-[#661915] hover:bg-[#4d120f] text-white font-bold rounded-xl shadow-md shadow-[#661915]/20 cursor-pointer"
         >
           {isEn ? "Create Another Application" : "Créer un Nouveau Dossier"}
         </Button>
@@ -1573,7 +1572,7 @@ export function VisaWizard() {
           <div className="flex items-center justify-between max-w-2xl mx-auto relative">
             <div className="absolute top-1/2 left-0 right-0 h-1 bg-slate-100 -translate-y-1/2 z-0" />
             <div
-              className="absolute top-1/2 left-0 h-1 bg-[#7B1B38] -translate-y-1/2 z-0 transition-all duration-300"
+              className="absolute top-1/2 left-0 h-1 bg-[#661915] -translate-y-1/2 z-0 transition-all duration-300"
               style={{ width: step === 1 ? "0%" : step === 2 ? "50%" : "100%" }}
             />
 
@@ -1601,7 +1600,7 @@ export function VisaWizard() {
                       isPassed
                         ? "bg-slate-900 text-white shadow-md"
                         : isCurrent
-                        ? "bg-[#7B1B38] text-white shadow-lg shadow-[#7B1B38]/30 scale-110"
+                        ? "bg-[#661915] text-white shadow-lg shadow-[#661915]/30 scale-110"
                         : "bg-white border-2 border-slate-200 text-slate-400"
                     }`}
                   >
@@ -1610,7 +1609,7 @@ export function VisaWizard() {
                   <span
                     className={`text-xs mt-2 font-bold transition-colors hidden sm:block ${
                       isCurrent
-                        ? "text-[#7B1B38]"
+                        ? "text-[#661915]"
                         : isPassed
                         ? "text-slate-800"
                         : "text-slate-400"

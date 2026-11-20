@@ -361,7 +361,7 @@ export function FinancesManagement() {
       {/* HEADER & KPIs */}
       <div>
         <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-6 flex items-center gap-2">
-          <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
+          <div className="w-1.5 h-6 bg-[#661915] rounded-full"></div>
           {isEn ? "Treasury & Wallets" : "Trésorerie & Portefeuilles"}
         </h2>
 
@@ -375,7 +375,7 @@ export function FinancesManagement() {
             <div className="text-emerald-100/80 text-sm mt-2">{isEn ? "Approved top-ups on platform" : "Recharges approuvées sur la plateforme"}</div>
           </div>
 
-          <div className="bg-gradient-to-br from-[#7B1B38] to-[#581227] rounded-2xl p-6 text-white shadow-lg shadow-[#7B1B38]/20">
+          <div className="bg-gradient-to-br from-[#661915] to-[#581227] rounded-2xl p-6 text-white shadow-lg shadow-[#661915]/20">
             <div className="flex justify-between items-start mb-4">
               <div className="bg-white/20 p-3 rounded-xl"><Building className="w-6 h-6 text-white" /></div>
             </div>
@@ -402,36 +402,36 @@ export function FinancesManagement() {
           <button
             onClick={() => setActiveTab("pending")}
             className={`flex items-center gap-2 px-6 py-4 font-bold text-sm transition-colors relative whitespace-nowrap ${
-              activeTab === "pending" ? "text-[#7B1B38] bg-white" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+              activeTab === "pending" ? "text-[#661915] bg-white" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
             }`}
           >
             <Wallet className="w-4 h-4" /> {isEn ? "Top-up Requests" : "Demandes de Recharge"}
             {pendingRecharges.length > 0 && (
-              <span className="bg-[#7B1B38] text-white text-[10px] px-2 py-0.5 rounded-full ml-1">
+              <span className="bg-[#661915] text-white text-[10px] px-2 py-0.5 rounded-full ml-1">
                 {pendingRecharges.length}
               </span>
             )}
-            {activeTab === "pending" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#7B1B38]" />}
+            {activeTab === "pending" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#661915]" />}
           </button>
 
           <button
             onClick={() => setActiveTab("manual")}
             className={`flex items-center gap-2 px-6 py-4 font-bold text-sm transition-colors relative whitespace-nowrap ${
-              activeTab === "manual" ? "text-[#7B1B38] bg-white" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+              activeTab === "manual" ? "text-[#661915] bg-white" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
             }`}
           >
             <PlusSquare className="w-4 h-4" /> {isEn ? "Manual Adjustment" : "Ajustement Manuel"}
-            {activeTab === "manual" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#7B1B38]" />}
+            {activeTab === "manual" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#661915]" />}
           </button>
 
           <button
             onClick={() => setActiveTab("history")}
             className={`flex items-center gap-2 px-6 py-4 font-bold text-sm transition-colors relative whitespace-nowrap ${
-              activeTab === "history" ? "text-[#7B1B38] bg-white" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+              activeTab === "history" ? "text-[#661915] bg-white" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
             }`}
           >
             <History className="w-4 h-4" /> {isEn ? "General Ledger (History)" : "Grand Livre (Historique)"}
-            {activeTab === "history" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#7B1B38]" />}
+            {activeTab === "history" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#661915]" />}
           </button>
         </div>
 
@@ -442,7 +442,7 @@ export function FinancesManagement() {
             pendingRecharges.length === 0 ? (
               mysqlSecondaryLoading && !mysqlSecondaryLoaded && rechargeRequests.length === 0 ? (
                 <div className="p-16 text-center text-slate-500">
-                  <Loader2 className="w-8 h-8 mx-auto mb-3 text-[#7B1B38] animate-spin" />
+                  <Loader2 className="w-8 h-8 mx-auto mb-3 text-[#661915] animate-spin" />
                   <p className="text-sm font-bold text-slate-700">{isEn ? "Loading top-up requests..." : "Chargement des demandes en cours..."}</p>
                 </div>
               ) : (
@@ -598,7 +598,7 @@ export function FinancesManagement() {
                   <Button
                     onClick={handleManualAdjustment}
                     disabled={isSubmitting || !manualAgencyId || !manualAmount || !manualNote.trim()}
-                    className="w-full bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold h-11"
+                    className="w-full bg-[#661915] hover:bg-[#4d120f] text-white font-bold h-11"
                   >
                     {isSubmitting ? (isEn ? "Processing..." : "Enregistrement...") : (isEn ? "Apply Adjustment" : "Appliquer l'ajustement")}
                   </Button>
@@ -612,7 +612,7 @@ export function FinancesManagement() {
             allTransactions.length === 0 ? (
               mysqlSecondaryLoading && !mysqlSecondaryLoaded && transactions.length === 0 ? (
                 <div className="p-16 text-center text-slate-500">
-                  <Loader2 className="w-8 h-8 mx-auto mb-3 text-[#7B1B38] animate-spin" />
+                  <Loader2 className="w-8 h-8 mx-auto mb-3 text-[#661915] animate-spin" />
                   <p className="text-sm font-bold text-slate-700">{isEn ? "Loading ledger history..." : "Chargement de l'historique financier..."}</p>
                 </div>
               ) : (

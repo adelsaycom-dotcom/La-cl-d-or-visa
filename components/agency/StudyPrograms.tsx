@@ -4,7 +4,7 @@ import {
   Search, MapPin, FileText, ChevronRight, GraduationCap, 
   UploadCloud, CheckCircle2, Clock, AlertCircle, Eye, 
   Download, Loader2, ArrowLeft, Globe2, Building2, 
-  Calendar, Check, ShieldCheck, Sparkles, BookOpen, User, 
+  Calendar, Check, ShieldCheck, BookOpen, User, 
   Phone, Mail, FileCheck, ExternalLink, X, Copy, Printer,
   AlertTriangle, RefreshCw, Trash2
 } from 'lucide-react';
@@ -491,8 +491,8 @@ export default function StudyPrograms() {
           <title>Récépissé Officiel B2B - ${safeRef}</title>
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 40px; color: #1e293b; max-width: 800px; margin: 0 auto; }
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #7B1B38; padding-bottom: 20px; margin-bottom: 30px; }
-            .brand { font-size: 24px; font-weight: 900; color: #7B1B38; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #661915; padding-bottom: 20px; margin-bottom: 30px; }
+            .brand { font-size: 24px; font-weight: 900; color: #661915; }
             .badge { background: #f1f5f9; padding: 6px 12px; border-radius: 8px; font-family: monospace; font-weight: bold; font-size: 13px; }
             .title { font-size: 20px; font-weight: 800; margin-bottom: 20px; color: #0f172a; text-transform: uppercase; }
             .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px; }
@@ -631,7 +631,7 @@ export default function StudyPrograms() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* En-tête Espace Études */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-[#7B1B38] text-white p-6 sm:p-8 rounded-3xl shadow-sm relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-[#661915] text-white p-6 sm:p-8 rounded-3xl shadow-sm relative overflow-hidden">
         <div className="absolute right-0 top-0 bottom-0 w-96 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent pointer-events-none"></div>
 
         <div className="relative z-10 max-w-3xl">
@@ -669,7 +669,7 @@ export default function StudyPrograms() {
           onClick={() => setActiveTab('programs')}
           className={`flex items-center gap-2 px-5 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer ${
             activeTab === 'programs'
-              ? 'bg-white text-[#7B1B38] shadow-sm'
+              ? 'bg-white text-[#661915] shadow-sm'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
@@ -681,7 +681,7 @@ export default function StudyPrograms() {
           onClick={() => setActiveTab('my-applications')}
           className={`flex items-center gap-2 px-5 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer ${
             activeTab === 'my-applications'
-              ? 'bg-white text-[#7B1B38] shadow-sm'
+              ? 'bg-white text-[#661915] shadow-sm'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
@@ -706,7 +706,7 @@ export default function StudyPrograms() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-3xl border border-slate-200 shadow-xs">
                 <div>
                   <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                    <Globe2 className="w-5 h-5 text-[#7B1B38]" />
+                    <Globe2 className="w-5 h-5 text-[#661915]" />
                     <span>Étape 1 : Choisissez la Destination Universitaire</span>
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
@@ -728,7 +728,7 @@ export default function StudyPrograms() {
               {/* Grille des Pays */}
               {catalogLoading && !catalogLoaded && activePrograms.length === 0 ? (
                 <div className="py-20 text-center bg-white rounded-3xl border border-slate-200">
-                  <Loader2 className="w-9 h-9 mx-auto text-[#7B1B38] animate-spin mb-3" />
+                  <Loader2 className="w-9 h-9 mx-auto text-[#661915] animate-spin mb-3" />
                   <p className="font-bold text-slate-800 text-sm">Chargement du catalogue universitaire...</p>
                   <p className="text-xs text-slate-400 mt-1">Synchronisation des destinations et universités publiées.</p>
                 </div>
@@ -742,7 +742,7 @@ export default function StudyPrograms() {
                         setProgramSearchTerm('');
                         setProgPage(1);
                       }}
-                      className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs hover:shadow-lg hover:border-[#7B1B38]/40 transition-all cursor-pointer group flex flex-col justify-between"
+                      className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs hover:shadow-lg hover:border-[#661915]/40 transition-all cursor-pointer group flex flex-col justify-between"
                     >
                       <div>
                         <div className="flex items-center justify-between mb-4">
@@ -752,12 +752,12 @@ export default function StudyPrograms() {
                             size="xl"
                             className="group-hover:scale-110 transition-transform"
                           />
-                          <span className="text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full group-hover:bg-[#7B1B38]/10 group-hover:text-[#7B1B38] transition-colors">
+                          <span className="text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full group-hover:bg-[#661915]/10 group-hover:text-[#661915] transition-colors">
                             {item.count} {item.count > 1 ? "Universités" : "Université"}
                           </span>
                         </div>
 
-                        <h4 className="text-lg font-black text-slate-900 group-hover:text-[#7B1B38] transition-colors">
+                        <h4 className="text-lg font-black text-slate-900 group-hover:text-[#661915] transition-colors">
                           {item.country}
                         </h4>
                         <p className="text-xs text-slate-500 mt-1 line-clamp-2">
@@ -774,7 +774,7 @@ export default function StudyPrograms() {
                           </span>
                         </div>
 
-                        <div className="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-[#7B1B38] group-hover:text-white flex items-center justify-center transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-[#661915] group-hover:text-white flex items-center justify-center transition-colors">
                           <ChevronRight className="w-4 h-4" />
                         </div>
                       </div>
@@ -827,7 +827,7 @@ export default function StudyPrograms() {
                       <h3 className="text-base font-black text-slate-900">
                         Universités en {selectedCountry}
                       </h3>
-                      <span className="bg-[#7B1B38]/10 text-[#7B1B38] text-xs font-bold px-2 py-0.5 rounded-full">
+                      <span className="bg-[#661915]/10 text-[#661915] text-xs font-bold px-2 py-0.5 rounded-full">
                         {programsForSelectedCountry.length} {programsForSelectedCountry.length > 1 ? "offres disponibles" : "offre disponible"}
                       </span>
                     </div>
@@ -854,14 +854,21 @@ export default function StudyPrograms() {
                   >
                     <div>
                       {/* Photo & Localisation */}
-                      <div className="relative h-44 overflow-hidden bg-slate-100">
-                        <img
-                          src={prog.image || "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80"}
-                          alt={prog.university}
-                          loading="lazy"
-                          decoding="async"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
+                      <div className="relative h-44 overflow-hidden bg-slate-900">
+                        {prog.image && !prog.image.includes('unsplash.com') ? (
+                          <img
+                            src={prog.image}
+                            alt={prog.university}
+                            loading="lazy"
+                            decoding="async"
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 via-slate-900 to-[#661915]/80">
+                            <GraduationCap className="w-12 h-12 text-white/30" />
+                          </div>
+                        )}
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent"></div>
 
                         <div className="absolute top-3 left-3">
@@ -872,7 +879,7 @@ export default function StudyPrograms() {
                         </div>
 
                         <div className="absolute top-3 right-3">
-                          <span className="bg-[#7B1B38] text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-full shadow-xs">
+                          <span className="bg-[#661915] text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-full shadow-xs">
                             {prog.type}
                           </span>
                         </div>
@@ -905,7 +912,7 @@ export default function StudyPrograms() {
                             <div className="bg-gradient-to-br from-amber-50/80 to-amber-50/40 p-3.5 rounded-2xl border border-amber-200/80 space-y-2.5 text-xs">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-1.5 text-amber-950 font-bold text-[11px] uppercase tracking-wide">
-                                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-700" />
                                   <span>Conditions Requises</span>
                                 </div>
                                 <span className="text-[10px] font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-md font-mono">
@@ -1003,7 +1010,7 @@ export default function StudyPrograms() {
                             setHighlightMissing(false);
                             setIsApplyOpen(true);
                           }}
-                          className="flex-1 sm:flex-initial bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs h-9 px-4 rounded-xl shadow-sm cursor-pointer"
+                          className="flex-1 sm:flex-initial bg-[#661915] hover:bg-[#4d120f] text-white font-bold text-xs h-9 px-4 rounded-xl shadow-sm cursor-pointer"
                         >
                           <span>Déposer</span>
                           <ChevronRight className="w-3.5 h-3.5 ml-1" />
@@ -1046,7 +1053,7 @@ export default function StudyPrograms() {
           <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-[#7B1B38]" />
+                <FileText className="w-5 h-5 text-[#661915]" />
                 <span>Suivi de vos Dossiers Étudiants</span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -1188,7 +1195,7 @@ export default function StudyPrograms() {
             {myApplications.length === 0 && (
               mysqlSecondaryLoading && !mysqlSecondaryLoaded && (studyApplications || []).length === 0 ? (
                 <div className="py-16 text-center bg-white rounded-3xl border border-slate-200">
-                  <Loader2 className="w-9 h-9 mx-auto text-[#7B1B38] animate-spin mb-3" />
+                  <Loader2 className="w-9 h-9 mx-auto text-[#661915] animate-spin mb-3" />
                   <h4 className="text-base font-black text-slate-800">Chargement de vos candidatures...</h4>
                   <p className="text-xs text-slate-500 mt-1">Récupération des dossiers étudiants depuis le serveur.</p>
                 </div>
@@ -1201,7 +1208,7 @@ export default function StudyPrograms() {
                   </p>
                   <Button
                     onClick={() => setActiveTab('programs')}
-                    className="mt-4 bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs h-9 px-4 rounded-xl"
+                    className="mt-4 bg-[#661915] hover:bg-[#4d120f] text-white font-bold text-xs h-9 px-4 rounded-xl"
                   >
                     Explorer le catalogue
                   </Button>
@@ -1232,13 +1239,20 @@ export default function StudyPrograms() {
             <div className="flex flex-col h-full overflow-hidden">
               {/* Image d'en-tête et présentation */}
               <div className="relative h-60 w-full overflow-hidden shrink-0 bg-slate-900">
-                <img
-                  src={detailedProgram.image || "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80"}
-                  alt={detailedProgram.university}
-                  loading="lazy"
-                  decoding="async"
-                  className="w-full h-full object-cover"
-                />
+                {detailedProgram.image && !detailedProgram.image.includes('unsplash.com') ? (
+                  <img
+                    src={detailedProgram.image}
+                    alt={detailedProgram.university}
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 via-slate-900 to-[#661915]/80">
+                    <GraduationCap className="w-14 h-14 text-white/30" />
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent"></div>
 
                 <div className="absolute top-4 left-4 flex items-center gap-2">
@@ -1247,7 +1261,7 @@ export default function StudyPrograms() {
                     <span>{detailedProgram.country}</span>
                     {detailedProgram.city && <span>• {detailedProgram.city}</span>}
                   </span>
-                  <span className="bg-[#7B1B38] text-white text-[11px] font-black uppercase px-3 py-1 rounded-xl shadow-sm">
+                  <span className="bg-[#661915] text-white text-[11px] font-black uppercase px-3 py-1 rounded-xl shadow-sm">
                     {detailedProgram.type}
                   </span>
                 </div>
@@ -1277,7 +1291,7 @@ export default function StudyPrograms() {
                 {/* Description complète */}
                 <div>
                   <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
-                    <BookOpen className="w-4 h-4 text-[#7B1B38]" /> Présentation du Programme & Campus
+                    <BookOpen className="w-4 h-4 text-[#661915]" /> Présentation du Programme & Campus
                   </h4>
                   <p className="text-sm text-slate-600 leading-relaxed font-normal bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     {detailedProgram.description || "Formation universitaire d'excellence dispensée selon les standards académiques internationaux. Accompagnement complet pour l'obtention de l'invitation officielle et du visa d'études."}
@@ -1289,14 +1303,14 @@ export default function StudyPrograms() {
                   <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Délai Invitation</span>
                     <span className="text-xs font-black text-slate-900 mt-1 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-[#7B1B38]" /> {detailedProgram.processingTime || "20 à 35 jours"}
+                      <Clock className="w-3.5 h-3.5 text-[#661915]" /> {detailedProgram.processingTime || "20 à 35 jours"}
                     </span>
                   </div>
 
                   <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Période Rentrée</span>
                     <span className="text-xs font-black text-slate-900 mt-1 flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-[#7B1B38]" /> {detailedProgram.intake || "Septembre 2025"}
+                      <Calendar className="w-3.5 h-3.5 text-[#661915]" /> {detailedProgram.intake || "Septembre 2025"}
                     </span>
                   </div>
 
@@ -1314,10 +1328,8 @@ export default function StudyPrograms() {
                   return (
                     <div className="bg-gradient-to-br from-amber-50/90 via-amber-50/50 to-orange-50/40 p-5 rounded-3xl border border-amber-200/90 shadow-xs space-y-3.5">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-amber-950 font-black text-xs uppercase tracking-wider">
-                          <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-800 flex items-center justify-center shrink-0">
-                            <Sparkles className="w-3.5 h-3.5 text-amber-700" />
-                          </div>
+                        <div className="flex items-center gap-2 text-amber-950 font-bold text-xs uppercase tracking-wider">
+                          <CheckCircle2 className="w-4 h-4 text-amber-700 shrink-0" />
                           <span>Critères & Conditions d'Admission</span>
                         </div>
                         <Badge className="bg-amber-100 text-amber-900 border-amber-300 font-bold text-[10px] px-2.5 py-0.5 rounded-full">
@@ -1369,7 +1381,7 @@ export default function StudyPrograms() {
               <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Frais Traitement Agence B2B</span>
-                  <div className="text-xl font-black font-mono text-[#7B1B38]">
+                  <div className="text-xl font-black font-mono text-[#661915]">
                     {(detailedProgram.price || 0).toLocaleString()} <span className="text-xs font-bold text-slate-500">DZD</span>
                   </div>
                 </div>
@@ -1395,7 +1407,7 @@ export default function StudyPrograms() {
                       setHighlightMissing(false);
                       setIsApplyOpen(true);
                     }}
-                    className="h-10 px-6 bg-[#7B1B38] hover:bg-[#63142c] text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer"
+                    className="h-10 px-6 bg-[#661915] hover:bg-[#4d120f] text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer"
                   >
                     <span>Déposer un dossier pour cette offre</span>
                     <ChevronRight className="w-4 h-4" />
@@ -1415,7 +1427,7 @@ export default function StudyPrograms() {
           {selectedProgram && (
             <>
               {/* En-tête modal */}
-              <div className="bg-[#7B1B38] text-white px-6 py-5 shrink-0 flex justify-between items-start">
+              <div className="bg-[#661915] text-white px-6 py-5 shrink-0 flex justify-between items-start">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="bg-white/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
@@ -1466,7 +1478,7 @@ export default function StudyPrograms() {
                     <div className="flex justify-between items-center text-xs border-b border-slate-100 pb-2.5">
                       <span className="text-slate-500 font-medium">Référence Unique :</span>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono font-black text-sm text-[#7B1B38] bg-[#7B1B38]/10 px-2.5 py-1 rounded-lg">
+                        <span className="font-mono font-black text-sm text-[#661915] bg-[#661915]/10 px-2.5 py-1 rounded-lg">
                           #{submittedAppRef}
                         </span>
                         <Button
@@ -1504,7 +1516,7 @@ export default function StudyPrograms() {
                       variant="outline"
                       className="h-11 px-6 text-xs font-bold rounded-xl border-slate-300 hover:bg-slate-100 text-slate-800 shadow-xs flex items-center gap-2 cursor-pointer"
                     >
-                      <Printer className="w-4 h-4 text-[#7B1B38]" />
+                      <Printer className="w-4 h-4 text-[#661915]" />
                       <span>Imprimer / Télécharger le Récépissé (PDF)</span>
                     </Button>
 
@@ -1513,7 +1525,7 @@ export default function StudyPrograms() {
                         setIsApplyOpen(false);
                         setActiveTab('my-applications');
                       }}
-                      className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs h-11 px-8 rounded-xl shadow-md cursor-pointer flex items-center gap-2"
+                      className="bg-[#661915] hover:bg-[#4d120f] text-white font-bold text-xs h-11 px-8 rounded-xl shadow-md cursor-pointer flex items-center gap-2"
                     >
                       <span>Suivre dans « Mes Candidatures »</span>
                       <ChevronRight className="w-4 h-4" />
@@ -1567,7 +1579,7 @@ export default function StudyPrograms() {
                       {/* 1. Informations du Candidat avec Validation en Direct */}
                       <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                          <h4 className="text-xs font-black uppercase tracking-wider text-[#7B1B38] flex items-center gap-1.5">
+                          <h4 className="text-xs font-black uppercase tracking-wider text-[#661915] flex items-center gap-1.5">
                             <User className="w-4 h-4" /> 1. Informations du Candidat
                           </h4>
                           <span className="text-[10px] font-bold text-slate-400">* Obligatoire</span>
@@ -1593,7 +1605,7 @@ export default function StudyPrograms() {
                                 className={`h-11 text-xs bg-slate-50 border rounded-xl font-bold transition-all focus:bg-white ${
                                   touched.studentName && errors.studentName
                                     ? 'border-red-400 focus:border-red-500 focus:ring-red-200'
-                                    : 'border-slate-200 focus:border-[#7B1B38]'
+                                    : 'border-slate-200 focus:border-[#661915]'
                                 }`}
                               />
                               {formData.studentName.trim().length >= 3 && !errors.studentName && (
@@ -1629,7 +1641,7 @@ export default function StudyPrograms() {
                                 className={`h-11 text-xs bg-slate-50 border rounded-xl font-mono uppercase font-bold transition-all focus:bg-white ${
                                   touched.passportNumber && errors.passportNumber
                                     ? 'border-red-400 focus:border-red-500 focus:ring-red-200'
-                                    : 'border-slate-200 focus:border-[#7B1B38]'
+                                    : 'border-slate-200 focus:border-[#661915]'
                                 }`}
                               />
                               {formData.passportNumber.trim().length >= 6 && !errors.passportNumber && (
@@ -1656,7 +1668,7 @@ export default function StudyPrograms() {
                                 className={`h-11 text-xs bg-slate-50 border rounded-xl transition-all focus:bg-white ${
                                   touched.email && errors.email
                                     ? 'border-red-400 focus:border-red-500'
-                                    : 'border-slate-200 focus:border-[#7B1B38]'
+                                    : 'border-slate-200 focus:border-[#661915]'
                                 }`}
                               />
                               {touched.email && errors.email && (
@@ -1675,7 +1687,7 @@ export default function StudyPrograms() {
                                 className={`h-11 text-xs bg-slate-50 border rounded-xl font-mono transition-all focus:bg-white ${
                                   touched.phone && errors.phone
                                     ? 'border-red-400 focus:border-red-500'
-                                    : 'border-slate-200 focus:border-[#7B1B38]'
+                                    : 'border-slate-200 focus:border-[#661915]'
                                 }`}
                               />
                               {touched.phone && errors.phone && (
@@ -1743,7 +1755,7 @@ export default function StudyPrograms() {
                       <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
                         <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
                           <div>
-                            <h4 className="text-xs font-black uppercase tracking-wider text-[#7B1B38] flex items-center gap-1.5">
+                            <h4 className="text-xs font-black uppercase tracking-wider text-[#661915] flex items-center gap-1.5">
                               <FileCheck className="w-4 h-4" /> 2. Pièces Requises par cette Université
                             </h4>
                             <p className="text-[11px] text-slate-400 mt-0.5">
@@ -1900,7 +1912,7 @@ export default function StudyPrograms() {
                   <Button
                     onClick={triggerSubmit}
                     disabled={isSubmitting}
-                    className="h-11 px-7 text-xs font-bold bg-[#7B1B38] hover:bg-[#63142c] text-white rounded-xl shadow-md cursor-pointer flex items-center gap-2"
+                    className="h-11 px-7 text-xs font-bold bg-[#661915] hover:bg-[#4d120f] text-white rounded-xl shadow-md cursor-pointer flex items-center gap-2"
                   >
                     {isSubmitting ? (
                       <>
@@ -1957,7 +1969,7 @@ export default function StudyPrograms() {
                 setMissingDocsModalOpen(false);
                 setHighlightMissing(true);
               }}
-              className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs h-10 px-4 rounded-xl flex-1 cursor-pointer"
+              className="bg-[#661915] hover:bg-[#4d120f] text-white font-bold text-xs h-10 px-4 rounded-xl flex-1 cursor-pointer"
             >
               Compléter les pièces
             </Button>

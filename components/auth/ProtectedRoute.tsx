@@ -32,7 +32,7 @@ export function ProtectedRoute({ requiredRole }: ProtectedRouteProps) {
   if (!authReady) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#7B1B38]" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#661915]" />
         <p className="mt-4 text-xs font-semibold text-slate-500">
           {isEn ? "Verifying secure session..." : "Vérification de la session sécurisée..."}
         </p>
@@ -83,7 +83,7 @@ export function ProtectedRoute({ requiredRole }: ProtectedRouteProps) {
             <button
               type="button"
               onClick={handleForceLogout}
-              className="w-full h-11 bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="w-full h-11 bg-[#661915] hover:bg-[#4d120f] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
               <span>{isEn ? "Sign Out" : "Se déconnecter"}</span>

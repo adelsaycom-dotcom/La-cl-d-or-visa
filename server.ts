@@ -740,6 +740,10 @@ Si un champ est absent ou illisible, renvoie une chaîne vide "". Réponds UNIQU
 
   // Vite middleware pour le développement ou service des assets compilés en production
   if (!isProd) {
+    const publicAssetsDir = path.join(process.cwd(), "public", "assets");
+    if (fs.existsSync(publicAssetsDir)) {
+      app.use("/assets", express.static(publicAssetsDir, { maxAge: "1d" }));
+    }
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",

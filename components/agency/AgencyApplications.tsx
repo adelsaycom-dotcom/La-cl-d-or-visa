@@ -70,18 +70,18 @@ export function AgencyApplications() {
       case "Approved": return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200 font-bold"><CheckCircle2 className="w-3.5 h-3.5 mr-1" /> {isEn ? "Approved" : "Approuvée"}</Badge>;
       case "Rejected": return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-red-200 font-bold"><XCircle className="w-3.5 h-3.5 mr-1" /> {isEn ? "Rejected" : "Rejetée"}</Badge>;
       case "Processing": return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 font-bold"><Clock className="w-3.5 h-3.5 mr-1" /> {isEn ? "Processing" : "En traitement"}</Badge>;
-      case "ActionRequired": return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 font-bold"><AlertCircle className="w-3.5 h-3.5 mr-1 animate-pulse" /> {isEn ? "Action Required" : "Action Requise"}</Badge>;
+      case "ActionRequired": return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 font-bold"><AlertCircle className="w-3.5 h-3.5 mr-1" /> {isEn ? "Action Required" : "Action Requise"}</Badge>;
       default: return <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 border-slate-200 font-bold"><Clock className="w-3.5 h-3.5 mr-1" /> {isEn ? "Pending" : "En attente"}</Badge>;
     }
   }, [isEn]);
 
   const getStatusColor = useCallback((status: string) => {
     switch (status) {
-      case "Approved": return "border-l-4 border-l-emerald-500";
-      case "Rejected": return "border-l-4 border-l-red-500";
-      case "Processing": return "border-l-4 border-l-blue-500";
-      case "ActionRequired": return "border-l-4 border-l-amber-500";
-      default: return "border-l-4 border-l-slate-300";
+      case "Approved": return "border-emerald-200";
+      case "Rejected": return "border-red-200";
+      case "Processing": return "border-blue-200";
+      case "ActionRequired": return "border-amber-200";
+      default: return "border-slate-200";
     }
   }, []);
 
@@ -265,7 +265,7 @@ export function AgencyApplications() {
             <span className="text-xs font-bold text-slate-400 uppercase">
               {isEn ? "Deducted Fee" : "Tarif déduit"}
             </span>
-            <div className="text-lg font-black text-[#7B1B38] font-mono">
+            <div className="text-lg font-black text-[#661915] font-mono">
               {typeof selectedApp.price === "number" ? selectedApp.price.toLocaleString() : "0"} DZD
             </div>
           </div>
@@ -350,7 +350,7 @@ export function AgencyApplications() {
                 />
                 <Button 
                   disabled={isUploadingMissingDoc}
-                  className="w-full sm:w-auto bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold text-xs h-11 px-6 rounded-xl gap-2 pointer-events-none"
+                  className="w-full sm:w-auto bg-[#661915] hover:bg-[#4d120f] text-white font-bold text-xs h-11 px-6 rounded-xl gap-2 pointer-events-none"
                 >
                   {isUploadingMissingDoc ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
                   {isEn ? "Upload requested document" : "Téléverser la pièce demandée"}
@@ -366,7 +366,7 @@ export function AgencyApplications() {
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[520px]">
               <div className="p-4 border-b border-slate-100 bg-slate-50 font-bold text-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm">
-                  <MessageSquare className="w-4 h-4 text-[#7B1B38]" /> {isEn ? "Direct Messages & Instruction Log" : "Échanges Directs & Journal d'instruction"}
+                  <MessageSquare className="w-4 h-4 text-[#661915]" /> {isEn ? "Direct Messages & Instruction Log" : "Échanges Directs & Journal d'instruction"}
                 </div>
                 <span className="text-[11px] font-semibold text-slate-400">{isEn ? "Encrypted communication" : "Communication chiffrée"}</span>
               </div>
@@ -388,14 +388,14 @@ export function AgencyApplications() {
                     >
                       <div className={`max-w-[85%] rounded-2xl p-4 text-xs ${
                         entry.sender === 'Agency' 
-                          ? 'bg-[#7B1B38] text-white rounded-br-none shadow-md shadow-[#7B1B38]/15' : 
+                          ? 'bg-[#661915] text-white rounded-br-none shadow-md shadow-[#661915]/15' : 
                         entry.sender === 'Admin' 
                           ? 'bg-white border border-slate-200 text-slate-800 rounded-bl-none shadow-sm' :
                           'bg-slate-200 text-slate-700 py-2 px-4 rounded-full font-medium text-[11px]'
                       }`}>
                         {entry.sender !== 'System' && (
                           <div className={`text-[10px] font-bold uppercase mb-1 ${
-                            entry.sender === 'Agency' ? 'text-rose-200' : 'text-[#7B1B38]'
+                            entry.sender === 'Agency' ? 'text-rose-200' : 'text-[#661915]'
                           }`}>
                             {entry.sender === 'Admin' ? (isEn ? "Administration" : "Administration") : (isEn ? "Your Agency" : "Votre Agence")} • {new Date(entry.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </div>
@@ -419,7 +419,7 @@ export function AgencyApplications() {
                 <Button 
                   onClick={handleSendMessage}
                   disabled={selectedApp.status === 'Approved' || selectedApp.status === 'Rejected' || !replyMessage.trim()}
-                  className="h-11 w-11 rounded-xl bg-[#7B1B38] hover:bg-[#63142c] text-white shrink-0 shadow-md shadow-[#7B1B38]/20"
+                  className="h-11 w-11 rounded-xl bg-[#661915] hover:bg-[#4d120f] text-white shrink-0 shadow-md shadow-[#661915]/20"
                 >
                   <Send className="w-4 h-4" />
                 </Button>
@@ -433,7 +433,7 @@ export function AgencyApplications() {
             {/* Détails du dossier */}
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
               <h3 className="font-black text-slate-900 flex items-center gap-2 text-sm pb-3 border-b border-slate-100">
-                <FileText className="w-4 h-4 text-[#7B1B38]" /> {isEn ? "Traveler Information" : "Informations du Voyageur"}
+                <FileText className="w-4 h-4 text-[#661915]" /> {isEn ? "Traveler Information" : "Informations du Voyageur"}
               </h3>
               
               <div className="space-y-3 text-xs">
@@ -475,7 +475,7 @@ export function AgencyApplications() {
 
                 <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
                   <span className="text-slate-400 font-bold uppercase">{isEn ? "Service Cost" : "Coût du service"}</span>
-                  <span className="text-base font-black text-[#7B1B38] font-mono">
+                  <span className="text-base font-black text-[#661915] font-mono">
                     {typeof selectedApp.price === "number" ? selectedApp.price.toLocaleString() : "0"} DZD
                   </span>
                 </div>
@@ -486,7 +486,7 @@ export function AgencyApplications() {
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <h3 className="font-black text-slate-900 flex items-center gap-2 text-sm">
-                  <FileCheck className="w-4 h-4 text-[#7B1B38]" /> {isEn ? `Attached Documents (${appAttachments.length})` : `Pièces Transmises (${appAttachments.length})`}
+                  <FileCheck className="w-4 h-4 text-[#661915]" /> {isEn ? `Attached Documents (${appAttachments.length})` : `Pièces Transmises (${appAttachments.length})`}
                 </h3>
               </div>
 
@@ -508,7 +508,7 @@ export function AgencyApplications() {
                             onOpenPreview={(src, title, type) => setPreviewDoc({ src, title, type: type || att.type })}
                           />
                           <div className="overflow-hidden min-w-0 flex-1">
-                            <span className="text-[10px] font-bold text-[#7B1B38] block truncate">{att.category || "Document"}</span>
+                            <span className="text-[10px] font-bold text-[#661915] block truncate">{att.category || "Document"}</span>
                             <p className="text-xs font-bold text-slate-800 truncate" title={att.name}>{att.name}</p>
                           </div>
                         </div>
@@ -552,7 +552,7 @@ export function AgencyApplications() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <div className="w-1.5 h-6 bg-[#7B1B38] rounded-full"></div>
+            <div className="w-1.5 h-6 bg-[#661915] rounded-full"></div>
             {t("applications.title")}
           </h1>
           <p className="text-slate-500 font-medium">{t("applications.subtitle")}</p>
@@ -580,7 +580,7 @@ export function AgencyApplications() {
               onClick={() => setStatusFilter(status)}
               className={`px-4 py-2 rounded-xl text-xs font-black transition-all whitespace-nowrap flex items-center gap-2 ${
                 statusFilter === status 
-                  ? 'bg-[#7B1B38] text-white shadow-md shadow-[#7B1B38]/20' 
+                  ? 'bg-[#661915] text-white shadow-md shadow-[#661915]/20' 
                   : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
@@ -610,7 +610,7 @@ export function AgencyApplications() {
       {paginatedApplications.length === 0 ? (
         mysqlCoreLoading && !mysqlCoreLoaded && applications.length === 0 ? (
           <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center text-slate-500">
-            <Loader2 className="w-10 h-10 mx-auto mb-3 text-[#7B1B38] animate-spin" />
+            <Loader2 className="w-10 h-10 mx-auto mb-3 text-[#661915] animate-spin" />
             <h3 className="text-base font-black text-slate-800">{isEn ? "Loading your applications..." : "Chargement de vos dossiers en cours..."}</h3>
             <p className="text-xs text-slate-500 mt-1">{isEn ? "Synchronizing records from the server." : "Synchronisation des dossiers depuis le serveur."}</p>
           </div>
@@ -628,7 +628,7 @@ export function AgencyApplications() {
               <div 
                 key={app.id} 
                 onClick={() => setSelectedAppId(app.id)}
-                className={`bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:border-[#7B1B38]/40 hover:shadow-lg transition-all cursor-pointer relative overflow-hidden flex flex-col ${getStatusColor(app.status)}`}
+                className={`bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:border-[#661915]/40 hover:shadow-lg transition-all cursor-pointer relative overflow-hidden flex flex-col ${getStatusColor(app.status)}`}
               >
                 <div className="flex justify-between items-start mb-4">
                   <span className="font-mono text-xs font-bold text-slate-400">{app.id}</span>
@@ -636,7 +636,7 @@ export function AgencyApplications() {
                 </div>
 
                 <div className="mb-4">
-                  <h3 className="text-lg font-black text-slate-900 group-hover:text-[#7B1B38] transition-colors">
+                  <h3 className="text-lg font-black text-slate-900 group-hover:text-[#661915] transition-colors">
                     {app.travelerName || (app as unknown as { applicantName?: string }).applicantName || (isEn ? "Traveler" : "Voyageur")}
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5 font-semibold">
@@ -646,7 +646,7 @@ export function AgencyApplications() {
 
                 <div className="bg-slate-50 rounded-2xl p-3 text-xs mb-4 flex justify-between items-center border border-slate-100">
                   <span className="font-bold text-slate-700">{app.serviceType} • {app.country}</span>
-                  <span className="font-black text-[#7B1B38] font-mono">{app.price?.toLocaleString()} DZD</span>
+                  <span className="font-black text-[#661915] font-mono">{app.price?.toLocaleString()} DZD</span>
                 </div>
 
                 {/* Indicateur Visa disponible */}
@@ -661,7 +661,7 @@ export function AgencyApplications() {
 
                 <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                   <span className="text-slate-400 font-medium">{new Date(app.submissionDate).toLocaleDateString()}</span>
-                  <span className="font-bold text-[#7B1B38] flex items-center gap-1">
+                  <span className="font-bold text-[#661915] flex items-center gap-1">
                     {isEn ? "Open application" : "Ouvrir le dossier"} &rarr;
                   </span>
                 </div>

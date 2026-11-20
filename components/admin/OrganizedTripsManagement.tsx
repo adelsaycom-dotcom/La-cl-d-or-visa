@@ -140,7 +140,7 @@ export default function OrganizedTripsManagement() {
         title: newTrip.title,
         destination: newTrip.destination,
         description: newTrip.description || '',
-        photoUrl: newTrip.photoUrl || 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&q=80',
+        photoUrl: newTrip.photoUrl || '',
         totalSeats: Number(newTrip.totalSeats),
         price: Number(newTrip.price),
         startDate: newTrip.startDate,
@@ -200,7 +200,7 @@ export default function OrganizedTripsManagement() {
               setNewTrip({ title: '', destination: '', description: '', photoUrl: '', totalSeats: 0, price: 0, startDate: '', endDate: '', status: 'active', customFormFields: [] }); 
               setIsAddOpen(true); 
             }} 
-            className="bg-[#7B1B38] hover:bg-[#63142c] text-white cursor-pointer inline-flex items-center justify-center px-4 py-2 rounded-xl text-sm font-bold shadow-sm"
+            className="bg-[#661915] hover:bg-[#4d120f] text-white cursor-pointer inline-flex items-center justify-center px-4 py-2 rounded-xl text-sm font-bold shadow-sm"
           >
             <Plus className="w-4 h-4 mr-2" /> {isEn ? "New Trip" : "Nouveau Voyage"}
           </div>
@@ -303,7 +303,7 @@ export default function OrganizedTripsManagement() {
               <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>
                 {isEn ? "Cancel" : "Annuler"}
               </Button>
-              <Button type="button" className="bg-[#7B1B38] hover:bg-[#63142c] text-white font-bold" onClick={handleSaveTrip}>
+              <Button type="button" className="bg-[#661915] hover:bg-[#4d120f] text-white font-bold" onClick={handleSaveTrip}>
                 {editingTripId ? (isEn ? "Save Changes" : "Enregistrer") : (isEn ? "Publish Offer" : "Publier l'offre")}
               </Button>
             </div>
@@ -500,7 +500,7 @@ export default function OrganizedTripsManagement() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="font-bold text-slate-800 text-lg">{res.clientName}</span>
-                        <span className="text-sm font-bold text-[#7B1B38] bg-[#7B1B38]/10 px-2.5 py-0.5 rounded-full">
+                        <span className="text-sm font-bold text-[#661915] bg-[#661915]/10 px-2.5 py-0.5 rounded-full">
                           {resolveRecordAgencyName(res, agenciesLookup, 'Agence Partenaire')}
                         </span>
                         <Badge className={
